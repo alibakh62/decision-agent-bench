@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from decision_agent_bench.evals.tools import benchmark_tools
+from decision_agent_bench.integrity import verify_pip_audit_inventory
 from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, generate_world
 from decision_agent_bench.simulator.environment import ToolError
 from decision_agent_bench.simulator.reference import verify_reference_world
@@ -271,12 +272,20 @@ def _dependency_check(repository: Path, report_path: Path | None) -> AuditCheck:
     try:
         payload = json.loads(report_path.read_text(encoding="utf-8"))
         vex_ids = _vex_ids(repository)
+        inventory = verify_pip_audit_inventory(repository / "requirements.lock", payload)
     except (OSError, ValueError, TypeError) as error:
         return AuditCheck(
             "dependencies",
             "fail",
             "dependency or OpenVEX report is invalid",
             {"error": str(error)},
+        )
+    if not inventory["verified"]:
+        return AuditCheck(
+            "dependencies",
+            "fail",
+            "dependency audit does not cover requirements.lock",
+            {"inventory": inventory, "reviewed_vex": [], "unreviewed": []},
         )
     unreviewed: list[dict[str, str]] = []
     reviewed: list[dict[str, str]] = []
@@ -300,6 +309,7 @@ def _dependency_check(repository: Path, report_path: Path | None) -> AuditCheck:
         else "no unreviewed dependency vulnerabilities",
         {
             "dependencies_scanned": len(payload.get("dependencies", [])),
+            "inventory": inventory,
             "reviewed_vex": reviewed,
             "unreviewed": unreviewed,
         },

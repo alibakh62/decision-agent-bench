@@ -160,11 +160,26 @@ def test_final_release_accepts_complete_tagged_evidence(
     )
     sbom = tmp_path / "sbom.json"
     sbom.write_text(
-        json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []}),
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "components": [{"name": "inspect-ai", "version": "0.3.247"}],
+            }
+        ),
         encoding="utf-8",
     )
     dependency_report = tmp_path / "pip-audit.json"
-    dependency_report.write_text(json.dumps({"dependencies": []}), encoding="utf-8")
+    dependency_report.write_text(
+        json.dumps(
+            {
+                "dependencies": [
+                    {"name": "inspect-ai", "version": "0.3.247", "vulns": []}
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
     analysis = tmp_path / "primary"
     _write_publishable_analysis(analysis)
 
@@ -182,3 +197,49 @@ def test_final_release_accepts_complete_tagged_evidence(
     assert manifest["contains_publishable_results"] is True
     assert verified["verified"] is True
     assert verified["artifact_count"] == 29
+
+
+def test_final_release_rejects_unbound_sbom_and_dependency_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repository"
+    distribution = _write_fake_repository(repository, version="1.0.0")
+    monkeypatch.setattr(
+        "decision_agent_bench.release._git_release_state",
+        lambda _repository: _clean_state("1.0.0"),
+    )
+    sbom = tmp_path / "sbom.json"
+    sbom.write_text(
+        json.dumps({"bomFormat": "CycloneDX", "components": []}), encoding="utf-8"
+    )
+    dependency_report = tmp_path / "pip-audit.json"
+    dependency_report.write_text(json.dumps({"dependencies": []}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="SBOM does not cover requirements.lock"):
+        assemble_release_bundle(
+            repository,
+            distribution,
+            tmp_path / "bad-sbom",
+            sbom_path=sbom,
+            dependency_report=dependency_report,
+            container_image="image",
+        )
+
+    sbom.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "components": [{"name": "inspect-ai", "version": "0.3.247"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="dependency audit does not cover requirements.lock"):
+        assemble_release_bundle(
+            repository,
+            distribution,
+            tmp_path / "bad-audit",
+            sbom_path=sbom,
+            dependency_report=dependency_report,
+            container_image="image",
+        )

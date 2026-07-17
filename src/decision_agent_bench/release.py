@@ -17,6 +17,8 @@ from decision_agent_bench.integrity import (
     file_evidence,
     sha256_file,
     verify_evidence_files,
+    verify_pip_audit_inventory,
+    verify_sbom_inventory,
 )
 
 RELEASE_MANIFEST = "release-manifest.json"
@@ -102,22 +104,31 @@ def _container_provenance(repository: Path, image: str | None) -> dict[str, Any]
     }
 
 
-def _validate_sbom(path: Path | None) -> None:
+def _validate_sbom(path: Path | None, lock_path: Path) -> None:
     if path is None:
         return
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("bomFormat") != "CycloneDX" or not isinstance(
+    if not isinstance(payload, dict) or payload.get("bomFormat") != "CycloneDX" or not isinstance(
         payload.get("components"), list
     ):
         raise ValueError("SBOM must be a CycloneDX JSON document with components")
+    inventory = verify_sbom_inventory(lock_path, payload)
+    if not inventory["verified"]:
+        raise ValueError("SBOM does not cover requirements.lock: " + "; ".join(inventory["issues"]))
 
 
-def _validate_dependency_report(path: Path | None) -> None:
+def _validate_dependency_report(path: Path | None, lock_path: Path) -> None:
     if path is None:
         return
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload.get("dependencies"), list):
+    if not isinstance(payload, dict) or not isinstance(payload.get("dependencies"), list):
         raise ValueError("dependency report must be pip-audit JSON")
+    inventory = verify_pip_audit_inventory(lock_path, payload)
+    if not inventory["verified"]:
+        raise ValueError(
+            "dependency audit does not cover requirements.lock: "
+            + "; ".join(inventory["issues"])
+        )
 
 
 def _base_assets(
@@ -271,8 +282,9 @@ def assemble_release_bundle(
         sbom_path is None or dependency_report is None or container_image is None
     ):
         raise ValueError("final release requires SBOM, dependency audit, and container evidence")
-    _validate_sbom(sbom_path)
-    _validate_dependency_report(dependency_report)
+    lock_path = repository / "requirements.lock"
+    _validate_sbom(sbom_path, lock_path)
+    _validate_dependency_report(dependency_report, lock_path)
     if output_directory.exists() and any(output_directory.iterdir()):
         raise ValueError(f"release output directory is not empty: {output_directory}")
     output_directory.mkdir(parents=True, exist_ok=True)

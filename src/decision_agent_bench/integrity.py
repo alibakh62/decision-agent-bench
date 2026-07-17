@@ -4,8 +4,164 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+LOCK_REQUIREMENT_PATTERN = re.compile(
+    r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[^\s;\\]+)"
+    r"(?:\s*;\s*(?P<marker>.*?))?\s*\\?$"
+)
+
+
+def normalize_distribution_name(name: str) -> str:
+    """Return the PEP 503-normalized form used to compare inventories."""
+
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def locked_requirements(path: Path) -> list[dict[str, str | None]]:
+    """Parse pinned name/version/marker entries from a generated requirements lock."""
+
+    requirements: list[dict[str, str | None]] = []
+    for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not raw_line or raw_line[0].isspace() or raw_line.startswith("#"):
+            continue
+        match = LOCK_REQUIREMENT_PATTERN.fullmatch(raw_line)
+        if match is None:
+            raise ValueError(f"unsupported requirement at {path}:{line_number}")
+        marker = match.group("marker")
+        requirements.append(
+            {
+                "name": normalize_distribution_name(match.group("name")),
+                "version": match.group("version"),
+                "marker": marker.strip() if marker else None,
+            }
+        )
+    if not requirements:
+        raise ValueError(f"requirements lock has no pinned dependencies: {path}")
+    return requirements
+
+
+def _observed_inventory(
+    records: Any,
+) -> tuple[list[tuple[str, str]], list[str], list[str]]:
+    if not isinstance(records, list):
+        raise ValueError("dependency inventory must be a list")
+    pairs: list[tuple[str, str]] = []
+    invalid: list[str] = []
+    names: list[str] = []
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            invalid.append(f"entry {index} is not an object")
+            continue
+        name = normalize_distribution_name(str(record.get("name", "")))
+        version = str(record.get("version", ""))
+        if not name or not version or name == "none" or version == "None":
+            invalid.append(f"entry {index} has no package name or version")
+            continue
+        names.append(name)
+        pairs.append((name, version))
+    duplicates = sorted(name for name in set(names) if names.count(name) > 1)
+    return pairs, invalid, duplicates
+
+
+def verify_pip_audit_inventory(lock_path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    """Verify that pip-audit covers one valid environment from a universal lock."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("pip-audit report must be a JSON object")
+    locked = locked_requirements(lock_path)
+    by_name: dict[str, list[dict[str, str | None]]] = defaultdict(list)
+    for requirement in locked:
+        by_name[str(requirement["name"])].append(requirement)
+    observed, invalid, duplicates = _observed_inventory(payload.get("dependencies"))
+    observed_by_name = {name: version for name, version in observed}
+    required_names = {
+        name
+        for name, requirements in by_name.items()
+        if any(
+            requirement["marker"] is None
+            or "python_version" in str(requirement["marker"])
+            or "python_full_version" in str(requirement["marker"])
+            for requirement in requirements
+        )
+    }
+    missing = sorted(required_names - observed_by_name.keys())
+    unexpected = sorted(observed_by_name.keys() - by_name.keys())
+    version_mismatches = sorted(
+        {
+            f"{name}=={version}"
+            for name, version in observed
+            if name in by_name
+            and version
+            not in {str(requirement["version"]) for requirement in by_name[name]}
+        }
+    )
+    issues = [*invalid]
+    if duplicates:
+        issues.append("duplicate audited packages: " + ", ".join(duplicates))
+    if missing:
+        issues.append("missing audited packages: " + ", ".join(missing))
+    if unexpected:
+        issues.append("unexpected audited packages: " + ", ".join(unexpected))
+    if version_mismatches:
+        issues.append("audited versions not in lock: " + ", ".join(version_mismatches))
+    return {
+        "verified": not issues,
+        "locked_requirement_entries": len(locked),
+        "required_packages": len(required_names),
+        "audited_packages": len(observed),
+        "missing": missing,
+        "unexpected": unexpected,
+        "version_mismatches": version_mismatches,
+        "duplicates": duplicates,
+        "issues": issues,
+    }
+
+
+def verify_sbom_inventory(lock_path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    """Verify that a universal CycloneDX SBOM exactly covers the lock entries."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("CycloneDX SBOM must be a JSON object")
+    locked = locked_requirements(lock_path)
+    expected = {
+        (str(requirement["name"]), str(requirement["version"]))
+        for requirement in locked
+    }
+    observed, invalid, multi_version_names = _observed_inventory(payload.get("components"))
+    observed_set = set(observed)
+    duplicate_pairs = sorted({pair for pair in observed if observed.count(pair) > 1})
+    missing_pairs = sorted(expected - observed_set)
+    unexpected_pairs = sorted(observed_set - expected)
+    issues = [*invalid]
+    if duplicate_pairs:
+        issues.append(
+            "duplicate SBOM components: "
+            + ", ".join(f"{name}=={version}" for name, version in duplicate_pairs)
+        )
+    if missing_pairs:
+        issues.append(
+            "missing SBOM components: "
+            + ", ".join(f"{name}=={version}" for name, version in missing_pairs)
+        )
+    if unexpected_pairs:
+        issues.append(
+            "unexpected SBOM components: "
+            + ", ".join(f"{name}=={version}" for name, version in unexpected_pairs)
+        )
+    return {
+        "verified": not issues,
+        "locked_requirement_entries": len(locked),
+        "sbom_components": len(observed),
+        "missing": [f"{name}=={version}" for name, version in missing_pairs],
+        "unexpected": [f"{name}=={version}" for name, version in unexpected_pairs],
+        "multi_version_names": multi_version_names,
+        "duplicate_pairs": [f"{name}=={version}" for name, version in duplicate_pairs],
+        "issues": issues,
+    }
 
 
 def sha256_file(path: Path) -> str:

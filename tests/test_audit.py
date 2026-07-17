@@ -53,7 +53,28 @@ def test_repository_audit_passes_deterministic_safety_checks() -> None:
 
 
 def test_dependency_audit_requires_vex_for_every_vulnerability(tmp_path: Path) -> None:
-    repository = Path(__file__).parents[1]
+    repository = tmp_path / "repository"
+    (repository / "security").mkdir(parents=True)
+    (repository / "requirements.lock").write_text("click==8.2.1\n", encoding="utf-8")
+    (repository / "security/openvex.json").write_text(
+        json.dumps(
+            {
+                "statements": [
+                    {
+                        "vulnerability": {
+                            "@id": "PYSEC-2026-2132",
+                            "aliases": ["CVE-2026-7246"],
+                        },
+                        "status": "not_affected",
+                        "justification": "component_not_present",
+                        "impact_statement": "The benchmark does not call click.edit().",
+                        "x_review_by": "2099-01-01",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
     report = tmp_path / "pip-audit.json"
     report.write_text(
         json.dumps(
@@ -83,7 +104,33 @@ def test_dependency_audit_requires_vex_for_every_vulnerability(tmp_path: Path) -
 
     assert reviewed.status == "pass"
     assert reviewed.evidence["reviewed_vex"][0]["package"] == "click"
+    assert reviewed.evidence["inventory"]["verified"] is True
     assert unreviewed.status == "fail"
+
+
+def test_dependency_audit_rejects_incomplete_or_mismatched_inventory(tmp_path: Path) -> None:
+    (tmp_path / "security").mkdir()
+    (tmp_path / "security/openvex.json").write_text("{}\n", encoding="utf-8")
+    (tmp_path / "requirements.lock").write_text(
+        "click==8.2.1\nrequests==2.34.2\n", encoding="utf-8"
+    )
+    report = tmp_path / "pip-audit.json"
+    report.write_text(
+        json.dumps(
+            {
+                "dependencies": [
+                    {"name": "click", "version": "8.3.0", "vulns": []}
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _dependency_check(tmp_path, report)
+
+    assert result.status == "fail"
+    assert result.evidence["inventory"]["missing"] == ["requests"]
+    assert result.evidence["inventory"]["version_mismatches"] == ["click==8.3.0"]
 
 
 def test_expired_not_affected_vex_statement_is_not_accepted(tmp_path: Path) -> None:

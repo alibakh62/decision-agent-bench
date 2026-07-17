@@ -11,6 +11,12 @@ SHA-256. It also binds the software version, Git commit and commit timestamp, be
 reference-world digest, prerelease state, and presence of publishable results. `SHA256SUMS` covers
 every asset plus the manifest. Extra, missing, or modified files fail `verify-release`.
 
+Release assembly parses `requirements.lock` and rejects an SBOM that does not contain every locked
+name/version entry. It also rejects a `pip-audit` report with missing, unexpected, duplicate, or
+out-of-lock packages. Python-version alternatives in the universal lock are treated as allowed
+variants, while every unconditional or Python-version-selected package must be audited. A valid JSON
+shape or an empty scanner report is not evidence of dependency coverage.
+
 ## Local release-candidate rehearsal
 
 Install the release-only tools outside the runtime dependency lock, then build their evidence:

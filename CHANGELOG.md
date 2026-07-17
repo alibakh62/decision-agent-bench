@@ -37,6 +37,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   vulnerability evidence, container identity, and admitted results under exact checksums.
 - A provenance-documented, audit-checked 1280×640 project banner is ready for GitHub social preview
   and is preserved in archival release bundles.
+- Release assembly now binds CycloneDX and `pip-audit` dependency inventories to the exact universal
+  requirements lock and rejects empty, incomplete, duplicate, unexpected, or mismatched evidence.
 
 ## [0.1.0] - 2026-07-17
 
