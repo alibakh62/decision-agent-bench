@@ -83,6 +83,25 @@ CREATE TABLE inventory (
     PRIMARY KEY (store_id, product_id)
 );
 
+CREATE TABLE inventory_lots (
+    store_id TEXT NOT NULL REFERENCES stores(store_id),
+    product_id TEXT NOT NULL REFERENCES products(product_id),
+    lot_id TEXT NOT NULL,
+    on_hand_units INTEGER NOT NULL CHECK (on_hand_units >= 0),
+    expires_on TEXT,
+    quarantined INTEGER NOT NULL CHECK (quarantined IN (0, 1)),
+    PRIMARY KEY (store_id, product_id, lot_id)
+);
+
+CREATE TABLE recall_notices (
+    notice_id TEXT PRIMARY KEY,
+    product_id TEXT NOT NULL REFERENCES products(product_id),
+    affected_lot_id TEXT NOT NULL,
+    issued_at TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
+    instructions TEXT NOT NULL
+);
+
 CREATE TABLE transactions (
     transaction_id TEXT PRIMARY KEY,
     store_id TEXT NOT NULL REFERENCES stores(store_id),
@@ -98,6 +117,53 @@ CREATE TABLE transactions (
 
 CREATE INDEX idx_transactions_store_date ON transactions(store_id, sold_at);
 CREATE INDEX idx_transactions_product_date ON transactions(product_id, sold_at);
+
+CREATE TABLE refunds (
+    refund_id TEXT PRIMARY KEY,
+    original_transaction_id TEXT NOT NULL REFERENCES transactions(transaction_id),
+    store_id TEXT NOT NULL REFERENCES stores(store_id),
+    customer_id TEXT NOT NULL REFERENCES customers(customer_id),
+    refunded_at TEXT NOT NULL,
+    amount REAL NOT NULL CHECK (amount > 0),
+    reason TEXT NOT NULL CHECK (reason IN ('quality', 'wrong_item', 'customer_request')),
+    receipt_present INTEGER NOT NULL CHECK (receipt_present IN (0, 1)),
+    status TEXT NOT NULL CHECK (status IN ('approved', 'review'))
+);
+
+CREATE INDEX idx_refunds_customer_date ON refunds(customer_id, refunded_at);
+
+CREATE TABLE payment_events (
+    event_id TEXT PRIMARY KEY,
+    transaction_id TEXT NOT NULL REFERENCES transactions(transaction_id),
+    terminal_id TEXT NOT NULL,
+    processor_reference TEXT NOT NULL,
+    event_type TEXT NOT NULL CHECK (
+        event_type IN ('authorized', 'captured', 'reversed', 'duplicate')
+    ),
+    event_at TEXT NOT NULL,
+    amount REAL NOT NULL CHECK (amount >= 0)
+);
+
+CREATE INDEX idx_payment_reference ON payment_events(processor_reference);
+
+CREATE TABLE data_feed_status (
+    feed_name TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    last_complete_at TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('current', 'delayed', 'partial')),
+    expected_frequency_minutes INTEGER NOT NULL CHECK (expected_frequency_minutes > 0),
+    PRIMARY KEY (feed_name, scope)
+);
+
+CREATE TABLE competitor_prices (
+    observation_id TEXT PRIMARY KEY,
+    store_id TEXT NOT NULL REFERENCES stores(store_id),
+    product_id TEXT NOT NULL REFERENCES products(product_id),
+    observed_price REAL NOT NULL CHECK (observed_price > 0),
+    observed_at TEXT NOT NULL,
+    source TEXT NOT NULL,
+    verified INTEGER NOT NULL CHECK (verified IN (0, 1))
+);
 
 CREATE TABLE documents (
     document_id TEXT PRIMARY KEY,
@@ -144,7 +210,13 @@ PUBLIC_TABLES = frozenset(
         "customers",
         "promotions",
         "inventory",
+        "inventory_lots",
         "transactions",
+        "refunds",
+        "payment_events",
+        "data_feed_status",
+        "competitor_prices",
+        "recall_notices",
         "documents",
         "approvals",
         "action_ledger",

@@ -4,9 +4,13 @@ The original calendar is treated as a sequence of evidence-bearing releases. Eac
 
 ## Milestone 0 — Design foundation
 
+**Status:** complete in `v0.0.1`.
+
 **Exit evidence:** research questions, architecture, scoring methodology, failure taxonomy, first 25 task contracts, repository standards, CI, and schema validation.
 
 ## Milestone 1 — Synthetic retail environment
+
+**Status:** complete in `v0.0.2`.
 
 Build a seeded company generator, relational schema, policies, documents, transaction histories, demand process, inventory and vendor constraints, action ledger, and economic outcome simulator.
 
@@ -14,11 +18,15 @@ Build a seeded company generator, relational schema, policies, documents, transa
 
 ## Milestone 2 — Executable benchmark v0.1
 
+**Status:** complete in `v0.1.0`.
+
 Implement the 25 task families as Inspect AI tasks. Add SQL, analytics, forecasting, retrieval, communication, approval, and state-changing tools. Implement a single tool-using agent and planner-executor baseline.
 
 **Exit evidence:** deterministic graders, tested oracles, failure injection, mock-model end-to-end tests, task cards, and pinned Docker execution.
 
 ## Milestone 3 — Reproducible experiments
+
+**Status:** next.
 
 Run at least three model families with matched budgets and repeated trials. Analyze task success, regret, safety, robustness, calibration, efficiency, recovery, evidence quality, and variability.
 

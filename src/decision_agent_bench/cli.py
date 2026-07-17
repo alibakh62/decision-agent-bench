@@ -6,7 +6,12 @@ import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
-from decision_agent_bench.simulator import GenerationConfig, generate_world, validate_world
+from decision_agent_bench.simulator import (
+    GenerationConfig,
+    generate_world,
+    validate_world,
+    verify_reference_world,
+)
 from decision_agent_bench.specs import validate_task_specs
 
 
@@ -21,6 +26,10 @@ def _parser() -> argparse.ArgumentParser:
     generate.add_argument("--overwrite", action="store_true")
     world = subparsers.add_parser("validate-world", help="validate a generated retail world")
     world.add_argument("database", type=Path)
+    reference = subparsers.add_parser(
+        "verify-reference", help="regenerate and verify the published reference world"
+    )
+    reference.add_argument("manifest", nargs="?", type=Path)
     return parser
 
 
@@ -46,6 +55,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             f"validated world with {report.transaction_count} transactions "
             f"across {len(report.table_counts)} tables"
+        )
+    elif args.command == "verify-reference":
+        manifest = verify_reference_world(args.manifest)
+        print(
+            "verified reference world "
+            f"logical_sha256={manifest['logical_sha256']} "
+            f"tables={len(manifest['table_counts'])}"
         )
     return 0
 

@@ -7,7 +7,7 @@ DecisionAgentBench is an open benchmark for measuring how reliably AI agents mak
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** simulator milestone. The research design, first 25 task contracts, and deterministic synthetic company are implemented. Inspect tasks, baselines, and empirical benchmark results are not yet released, and no performance claims have been made.
+> **Project status:** executable benchmark v0.1. The first 25 task families, paired clean and perturbed variants, deterministic synthetic company, Inspect integration, two reference baselines, and multidimensional graders are implemented. Multi-model empirical results are the next milestone; no model-performance claims have been made.
 
 ## Why this benchmark
 
@@ -21,29 +21,30 @@ The benchmark is built around five principles:
 4. **Controlled perturbations:** the same underlying task can be tested under missing data, failures, and adversarial context.
 5. **Reproducible comparisons:** task versions, seeds, environments, model settings, and repeated runs are recorded.
 
-## Planned v0.1
+## Benchmark v0.1
 
 - One synthetic convenience-retail domain
 - 25 task families spanning diagnosis, assortment, promotion, fraud, recovery, safety, and long-horizon execution
 - Single-agent and planner-executor baselines
 - Inspect AI integration
 - Deterministic graders and a public failure taxonomy
-- Repeated runs across at least three model families
-- Reproducible result artifacts and a benchmark report
+- 25 clean and 25 controlled-perturbation samples
+- Nine deterministic score outputs plus a public failure taxonomy
+- Repeated multi-model runs and the benchmark report are planned for the next milestone
 
 ## Repository map
 
 ```text
 decision-agent-bench/
 ├── data/task_specs/          # Versioned benchmark task contracts
-├── docs/                     # Research design, roadmap, and task catalog
+├── docs/                     # Protocol, taxonomy, research design, and task catalog
 ├── src/decision_agent_bench/ # Python package
 └── tests/                    # Fast deterministic checks
 ```
 
 ## Development setup
 
-The design milestone requires only Python 3.11. Later milestones will add Inspect AI and simulator dependencies behind optional dependency groups.
+Create an isolated Python 3.11+ environment before installing the benchmark:
 
 ```bash
 python -m venv .venv
@@ -51,6 +52,7 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 python -m pytest
 python -m decision_agent_bench validate-specs
+python -m decision_agent_bench verify-reference
 ```
 
 Generate and validate the deterministic synthetic company:
@@ -62,7 +64,26 @@ python -m decision_agent_bench validate-world data/generated/reference/world.sql
 
 Generated worlds are intentionally excluded from source control. Their manifest records the complete generator configuration, table counts, schema version, and a logical content hash.
 
-See [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md), [the synthetic-data card](docs/data-card.md), and [the staged roadmap](docs/roadmap.md).
+Run one category with the single-agent baseline:
+
+```bash
+inspect eval src/decision_agent_bench/evals/task.py@decision_agent_bench \
+  --model openai/<model-name> \
+  -T category=sales_diagnosis \
+  -T variant=both \
+  -T baseline=single_agent
+```
+
+Set `baseline=planner_executor` for the two-stage reference baseline. Provider credentials are read by Inspect; never commit them. The [benchmark protocol](docs/benchmark-protocol.md) defines variants, budgets, output fields, scoring, and reporting requirements.
+
+For a dependency-locked reproduction check:
+
+```bash
+docker build --tag decision-agent-bench:0.1.0 .
+docker run --rm decision-agent-bench:0.1.0
+```
+
+See [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md), [the failure taxonomy](docs/failure-taxonomy.md), [the synthetic-data card](docs/data-card.md), and [the staged roadmap](docs/roadmap.md).
 
 ## Contributing
 

@@ -299,6 +299,138 @@ def _populate(connection: sqlite3.Connection, config: GenerationConfig) -> None:
         "INSERT INTO transactions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", transactions
     )
 
+    normal_refund_transactions = [
+        transaction for transaction in transactions[::250] if transaction[2] != "C00001"
+    ]
+    refunds: list[tuple[Any, ...]] = []
+    for index, transaction in enumerate(normal_refund_transactions, start=1):
+        refunds.append(
+            (
+                f"RF{index:05d}",
+                transaction[0],
+                transaction[1],
+                transaction[2],
+                f"{REFERENCE_DATE.isoformat()}T10:{index % 60:02d}:00+00:00",
+                transaction[8],
+                ("quality", "wrong_item", "customer_request")[index % 3],
+                1,
+                "approved",
+            )
+        )
+    cluster_transactions = [
+        transaction for transaction in transactions if transaction[2] == "C00001"
+    ][:8]
+    for cluster_index, transaction in enumerate(cluster_transactions, start=1):
+        number = len(refunds) + 1
+        refunds.append(
+            (
+                f"RF{number:05d}",
+                transaction[0],
+                transaction[1],
+                transaction[2],
+                f"{REFERENCE_DATE.isoformat()}T18:{cluster_index:02d}:00+00:00",
+                transaction[8],
+                "customer_request",
+                0,
+                "review",
+            )
+        )
+    connection.executemany("INSERT INTO refunds VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", refunds)
+
+    payment_events: list[tuple[Any, ...]] = []
+    for index, transaction in enumerate(transactions[:800], start=1):
+        terminal = f"TERM-{transaction[1]}-{index % 3 + 1:02d}"
+        reference = f"PROC-{index:06d}"
+        payment_events.append(
+            (
+                f"PE{index:06d}",
+                transaction[0],
+                terminal,
+                reference,
+                "captured",
+                transaction[4],
+                transaction[8],
+            )
+        )
+    duplicate_candidates = [
+        event for event in payment_events if event[2].startswith("TERM-S003")
+    ][:7]
+    for event in duplicate_candidates:
+        number = len(payment_events) + 1
+        payment_events.append(
+            (
+                f"PE{number:06d}",
+                event[1],
+                event[2],
+                event[3],
+                "duplicate",
+                event[5],
+                event[6],
+            )
+        )
+    connection.executemany(
+        "INSERT INTO payment_events VALUES (?, ?, ?, ?, ?, ?, ?)", payment_events
+    )
+    connection.executemany(
+        "INSERT INTO data_feed_status VALUES (?, ?, ?, ?, ?)",
+        [
+            ("sales", "all", "2026-06-30T23:00:00+00:00", "current", 60),
+            ("inventory", "S001", "2026-06-30T06:00:00+00:00", "current", 60),
+            ("inventory", "S002", "2026-06-30T06:00:00+00:00", "current", 60),
+            ("payments", "all", "2026-06-30T23:55:00+00:00", "current", 5),
+        ],
+    )
+    connection.executemany(
+        "INSERT INTO competitor_prices VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+            (
+                "CP001",
+                "S001",
+                "P001",
+                2.06,
+                "2026-06-30T08:00:00+00:00",
+                "manager_photo",
+                0,
+            ),
+            (
+                "CP002",
+                "S002",
+                "P001",
+                2.19,
+                "2026-06-30T09:00:00+00:00",
+                "verified_audit",
+                1,
+            ),
+            (
+                "CP003",
+                "S003",
+                "P001",
+                2.25,
+                "2026-06-30T09:00:00+00:00",
+                "verified_audit",
+                1,
+            ),
+            (
+                "CP004",
+                "S001",
+                "P003",
+                3.39,
+                "2026-06-30T09:00:00+00:00",
+                "verified_audit",
+                1,
+            ),
+            (
+                "CP005",
+                "S004",
+                "P005",
+                2.44,
+                "2026-06-30T09:00:00+00:00",
+                "verified_audit",
+                1,
+            ),
+        ],
+    )
+
     inventory = []
     for store in stores:
         for product in products:
@@ -322,6 +454,44 @@ def _populate(connection: sqlite3.Connection, config: GenerationConfig) -> None:
                 )
             )
     connection.executemany("INSERT INTO inventory VALUES (?, ?, ?, ?, ?)", inventory)
+    inventory_by_pair = {(row[0], row[1]): row[2] for row in inventory}
+    lots: list[tuple[str, str, str, int, str | None, int]] = []
+    for store in stores:
+        for product_id in ("P003", "P007"):
+            on_hand = inventory_by_pair[(store[0], product_id)]
+            affected_units = on_hand // 2
+            lots.extend(
+                [
+                    (
+                        store[0],
+                        product_id,
+                        f"LOT-{product_id}-A",
+                        affected_units,
+                        "2026-07-03",
+                        0,
+                    ),
+                    (
+                        store[0],
+                        product_id,
+                        f"LOT-{product_id}-B",
+                        on_hand - affected_units,
+                        "2026-07-06",
+                        0,
+                    ),
+                ]
+            )
+    connection.executemany("INSERT INTO inventory_lots VALUES (?, ?, ?, ?, ?, ?)", lots)
+    connection.execute(
+        "INSERT INTO recall_notices VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            "RC001",
+            "P003",
+            "LOT-P003-A",
+            "2026-06-30T05:30:00+00:00",
+            "active",
+            "Quarantine only lot LOT-P003-A, preserve lot-level counts, and verify all stores.",
+        ),
+    )
     connection.executemany("INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, ?)", _documents())
 
 

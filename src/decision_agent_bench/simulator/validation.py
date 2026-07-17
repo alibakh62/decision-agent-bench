@@ -90,6 +90,32 @@ def validate_world(path: Path) -> WorldValidationReport:
         if accounting_errors:
             errors.append(f"transaction accounting violations: {accounting_errors}")
 
+        refund_mismatches = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM refunds r JOIN transactions t ON t.transaction_id=r.original_transaction_id
+            WHERE r.store_id != t.store_id OR r.customer_id != t.customer_id
+               OR r.amount > t.net_sales + 0.011
+            """
+        ).fetchone()[0]
+        if refund_mismatches:
+            errors.append(f"refund lineage violations: {refund_mismatches}")
+
+        lot_mismatches = connection.execute(
+            """
+            SELECT COUNT(*) FROM (
+                SELECT i.store_id, i.product_id, i.on_hand_units,
+                       SUM(l.on_hand_units) AS lot_units
+                FROM inventory i JOIN inventory_lots l
+                  ON i.store_id=l.store_id AND i.product_id=l.product_id
+                GROUP BY i.store_id, i.product_id, i.on_hand_units
+                HAVING i.on_hand_units != lot_units
+            )
+            """
+        ).fetchone()[0]
+        if lot_mismatches:
+            errors.append(f"inventory lot reconciliation violations: {lot_mismatches}")
+
         documents = connection.execute("SELECT document_id, body, checksum FROM documents")
         bad_documents = [
             row["document_id"]

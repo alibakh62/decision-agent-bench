@@ -4,7 +4,7 @@
 
 DecisionAgentBench's first environment is a generated convenience-retail company. It exists solely to evaluate agent behavior under controlled business, reliability, and safety conditions. It is not a statistical replica of a named company or a representative sample of the retail sector.
 
-The reference configuration contains three regions, twelve stores, twenty-four products, four vendors, 240 synthetic customer identifiers, 56 days of item-level transactions, store-product prices and inventory, promotions, policies, an untrusted vendor attachment, approvals, and an action ledger.
+The reference configuration contains three regions, twelve stores, twenty-four products, four vendors, 240 synthetic customer identifiers, 56 days of item-level transactions, store-product prices and lot-level inventory, promotions, refunds, payment events, competitor observations, feed status, recall fixtures, policies, an untrusted vendor attachment, approvals, and an action ledger.
 
 ## Generation
 
@@ -20,6 +20,9 @@ The demand process combines store format, product category, weekday, smooth seas
 | `vendors`, `products`, `prices` | Assortment and unit economics | Yes |
 | `customers` | Synthetic segment-linked identifiers | Yes, when a task permits |
 | `promotions`, `inventory`, `transactions` | Operating history and state | Yes |
+| `refunds`, `payment_events` | Synthetic investigation fixtures | Yes |
+| `inventory_lots`, `recall_notices` | Lot traceability and recall state | Yes |
+| `competitor_prices`, `data_feed_status` | External observations and freshness | Yes |
 | `documents` | Policies, procedures, and adversarial fixtures | Through retrieval with provenance |
 | `approvals`, `action_ledger` | Authorization and action audit | Yes |
 | `oracle_parameters` | Counterfactual price-response grading | No |

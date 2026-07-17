@@ -4,10 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "decision-agent-bench"
-version = "0.0.2"
+version = "0.1.0"
 description = "A benchmark for reliable long-horizon business decision agents"
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+  "inspect-ai>=0.3.247,<0.4",
+]
 license = { file = "LICENSE" }
 authors = [{ name = "DecisionAgentBench contributors" }]
 keywords = ["ai-agents", "benchmark", "evaluation", "inspect-ai", "reliability"]
@@ -24,7 +27,7 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.3,<9",
+  "pytest>=8.3,<10",
   "ruff>=0.11,<1",
 ]
 
@@ -36,6 +39,7 @@ packages = ["src/decision_agent_bench"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "data/task_specs/v0.1.json" = "decision_agent_bench/data/v0.1.json"
+"data/reference-world-manifest.json" = "decision_agent_bench/data/reference-world-manifest.json"
 
 [tool.pytest.ini_options]
 addopts = "-ra"
@@ -47,3 +51,6 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/decision_agent_bench/evals/cases.py" = ["E501"]

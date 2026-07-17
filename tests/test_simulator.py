@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, generate_world
+from decision_agent_bench.simulator import (
+    GenerationConfig,
+    RetailEnvironment,
+    generate_world,
+    verify_reference_world,
+)
 from decision_agent_bench.simulator.environment import PolicyViolation, ToolError
 from decision_agent_bench.simulator.oracle import EconomicOracle
 from decision_agent_bench.simulator.validation import logical_digest, validate_world
@@ -32,6 +37,15 @@ def test_generation_is_reproducible_and_manifested(tmp_path: Path) -> None:
     assert manifest == reference
     assert manifest["logical_sha256"] == logical_digest(first)
     assert manifest["config"]["seed"] == GenerationConfig.seed
+
+
+def test_published_reference_world_reproduces_exactly() -> None:
+    manifest = verify_reference_world()
+
+    assert manifest["logical_sha256"] == (
+        "c362c754d6f102c76d45aecf61f6e1cec7a49134fb416e02e59f341a20305f0b"
+    )
+    assert len(manifest["table_counts"]) == 20
 
 
 def test_world_satisfies_referential_and_accounting_invariants(world: Path) -> None:

@@ -4,6 +4,21 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-17
+
+### Added
+
+- Twenty-five executable Inspect task families with paired clean and controlled-perturbation
+  samples across seven business-decision categories.
+- Single-agent and planner-executor reference baselines with bounded SQL, retrieval, forecasting,
+  inventory, approval, and policy-gated action tools.
+- Deterministic multidimensional scoring for effectiveness, economic decision quality, safety,
+  robustness, calibration, efficiency, recovery, explainability, and a gated composite.
+- Public failure taxonomy, benchmark protocol, mock-model end-to-end tests, dependency lock, and
+  non-root Docker reproduction check.
+- Refund, payment-event, feed-health, competitor-price, inventory-lot, and recall evidence in the
+  synthetic world to support the full v0.1 task set.
+
 ## [0.0.2] - 2026-07-17
 
 ### Added
