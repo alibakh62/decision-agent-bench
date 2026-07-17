@@ -88,6 +88,21 @@ def _parser() -> argparse.ArgumentParser:
     audit.add_argument("--container-image")
     audit.add_argument("--output", type=Path)
     audit.add_argument("--strict", action="store_true")
+    release = subparsers.add_parser(
+        "prepare-release", help="assemble a content-addressed archival release bundle"
+    )
+    release.add_argument("output", type=Path)
+    release.add_argument("--repository", type=Path, default=Path.cwd())
+    release.add_argument("--dist", type=Path, default=Path("dist"))
+    release.add_argument("--sbom", type=Path)
+    release.add_argument("--dependency-report", type=Path)
+    release.add_argument("--container-image")
+    release.add_argument("--analysis", type=Path, action="append", default=[])
+    release.add_argument("--allow-prerelease", action="store_true")
+    verify_release = subparsers.add_parser(
+        "verify-release", help="verify an archival release bundle and checksums"
+    )
+    verify_release.add_argument("bundle", type=Path)
     return parser
 
 
@@ -195,6 +210,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_audit_report(report, args.output)
         print(json.dumps(report, indent=2, sort_keys=True))
         if report["status"] == "fail" or (args.strict and report["status"] != "pass"):
+            return 1
+    elif args.command == "prepare-release":
+        from decision_agent_bench.release import assemble_release_bundle
+
+        report = assemble_release_bundle(
+            args.repository,
+            args.dist,
+            args.output,
+            sbom_path=args.sbom,
+            dependency_report=args.dependency_report,
+            container_image=args.container_image,
+            analysis_directories=tuple(args.analysis),
+            allow_prerelease=args.allow_prerelease,
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "verify-release":
+        from decision_agent_bench.release import verify_release_bundle
+
+        report = verify_release_bundle(args.bundle)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        if not report["verified"]:
             return 1
     return 0
 

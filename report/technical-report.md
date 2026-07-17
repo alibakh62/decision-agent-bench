@@ -220,6 +220,12 @@ per-sample dollar stop across the full grid, rounds exposure upward to the next 
 above the separately authorized study limit, and requires the operator to acknowledge that exact
 amount at execution time.
 
+Tagged releases are assembled as content-addressed evidence bundles. A self-hashed manifest and
+GNU-style checksum file bind packages, task datasets, reference provenance, research materials,
+CycloneDX SBOM, vulnerability evidence, container identity, and verified sanitized results to the
+clean tagged commit. The release verifier rejects additions, omissions, and mutations before the
+tag workflow can publish GitHub assets.
+
 ### 6.1 Human and judge agreement
 
 A stratified sample is exported into blinded packets containing only the prompt, visible tool

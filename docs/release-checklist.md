@@ -22,6 +22,8 @@
 - [ ] `make check` passes on Python 3.11 and 3.12 in CI.
 - [ ] Wheel and source distribution install outside the checkout.
 - [ ] Container builds by digest and passes its default verification command.
+- [ ] CycloneDX SBOM, dependency audit, container provenance, release manifest, and `SHA256SUMS`
+      pass `verify-release` from the clean tagged commit.
 - [ ] Secret scan, dependency audit, oracle-leakage audit, and license/provenance review pass.
   Local checks are available through `make audit`; GitHub security automation must also be green.
 - [ ] Interactive demo exposes no arbitrary SQL, state-changing actions, oracle inputs, or sharing
@@ -29,7 +31,8 @@
 
 ## Publication and community
 
-- [ ] Tag the release without rewriting history and attach hashes for public artifacts.
+- [ ] Tag the release without rewriting history and publish the verified archival bundle and its
+      checksum as immutable GitHub release assets.
 - [ ] Publish the technical report and three articles with versioned result links.
 - [ ] Publish the research talk deck and recording/license information.
 - [ ] Open the Inspect Evals Register issue only after the arXiv and public-commit gates pass.

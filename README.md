@@ -163,6 +163,9 @@ and the [public-release checklist](docs/release-checklist.md).
 
 Before a release, run `make audit` and review the [security model](docs/security-model.md). The audit
 distinguishes failed controls from external evidence that is still pending.
+The [archival release protocol](docs/release-artifacts.md) builds and independently verifies the
+packages, datasets, research materials, SBOM, vulnerability evidence, container identity, and
+publishable result bundle attached to a tagged release.
 
 ## Contributing
 

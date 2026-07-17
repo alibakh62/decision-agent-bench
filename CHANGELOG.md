@@ -33,6 +33,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   experiment-manifest hashes, with an independent verifier and strict source-provenance mode.
 - Whole-grid preflight reports sample, token, and dollar exposure; publishable execution requires
   clean-source planning, a whole-study ceiling, and acknowledgement of the exact planned amount.
+- Deterministic archival release assembly binds packages, datasets, research artifacts, SBOM,
+  vulnerability evidence, container identity, and admitted results under exact checksums.
 
 ## [0.1.0] - 2026-07-17
 

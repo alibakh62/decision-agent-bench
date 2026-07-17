@@ -31,6 +31,10 @@ GitHub security automation adds:
 - Dependabot updates for Python, GitHub Actions, and the pinned Docker base; and
 - a weekly scheduled security run in addition to push and pull-request checks.
 
+The tag workflow additionally requires a validated CycloneDX SBOM, raw dependency-audit evidence,
+passing non-root container provenance, a clean exactly tagged source commit, and a publishable
+content-addressed result bundle. `verify-release` rejects any undeclared or modified release asset.
+
 An audit status of `pending` is not a release pass. It means a required external fact—such as the
 GitHub repository identity, clean committed state, live vulnerability response, or container
 runtime evidence—has not yet been supplied.

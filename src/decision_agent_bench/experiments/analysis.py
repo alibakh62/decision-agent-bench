@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import json
 import math
 import random
@@ -19,6 +18,18 @@ from inspect_ai.log import EvalLog, read_eval_log
 from decision_agent_bench.evals.scorer import SCORE_KEYS, parse_submission
 from decision_agent_bench.experiments.manifest import load_manifest
 from decision_agent_bench.experiments.planning import sample_count_for_cell
+from decision_agent_bench.integrity import (
+    digest_payload as _digest_payload,
+)
+from decision_agent_bench.integrity import (
+    file_evidence as _file_evidence,
+)
+from decision_agent_bench.integrity import (
+    sha256_file as _sha256_file,
+)
+from decision_agent_bench.integrity import (
+    verify_evidence_files as _verify_evidence_files,
+)
 
 ANALYSIS_ARTIFACTS = (
     "calibration.csv",
@@ -31,27 +42,6 @@ ANALYSIS_ARTIFACTS = (
     "summary.csv",
     "summary.json",
 )
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def _digest_payload(payload: Any) -> str:
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return hashlib.sha256(canonical.encode()).hexdigest()
-
-
-def _file_evidence(path: Path, *, relative_to: Path) -> dict[str, Any]:
-    return {
-        "path": path.relative_to(relative_to).as_posix(),
-        "bytes": path.stat().st_size,
-        "sha256": _sha256_file(path),
-    }
 
 
 def _source_log_evidence(paths: list[Path], log_directory: Path) -> list[dict[str, Any]]:
@@ -855,41 +845,6 @@ def analyze_logs(
         json.dumps(analysis_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return analysis_manifest
-
-
-def _verify_evidence_files(
-    base_directory: Path,
-    expected: list[dict[str, Any]],
-    *,
-    suffix: str | None = None,
-) -> tuple[list[str], set[str]]:
-    issues: list[str] = []
-    expected_paths: set[str] = set()
-    for item in expected:
-        if not isinstance(item, dict):
-            issues.append("evidence entry is not an object")
-            continue
-        relative = Path(str(item.get("path", "")))
-        relative_text = relative.as_posix()
-        if not relative_text or relative.is_absolute() or ".." in relative.parts:
-            issues.append(f"unsafe evidence path: {relative_text!r}")
-            continue
-        if suffix is not None and relative.suffix != suffix:
-            issues.append(f"unexpected evidence suffix: {relative_text}")
-            continue
-        if relative_text in expected_paths:
-            issues.append(f"duplicate evidence path: {relative_text}")
-            continue
-        expected_paths.add(relative_text)
-        path = base_directory / relative
-        if not path.is_file():
-            issues.append(f"missing file: {relative_text}")
-            continue
-        if path.stat().st_size != item.get("bytes"):
-            issues.append(f"size mismatch: {relative_text}")
-        if _sha256_file(path) != item.get("sha256"):
-            issues.append(f"sha256 mismatch: {relative_text}")
-    return issues, expected_paths
 
 
 def verify_analysis_bundle(
