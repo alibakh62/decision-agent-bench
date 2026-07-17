@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "decision-agent-bench"
-version = "0.1.0"
+version = "0.2.0.dev0"
 description = "A benchmark for reliable long-horizon business decision agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -40,6 +40,7 @@ packages = ["src/decision_agent_bench"]
 [tool.hatch.build.targets.wheel.force-include]
 "data/task_specs/v0.1.json" = "decision_agent_bench/data/v0.1.json"
 "data/reference-world-manifest.json" = "decision_agent_bench/data/reference-world-manifest.json"
+"data/task_specs/v0.2-instances.json" = "decision_agent_bench/data/v0.2-instances.json"
 
 [tool.pytest.ini_options]
 addopts = "-ra"

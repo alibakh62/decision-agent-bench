@@ -71,6 +71,26 @@ def test_smoke_config_and_manifest_create_four_matched_cells(tmp_path: Path) -> 
         assert "--no-epochs-reducer" in command
 
 
+def test_research_smoke_plans_every_architecture_and_ablation(tmp_path: Path) -> None:
+    config = load_experiment_config(_config_path("v0.2-research-smoke.json"))
+    manifest = load_manifest(plan_experiment(config, tmp_path))
+
+    assert len(manifest["cells"]) == 16
+    assert {
+        "independent_verifier",
+        "multi_agent",
+        "memory_feedback",
+        "corrupted_context",
+        "no_policy_prompt",
+        "no_evidence_prompt",
+    } <= {cell["baseline"] for cell in manifest["cells"]}
+    assert all(
+        "src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_2"
+        in cell["command"]
+        for cell in manifest["cells"]
+    )
+
+
 def test_manifest_rejects_edits(tmp_path: Path) -> None:
     manifest_path = plan_experiment(load_experiment_config(_config_path("smoke.json")), tmp_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

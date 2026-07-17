@@ -10,6 +10,10 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 - Double-confirmed, cost-capped provider execution with isolated runtime state and redacted logs.
 - Sanitized sample telemetry, deterministic bootstrap intervals, within-task reliability, paired
   robustness deltas, failure summaries, and publishable-only leaderboard generation.
+- Independent-verifier, multi-agent, memory-and-feedback, and corrupted-context research baselines,
+  plus no-policy and no-evidence prompt ablations.
+- A v0.2 task registration with 100 seeded scenario instances, 200 paired evaluation samples, and a
+  generated machine-readable instance catalog.
 
 ## [0.1.0] - 2026-07-17
 

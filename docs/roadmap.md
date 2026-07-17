@@ -36,6 +36,10 @@ Run at least three model families with matched budgets and repeated trials. Anal
 
 ## Milestone 4 — Research expansion
 
+**Status:** in progress. Four advanced architectures, two prompt ablations, a 100-instance/200-
+sample registered expansion, seed-level contract checks, and preregistered comparisons are
+implemented. Full ablation runs, human agreement, and error-matrix analysis await model execution.
+
 Add independent-verifier, multi-agent, memory-and-feedback, and corrupted-context baselines. Expand to 100–200 calibrated instances or task families based on empirical coverage gaps. Conduct ablations and human agreement studies.
 
 **Exit evidence:** preregistered hypotheses, robustness matrices, error taxonomy analysis, judge-versus-deterministic comparison, and draft technical report.

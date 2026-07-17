@@ -7,8 +7,17 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-KNOWN_BASELINES = {"single_agent", "planner_executor"}
+REFERENCE_BASELINES = {"single_agent", "planner_executor"}
+KNOWN_BASELINES = REFERENCE_BASELINES | {
+    "independent_verifier",
+    "multi_agent",
+    "memory_feedback",
+    "corrupted_context",
+    "no_policy_prompt",
+    "no_evidence_prompt",
+}
 KNOWN_VARIANTS = {"clean", "perturbed"}
+KNOWN_TASKS = {"decision_agent_bench", "decision_agent_bench_v0_2"}
 SENSITIVE_ARGUMENT_FRAGMENTS = {
     "api_key",
     "apikey",
@@ -117,6 +126,7 @@ class ExperimentConfig:
     budget: Budget = field(default_factory=Budget)
     benchmark_version: str = "0.1.0"
     task_version: str = "0.1.0"
+    task_name: str = "decision_agent_bench"
     notes: str = ""
 
     @classmethod
@@ -144,6 +154,7 @@ class ExperimentConfig:
             budget=Budget.from_dict(payload.get("budget", {})),
             benchmark_version=str(payload.get("benchmark_version", "0.1.0")),
             task_version=str(payload.get("task_version", "0.1.0")),
+            task_name=str(payload.get("task_name", "decision_agent_bench")),
             notes=str(payload.get("notes", "")),
         )
         config.validate()
@@ -166,6 +177,8 @@ class ExperimentConfig:
             raise ValueError(f"unknown variants: {sorted(unknown_variants)}")
         if not self.baselines or not self.variants:
             raise ValueError("baselines and variants cannot be empty")
+        if self.task_name not in KNOWN_TASKS:
+            raise ValueError(f"unknown task_name {self.task_name!r}")
         if self.repetitions < 1:
             raise ValueError("repetitions must be positive")
         if self.sample_limit is not None and self.sample_limit < 1:
@@ -176,7 +189,7 @@ class ExperimentConfig:
             protocol_errors = []
             if self.repetitions < 3:
                 protocol_errors.append("at least three repetitions")
-            if set(self.baselines) != KNOWN_BASELINES:
+            if not REFERENCE_BASELINES <= set(self.baselines):
                 protocol_errors.append("both reference baselines")
             if set(self.variants) != KNOWN_VARIANTS:
                 protocol_errors.append("clean and perturbed variants")

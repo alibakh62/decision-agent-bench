@@ -48,6 +48,11 @@ def _parser() -> argparse.ArgumentParser:
     analyze.add_argument("logs", type=Path)
     analyze.add_argument("output", type=Path)
     analyze.add_argument("--manifest", type=Path)
+    export = subparsers.add_parser(
+        "export-instances", help="write the expanded v0.2 task-instance catalog"
+    )
+    export.add_argument("output", type=Path)
+    export.add_argument("--instances-per-family", type=int, default=4)
     return parser
 
 
@@ -103,6 +108,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         report = analyze_logs(args.logs, args.output, manifest_path=args.manifest)
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "export-instances":
+        from decision_agent_bench.evals.instances import write_expanded_instance_catalog
+
+        output = write_expanded_instance_catalog(args.output, args.instances_per_family)
+        print(f"exported expanded instance catalog {output}")
     return 0
 
 

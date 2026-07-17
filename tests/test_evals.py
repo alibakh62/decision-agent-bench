@@ -9,13 +9,19 @@ from inspect_ai.model import ModelOutput
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from pytest import MonkeyPatch
 
+from decision_agent_bench.evals.baselines import baseline_solver
 from decision_agent_bench.evals.cases import CASES_BY_ID, validate_cases
+from decision_agent_bench.evals.instances import expanded_instance_catalog
 from decision_agent_bench.evals.runtime import apply_perturbation
 from decision_agent_bench.evals.scorer import grade_submission, parse_submission
-from decision_agent_bench.evals.task import build_dataset, decision_agent_bench
+from decision_agent_bench.evals.task import (
+    build_dataset,
+    decision_agent_bench,
+    decision_agent_bench_v0_2,
+)
 from decision_agent_bench.evals.tools import retail_sql
 from decision_agent_bench.experiments.analysis import records_from_eval_log
-from decision_agent_bench.simulator import GenerationConfig, generate_world
+from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, generate_world
 from decision_agent_bench.simulator.oracle import EconomicOracle
 from decision_agent_bench.simulator.validation import logical_digest
 from decision_agent_bench.specs import load_task_specs
@@ -49,6 +55,111 @@ def test_category_filter_uses_versioned_spec_categories() -> None:
 
     assert len(dataset) == 3
     assert {sample.metadata["category"] for sample in dataset} == {"safety"}
+
+
+def test_expanded_dataset_has_100_instances_and_200_paired_samples() -> None:
+    clean = build_dataset(variant="clean", instances_per_family=4)
+    both = build_dataset(variant="both", instances_per_family=4)
+
+    assert len(clean) == 100
+    assert len(both) == 200
+    assert len({sample.id for sample in both}) == 200
+    assert {sample.metadata["scenario_seed"] for sample in both} == {
+        20260717,
+        20260718,
+        20260719,
+        20260720,
+    }
+    assert len(decision_agent_bench_v0_2().dataset) == 200
+    catalog = expanded_instance_catalog()
+    assert len(catalog) == 100
+    assert {item["instance_id"] for item in catalog} == {
+        sample.id.removesuffix("-clean") for sample in clean
+    }
+    published_catalog = json.loads(
+        (Path(__file__).parents[1] / "data" / "task_specs" / "v0.2-instances.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert published_catalog == catalog
+
+
+def test_all_reference_research_and_ablation_baselines_resolve() -> None:
+    names = {
+        "single_agent",
+        "planner_executor",
+        "independent_verifier",
+        "multi_agent",
+        "memory_feedback",
+        "corrupted_context",
+        "no_policy_prompt",
+        "no_evidence_prompt",
+    }
+
+    assert all(baseline_solver(name) is not None for name in names)
+
+
+def test_expanded_seeds_preserve_key_answer_contracts(tmp_path: Path) -> None:
+    for seed in range(20260717, 20260721):
+        database = generate_world(tmp_path / str(seed), GenerationConfig(seed=seed))
+        with RetailEnvironment(database) as environment:
+            regions = environment.query_sql(
+                """
+                WITH periods AS (
+                    SELECT s.region_id,
+                           SUM(CASE WHEN date(t.sold_at) > date('2026-06-30', '-14 days')
+                                    THEN t.units ELSE 0 END) AS recent,
+                           SUM(CASE WHEN date(t.sold_at) BETWEEN date('2026-06-30', '-28 days')
+                                                           AND date('2026-06-30', '-14 days')
+                                    THEN t.units ELSE 0 END) AS prior
+                    FROM transactions t JOIN stores s USING(store_id)
+                    GROUP BY s.region_id
+                )
+                SELECT region_id FROM periods ORDER BY recent * 1.0 / prior LIMIT 1
+                """
+            )
+            forecasts = sorted(
+                (
+                    sum(environment.forecast_demand(f"S{index:03d}", "P001").daily_units),
+                    f"S{index:03d}",
+                )
+                for index in range(1, 13)
+            )
+            refund = environment.query_sql(
+                "SELECT customer_id FROM refunds GROUP BY customer_id "
+                "ORDER BY COUNT(*) DESC LIMIT 1"
+            )
+        assert regions[0]["region_id"] == "R03"
+        assert {store_id for _, store_id in forecasts[-3:]} == {"S001", "S004", "S007"}
+        assert refund[0]["customer_id"] == "C00001"
+
+
+def test_advanced_architectures_execute_under_inspect(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "inspect_ai._util.appdirs.user_data_path", lambda _package: tmp_path / "inspect-data"
+    )
+    monkeypatch.setattr(
+        "inspect_ai._util.appdirs.user_cache_path", lambda _package: tmp_path / "inspect-cache"
+    )
+    for baseline in (
+        "independent_verifier",
+        "multi_agent",
+        "memory_feedback",
+        "corrupted_context",
+    ):
+        logs = eval(
+            decision_agent_bench(
+                category="safety", variant="perturbed", baseline=baseline
+            ),
+            model="mockllm/model",
+            limit=1,
+            log_dir=str(tmp_path / baseline),
+            display="none",
+        )
+        assert len(logs) == 1
+        assert logs[0].status == "success"
 
 
 def test_every_named_non_timeout_perturbation_changes_world_state(tmp_path: Path) -> None:

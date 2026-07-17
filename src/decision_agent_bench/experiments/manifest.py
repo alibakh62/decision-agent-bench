@@ -13,10 +13,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from decision_agent_bench import __version__
 from decision_agent_bench.experiments.schema import ExperimentConfig
 from decision_agent_bench.simulator.reference import default_reference_manifest_path
 
-TASK_ENTRYPOINT = "src/decision_agent_bench/evals/task.py@decision_agent_bench"
+TASK_FILE = "src/decision_agent_bench/evals/task.py"
 
 
 def _canonical(payload: Any) -> str:
@@ -56,7 +57,7 @@ def _cell_command(
     command = [
         "inspect",
         "eval",
-        TASK_ENTRYPOINT,
+        f"{TASK_FILE}@{config.task_name}",
         "--model",
         str(model["model"]),
         "--epochs",
@@ -164,14 +165,14 @@ def plan_experiment(config: ExperimentConfig, output_directory: Path) -> Path:
         "config": config_payload,
         "source": {
             "git_commit": _git_commit(repository),
-            "task_entrypoint": TASK_ENTRYPOINT,
+            "task_entrypoint": f"{TASK_FILE}@{config.task_name}",
             "reference_world_sha256": reference["logical_sha256"],
         },
         "environment": {
             "python": sys.version.split()[0],
             "platform": platform.platform(),
             "inspect_ai": importlib.metadata.version("inspect-ai"),
-            "decision_agent_bench": config.benchmark_version,
+            "decision_agent_bench": __version__,
         },
         "cells": cells,
     }

@@ -341,6 +341,58 @@ def _write_group_csv(summary: dict[str, Any], path: Path) -> None:
             writer.writerow(row)
 
 
+def _write_robustness_matrix(records: list[SampleRecord], path: Path) -> None:
+    groups: dict[tuple[str, str, str, str, str], list[SampleRecord]] = defaultdict(list)
+    for record in records:
+        groups[
+            (
+                record.model,
+                record.baseline,
+                record.category,
+                record.variant,
+                record.perturbation or "none",
+            )
+        ].append(record)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "model",
+                "baseline",
+                "category",
+                "variant",
+                "perturbation",
+                "n",
+                "composite_mean",
+                "safety_mean",
+                "recovery_mean",
+            ]
+        )
+        for key, items in sorted(groups.items()):
+            writer.writerow(
+                [
+                    *key,
+                    len(items),
+                    round(statistics.fmean(item.scores["composite"] for item in items), 6),
+                    round(statistics.fmean(item.scores["safety"] for item in items), 6),
+                    round(statistics.fmean(item.scores["recovery"] for item in items), 6),
+                ]
+            )
+
+
+def _write_failure_matrix(records: list[SampleRecord], path: Path) -> None:
+    all_failures = sorted({failure for record in records for failure in record.failures})
+    groups: dict[tuple[str, str, str], list[SampleRecord]] = defaultdict(list)
+    for record in records:
+        groups[(record.model, record.baseline, record.variant)].append(record)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["model", "baseline", "variant", "n", *all_failures])
+        for key, items in sorted(groups.items()):
+            counts = Counter(failure for item in items for failure in item.failures)
+            writer.writerow([*key, len(items), *[counts[failure] for failure in all_failures]])
+
+
 def analyze_logs(
     log_directory: Path,
     output_directory: Path,
@@ -361,6 +413,8 @@ def analyze_logs(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     _write_group_csv(summary, output_directory / "summary.csv")
+    _write_robustness_matrix(records, output_directory / "robustness-matrix.csv")
+    _write_failure_matrix(records, output_directory / "failure-matrix.csv")
     (output_directory / "leaderboard.md").write_text(
         _leaderboard_markdown(records), encoding="utf-8"
     )

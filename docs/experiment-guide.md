@@ -51,6 +51,8 @@ The analyzer emits:
 - `summary.json` and `summary.csv`: means, sample standard deviations, and deterministic 95%
   bootstrap intervals by model, baseline, and variant;
 - `failure-counts.csv`: public taxonomy counts;
+- `robustness-matrix.csv` and `failure-matrix.csv`: category/perturbation outcomes and
+  model-baseline-variant error profiles;
 - `leaderboard.md`: publishable runs only, ranked by composite score; and
 - `analysis-manifest.json`: source-log and sanitization provenance.
 

@@ -9,6 +9,10 @@ The first domain is a fully synthetic convenience-retail company. No proprietary
 
 > **Project status:** executable benchmark v0.1. The first 25 task families, paired clean and perturbed variants, deterministic synthetic company, Inspect integration, two reference baselines, and multidimensional graders are implemented. Multi-model empirical results are the next milestone; no model-performance claims have been made.
 
+The research track also includes a registered v0.2 expansion with 100 seeded instances (200 paired
+samples), four advanced architectures, and two prompt ablations. These are tested research
+infrastructure, not empirical performance claims.
+
 ## Why this benchmark
 
 Task-success rate can conceal costly or unsafe behavior. An agent may reach the nominal goal while destroying margin, violating an approval limit, trusting injected instructions, or citing evidence that does not support its decision. DecisionAgentBench makes those failures measurable.
@@ -75,6 +79,11 @@ inspect eval src/decision_agent_bench/evals/task.py@decision_agent_bench \
 ```
 
 Set `baseline=planner_executor` for the two-stage reference baseline. Provider credentials are read by Inspect; never commit them. The [benchmark protocol](docs/benchmark-protocol.md) defines variants, budgets, output fields, scoring, and reporting requirements.
+
+For the expanded research task, select
+`src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_2`. See the
+[v0.2 expansion](docs/v0.2-expansion.md) and [research baseline](docs/research-baselines.md)
+protocols before comparing architectures.
 
 For a dependency-locked reproduction check:
 
