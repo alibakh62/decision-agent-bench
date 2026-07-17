@@ -345,28 +345,30 @@ def _release_gates(repository: Path) -> list[AuditCheck]:
     ]
 
 
-def _container_check(image: str | None) -> AuditCheck:
+def _container_check(image: str | None, runtime: str = "docker") -> AuditCheck:
+    if runtime not in {"docker", "podman"}:
+        raise ValueError("container runtime must be docker or podman")
     if image is None:
         return AuditCheck(
             "container",
             "pending",
             "verified container image not supplied",
-            {"expected_command": "docker run --rm <image>"},
+            {"expected_command": f"{runtime} run --rm <image>", "runtime": runtime},
         )
     inspect_result = subprocess.run(
-        ["docker", "image", "inspect", image, "--format", "{{.Id}}"],
+        [runtime, "image", "inspect", image, "--format", "{{.Id}}"],
         check=False,
         capture_output=True,
         text=True,
     )
     verify_result = subprocess.run(
-        ["docker", "run", "--rm", image],
+        [runtime, "run", "--rm", image],
         check=False,
         capture_output=True,
         text=True,
     )
     user_result = subprocess.run(
-        ["docker", "run", "--rm", "--entrypoint", "id", image],
+        [runtime, "run", "--rm", "--entrypoint", "id", image],
         check=False,
         capture_output=True,
         text=True,
@@ -385,6 +387,7 @@ def _container_check(image: str | None) -> AuditCheck:
         "container verification failed" if errors else "container is reproducible and non-root",
         {
             "image": image,
+            "runtime": runtime,
             "image_id": inspect_result.stdout.strip() or None,
             "default_output": verify_result.stdout.strip()[-500:],
             "runtime_user": user_result.stdout.strip(),
@@ -398,6 +401,7 @@ def audit_repository(
     *,
     dependency_report: Path | None = None,
     container_image: str | None = None,
+    container_runtime: str = "docker",
 ) -> dict[str, Any]:
     """Run deterministic local checks and return a release-readiness report."""
 
@@ -409,7 +413,7 @@ def audit_repository(
         _provenance_check(repository),
         _artifact_check(repository),
         _dependency_check(repository, dependency_report),
-        _container_check(container_image),
+        _container_check(container_image, container_runtime),
         *_release_gates(repository),
     ]
     statuses = {check.status for check in checks}

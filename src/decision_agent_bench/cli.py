@@ -86,6 +86,7 @@ def _parser() -> argparse.ArgumentParser:
     audit.add_argument("--repository", type=Path, default=Path.cwd())
     audit.add_argument("--dependency-report", type=Path)
     audit.add_argument("--container-image")
+    audit.add_argument("--container-runtime", choices=("docker", "podman"), default="docker")
     audit.add_argument("--output", type=Path)
     audit.add_argument("--strict", action="store_true")
     release = subparsers.add_parser(
@@ -97,6 +98,9 @@ def _parser() -> argparse.ArgumentParser:
     release.add_argument("--sbom", type=Path)
     release.add_argument("--dependency-report", type=Path)
     release.add_argument("--container-image")
+    release.add_argument(
+        "--container-runtime", choices=("docker", "podman"), default="docker"
+    )
     release.add_argument("--analysis", type=Path, action="append", default=[])
     release.add_argument("--allow-prerelease", action="store_true")
     verify_release = subparsers.add_parser(
@@ -228,6 +232,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.repository,
             dependency_report=args.dependency_report,
             container_image=args.container_image,
+            container_runtime=args.container_runtime,
         )
         if args.output:
             write_audit_report(report, args.output)
@@ -244,6 +249,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             sbom_path=args.sbom,
             dependency_report=args.dependency_report,
             container_image=args.container_image,
+            container_runtime=args.container_runtime,
             analysis_directories=tuple(args.analysis),
             allow_prerelease=args.allow_prerelease,
         )

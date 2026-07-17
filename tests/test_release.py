@@ -366,7 +366,11 @@ def test_final_release_accepts_complete_tagged_evidence(
     )
     monkeypatch.setattr(
         "decision_agent_bench.release._container_provenance",
-        lambda _repository, image: {"status": "pass", "image": image},
+        lambda _repository, image, runtime: {
+            "status": "pass",
+            "image": image,
+            "runtime": runtime,
+        },
     )
     sbom = tmp_path / "sbom.json"
     sbom.write_text(

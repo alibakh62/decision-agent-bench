@@ -42,6 +42,10 @@ pip-audit --require-hashes --disable-pip -r requirements.lock \
 docker build --tag decision-agent-bench:release .
 ```
 
+Podman users can build the same OCI image with `podman build` and add
+`--container-runtime podman` wherever `--container-image` is supplied. Docker remains the CI and
+command-line default.
+
 `pip-audit` exits with status 1 when it writes known findings. Review every finding against
 `security/openvex.json`; never hide an unreviewed advisory merely to continue packaging.
 

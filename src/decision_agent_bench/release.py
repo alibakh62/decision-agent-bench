@@ -67,13 +67,17 @@ def _git_release_state(repository: Path) -> dict[str, Any]:
     }
 
 
-def _container_provenance(repository: Path, image: str | None) -> dict[str, Any]:
+def _container_provenance(
+    repository: Path, image: str | None, runtime: str = "docker"
+) -> dict[str, Any]:
+    if runtime not in {"docker", "podman"}:
+        raise ValueError("container runtime must be docker or podman")
     if image is None:
-        return {"status": "not_supplied", "image": None}
+        return {"status": "not_supplied", "image": None, "runtime": runtime}
 
     def run(*arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["docker", *arguments], check=False, capture_output=True, text=True
+            [runtime, *arguments], check=False, capture_output=True, text=True
         )
 
     inspection = run("image", "inspect", image)
@@ -96,6 +100,7 @@ def _container_provenance(repository: Path, image: str | None) -> dict[str, Any]
     return {
         "status": "fail" if issues else "pass",
         "image": image,
+        "runtime": runtime,
         "image_id": inspected.get("Id"),
         "repo_digests": sorted(inspected.get("RepoDigests") or []),
         "runtime_user": identity.stdout.strip(),
@@ -271,6 +276,7 @@ def assemble_release_bundle(
     sbom_path: Path | None = None,
     dependency_report: Path | None = None,
     container_image: str | None = None,
+    container_runtime: str = "docker",
     analysis_directories: tuple[Path, ...] = (),
     allow_prerelease: bool = False,
 ) -> dict[str, Any]:
@@ -281,6 +287,8 @@ def assemble_release_bundle(
     output_directory = output_directory.resolve()
     version = _project_version(repository)
     prerelease = bool(re.search(r"(?:\.dev|a|b|rc)\d*", version))
+    if container_runtime not in {"docker", "podman"}:
+        raise ValueError("container runtime must be docker or podman")
     state = _git_release_state(repository)
     if not state["working_tree_clean"]:
         raise ValueError("release assembly requires a clean Git working tree")
@@ -322,7 +330,7 @@ def assemble_release_bundle(
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(asset.source, destination)
 
-    container = _container_provenance(repository, container_image)
+    container = _container_provenance(repository, container_image, container_runtime)
     if container_image is not None and container["status"] != "pass":
         raise ValueError("container provenance verification failed")
     container_path = output_directory / "metadata/container-provenance.json"

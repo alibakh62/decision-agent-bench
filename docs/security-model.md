@@ -21,7 +21,8 @@ unauthorized state changes, and misleading publication of incomplete results.
 reproduction, agent/oracle separation, high-confidence credential patterns, data provenance,
 licensing, and public research artifacts. It can ingest a JSON `pip-audit` report and fails on every
 known vulnerability that lacks a reviewed OpenVEX statement. Supplying `--container-image` also
-records the image ID, default reference-world check, and non-root runtime identity.
+records the image ID, default reference-world check, and non-root runtime identity. Docker is the
+default; `--container-runtime podman` selects the allow-listed native Podman CLI.
 
 GitHub security automation adds:
 

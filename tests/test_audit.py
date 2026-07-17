@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
+import pytest
+
 from decision_agent_bench.audit import (
+    _container_check,
     _dependency_check,
     _vex_ids,
     audit_repository,
@@ -50,6 +54,34 @@ def test_repository_audit_passes_deterministic_safety_checks() -> None:
     assert checks["dependencies"]["status"] == "pending"
     assert checks["container"]["status"] == "pending"
     assert report["status"] == "pending"
+
+
+def test_container_audit_uses_allow_listed_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands: list[list[str]] = []
+
+    def run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        output = (
+            "sha256:image\n"
+            if command[1:3] == ["image", "inspect"]
+            else "uid=10001(benchmark) gid=10001(benchmark)\n"
+            if command[-1] == "image" and "id" in command
+            else "verified reference world logical_sha256="
+            "c362c754d6f102c76d45aecf61f6e1cec7a49134fb416e02e59f341a20305f0b\n"
+        )
+        return subprocess.CompletedProcess(command, 0, output, "")
+
+    monkeypatch.setattr("decision_agent_bench.audit.subprocess.run", run)
+
+    result = _container_check("image", "podman")
+
+    assert result.status == "pass"
+    assert result.evidence["runtime"] == "podman"
+    assert all(command[0] == "podman" for command in commands)
+    with pytest.raises(ValueError, match="docker or podman"):
+        _container_check("image", "nerdctl")
 
 
 def test_dependency_audit_requires_vex_for_every_vulnerability(tmp_path: Path) -> None:

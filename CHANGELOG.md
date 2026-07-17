@@ -45,6 +45,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 - Publishable studies now require three distinct model families, and portable analysis bundles carry
   a sanitized study plan so independent verification can parse records and recompute coverage and
   release eligibility instead of trusting a self-declared publication flag.
+- Release audits and provenance checks support allow-listed Docker or Podman runtimes and record the
+  selected engine, preserving identical image verification in CI and local OCI environments.
 
 ## [0.1.0] - 2026-07-17
 
