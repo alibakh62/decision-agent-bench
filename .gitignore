@@ -13,3 +13,4 @@ dist/
 htmlcov/
 logs/
 results/private/
+data/generated/

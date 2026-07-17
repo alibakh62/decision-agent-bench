@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "decision-agent-bench"
-version = "0.0.1"
+version = "0.0.2"
 description = "A benchmark for reliable long-horizon business decision agents"
 readme = "README.md"
 requires-python = ">=3.11"

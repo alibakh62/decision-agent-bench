@@ -4,6 +4,17 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-07-17
+
+### Added
+
+- Deterministic synthetic retail world with stores, products, customers, inventory, sales,
+  promotions, vendor constraints, documents, approvals, and an action ledger.
+- Reproducible generator CLI, canonical content hashing, published reference manifest, and data card.
+- Read-only SQL, document retrieval, forecasting, inventory recommendation, approval, and
+  policy-gated price-action APIs.
+- Integrity, reproducibility, tool-safety, provenance, and authorization tests.
+
 ## [0.0.1] - 2026-07-17
 
 ### Added

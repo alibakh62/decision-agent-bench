@@ -7,7 +7,7 @@ DecisionAgentBench is an open benchmark for measuring how reliably AI agents mak
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** design milestone. The benchmark specification and first 25 task contracts are stable enough to implement, but no empirical benchmark claims have been made yet.
+> **Project status:** simulator milestone. The research design, first 25 task contracts, and deterministic synthetic company are implemented. Inspect tasks, baselines, and empirical benchmark results are not yet released, and no performance claims have been made.
 
 ## Why this benchmark
 
@@ -53,7 +53,16 @@ python -m pytest
 python -m decision_agent_bench validate-specs
 ```
 
-See [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md), and [the staged roadmap](docs/roadmap.md).
+Generate and validate the deterministic synthetic company:
+
+```bash
+python -m decision_agent_bench generate-world data/generated/reference
+python -m decision_agent_bench validate-world data/generated/reference/world.sqlite
+```
+
+Generated worlds are intentionally excluded from source control. Their manifest records the complete generator configuration, table counts, schema version, and a logical content hash.
+
+See [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md), [the synthetic-data card](docs/data-card.md), and [the staged roadmap](docs/roadmap.md).
 
 ## Contributing
 

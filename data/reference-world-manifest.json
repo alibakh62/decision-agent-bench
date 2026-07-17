@@ -1,0 +1,30 @@
+{
+  "benchmark": "DecisionAgentBench",
+  "config": {
+    "customers_per_store": 20,
+    "history_days": 56,
+    "products": 24,
+    "regions": 3,
+    "seed": 20260717,
+    "stores_per_region": 4
+  },
+  "generated_at": "2026-06-30T12:00:00+00:00",
+  "logical_sha256": "68ccb1e39ae5f63e2bee5ea1e001767085271d2818b5cb26cdc73224c48822a5",
+  "schema_version": "0.1.0",
+  "table_counts": {
+    "action_ledger": 0,
+    "approvals": 0,
+    "customers": 240,
+    "documents": 5,
+    "inventory": 288,
+    "metadata": 4,
+    "oracle_parameters": 24,
+    "prices": 288,
+    "products": 24,
+    "promotions": 5,
+    "regions": 3,
+    "stores": 12,
+    "transactions": 15297,
+    "vendors": 4
+  }
+}
