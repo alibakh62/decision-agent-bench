@@ -149,6 +149,9 @@ See also [the research design](docs/research-design.md), [the first 25 tasks](do
 [the statistical analysis protocol](docs/statistical-analysis.md), [the staged roadmap](docs/roadmap.md),
 and the [public-release checklist](docs/release-checklist.md).
 
+Before a release, run `make audit` and review the [security model](docs/security-model.md). The audit
+distinguishes failed controls from external evidence that is still pending.
+
 ## Contributing
 
 The project welcomes evaluation design, simulation, safety, statistics, and documentation contributions. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change. Please do not submit real employer data, confidential policies, or proprietary prompts.

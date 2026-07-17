@@ -1,0 +1,28 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/OWNER/decision-agent-bench/security/openvex-2026-07-17",
+  "author": "DecisionAgentBench maintainers",
+  "role": "Project maintainer",
+  "timestamp": "2026-07-17T17:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "@id": "CVE-2026-7246",
+        "aliases": [
+          "GHSA-47fr-3ffg-hgmw",
+          "PYSEC-2026-2132"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:pypi/click@8.2.1"
+        }
+      ],
+      "status": "not_affected",
+      "x_review_by": "2026-08-17",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "The affected click.edit() helper is not called by DecisionAgentBench or Inspect AI 0.3.247. Evaluated agents have no shell, Python import, editor, or arbitrary-command tool. Inspect AI currently constrains Click below 8.2.2, so the fixed Click 8.3.3 cannot be resolved without violating upstream metadata. Re-evaluate when Inspect relaxes that bound or by 2026-08-17, whichever occurs first."
+    }
+  ]
+}

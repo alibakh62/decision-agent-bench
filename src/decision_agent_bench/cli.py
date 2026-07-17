@@ -68,6 +68,14 @@ def _parser() -> argparse.ArgumentParser:
     agreement.add_argument("private_key", type=Path)
     agreement.add_argument("output", type=Path)
     agreement.add_argument("--threshold", type=float, default=0.5)
+    audit = subparsers.add_parser(
+        "audit-release", help="audit local benchmark, security, provenance, and release evidence"
+    )
+    audit.add_argument("--repository", type=Path, default=Path.cwd())
+    audit.add_argument("--dependency-report", type=Path)
+    audit.add_argument("--container-image")
+    audit.add_argument("--output", type=Path)
+    audit.add_argument("--strict", action="store_true")
     return parser
 
 
@@ -144,6 +152,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.ratings, args.private_key, args.output, threshold=args.threshold
         )
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "audit-release":
+        from decision_agent_bench.audit import audit_repository, write_audit_report
+
+        report = audit_repository(
+            args.repository,
+            dependency_report=args.dependency_report,
+            container_image=args.container_image,
+        )
+        if args.output:
+            write_audit_report(report, args.output)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        if report["status"] == "fail" or (args.strict and report["status"] != "pass"):
+            return 1
     return 0
 
 

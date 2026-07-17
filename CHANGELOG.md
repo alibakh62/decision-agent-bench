@@ -27,6 +27,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   calibration tables, paired resource effects, and manifest-completeness leaderboard gating.
 - Resumable execution schema 2.0 preserves failed cell attempts, skips completed paid cells, and
   prevents a completed immutable plan from being executed twice.
+- Release audit CLI, oracle-boundary and provenance checks, OpenVEX policy, CodeQL, Gitleaks,
+  hash-locked dependency audit, and Dependabot coverage for Python, Actions, and Docker.
 
 ## [0.1.0] - 2026-07-17
 

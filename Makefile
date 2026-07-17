@@ -1,4 +1,6 @@
-.PHONY: check test validate verify-reference demo docker-build docker-verify
+IMAGE ?= decision-agent-bench:0.2.0-dev
+
+.PHONY: check test validate verify-reference audit demo docker-build docker-verify docker-audit
 
 check:
 	python -m ruff check .
@@ -17,11 +19,18 @@ validate:
 verify-reference:
 	PYTHONPATH=src python -m decision_agent_bench verify-reference
 
+audit:
+	PYTHONPATH=src python -m decision_agent_bench audit-release --output build/release-audit.json
+
 demo:
 	PYTHONPATH=src python -m decision_agent_bench demo --host 127.0.0.1 --port 7860
 
 docker-build:
-	docker build --tag decision-agent-bench:0.1.0 .
+	docker build --tag $(IMAGE) .
 
 docker-verify:
-	docker run --rm decision-agent-bench:0.1.0
+	docker run --rm $(IMAGE)
+	docker run --rm --entrypoint sh $(IMAGE) -c 'test "$$(id -u)" = "10001"'
+
+docker-audit:
+	PYTHONPATH=src python -m decision_agent_bench audit-release --container-image $(IMAGE)

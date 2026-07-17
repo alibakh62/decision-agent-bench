@@ -22,6 +22,7 @@
 - [ ] Wheel and source distribution install outside the checkout.
 - [ ] Container builds by digest and passes its default verification command.
 - [ ] Secret scan, dependency audit, oracle-leakage audit, and license/provenance review pass.
+  Local checks are available through `make audit`; GitHub security automation must also be green.
 - [ ] Interactive demo exposes no arbitrary SQL, state-changing actions, oracle inputs, or sharing
       tunnel by default.
 
