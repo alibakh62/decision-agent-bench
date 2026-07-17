@@ -16,6 +16,10 @@ from decision_agent_bench.experiments.analysis import (
     verify_analysis_bundle,
 )
 from decision_agent_bench.experiments.manifest import load_manifest, plan_experiment
+from decision_agent_bench.experiments.planning import (
+    estimate_experiment,
+    sample_count_for_cell,
+)
 from decision_agent_bench.experiments.runner import _eval_statuses, execute_manifest
 from decision_agent_bench.experiments.schema import ExperimentConfig, load_experiment_config
 from decision_agent_bench.specs import load_task_specs
@@ -116,6 +120,37 @@ def test_research_smoke_plans_every_architecture_and_ablation(tmp_path: Path) ->
         in cell["command"]
         for cell in manifest["cells"]
     )
+
+
+def test_full_research_template_exposes_complete_grid_size() -> None:
+    config = load_experiment_config(_config_path("v0.2.template.json"))
+
+    estimate = estimate_experiment(config)
+
+    assert estimate["cell_count"] == 16
+    assert estimate["unique_samples_per_variant"] == 100
+    assert estimate["sample_executions_per_model"] == 4_800
+    assert estimate["sample_executions"] == 4_800
+    assert estimate["configured_cost_exposure_usd"] is None
+    assert sample_count_for_cell(
+        "decision_agent_bench_v0_2", category="safety", sample_limit=None
+    ) == 12
+
+
+def test_v01_three_family_preflight_calculates_full_exposure() -> None:
+    payload = json.loads(_config_path("v0.1.template.json").read_text(encoding="utf-8"))
+    for model in payload["models"]:
+        model["enabled"] = model["family"] != "mock"
+    payload["budget"]["cost_limit_usd"] = 0.25
+    payload["budget"]["study_cost_limit_usd"] = 225.0
+
+    estimate = estimate_experiment(ExperimentConfig.from_dict(payload))
+
+    assert estimate["enabled_models"] == 3
+    assert len(estimate["enabled_model_families"]) == 3
+    assert estimate["sample_executions"] == 900
+    assert estimate["configured_cost_exposure_usd"] == 225.0
+    assert estimate["within_study_cost_limit"] is True
 
 
 def test_manifest_rejects_edits(tmp_path: Path) -> None:
@@ -255,7 +290,7 @@ def test_publishable_plan_rejects_dirty_worktree(
                 }
             ],
             "repetitions": 3,
-            "budget": {"cost_limit_usd": 1.0},
+            "budget": {"cost_limit_usd": 1.0, "study_cost_limit_usd": 300.0},
         }
     )
     monkeypatch.setattr(
@@ -265,6 +300,52 @@ def test_publishable_plan_rejects_dirty_worktree(
 
     with pytest.raises(ValueError, match="clean Git working tree"):
         plan_experiment(config, tmp_path)
+
+
+def test_publishable_plan_enforces_aggregate_cost_and_amount_acknowledgement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload = {
+        "name": "publishable-study",
+        "models": [
+            {
+                "model": "provider/model",
+                "family": "provider",
+                "display_name": "Provider model",
+                "publishable": True,
+            }
+        ],
+        "repetitions": 3,
+        "budget": {"cost_limit_usd": 1.0, "study_cost_limit_usd": 299.0},
+    }
+    monkeypatch.setattr(
+        "decision_agent_bench.experiments.manifest._git_state",
+        lambda _repository: {"git_commit": "a" * 40, "working_tree_clean": True},
+    )
+    with pytest.raises(ValueError, match=r"\$300.00 exceeds study cost limit \$299.00"):
+        plan_experiment(ExperimentConfig.from_dict(payload), tmp_path)
+
+    payload["budget"]["study_cost_limit_usd"] = 300.0
+    manifest_path = plan_experiment(ExperimentConfig.from_dict(payload), tmp_path)
+    manifest = load_manifest(manifest_path)
+
+    assert manifest["estimate"]["configured_cost_exposure_usd"] == 300.0
+    with pytest.raises(ValueError, match="--acknowledge-max-cost-usd 300.00"):
+        execute_manifest(manifest_path, execute=True, acknowledge_costs=True)
+    monkeypatch.setattr(
+        "decision_agent_bench.experiments.runner.subprocess.run",
+        lambda _command, **_kwargs: _inspect_process_result("success"),
+    )
+
+    executed = execute_manifest(
+        manifest_path,
+        execute=True,
+        acknowledge_costs=True,
+        acknowledge_max_cost_usd=300.0,
+    )
+
+    assert executed["status"] == "success"
+    assert len(executed["cells"]) == 4
 
 
 def test_summary_reports_reliability_and_paired_robustness_delta() -> None:

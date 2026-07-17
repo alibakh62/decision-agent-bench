@@ -18,7 +18,7 @@ from inspect_ai.log import EvalLog, read_eval_log
 
 from decision_agent_bench.evals.scorer import SCORE_KEYS, parse_submission
 from decision_agent_bench.experiments.manifest import load_manifest
-from decision_agent_bench.specs import load_task_specs
+from decision_agent_bench.experiments.planning import sample_count_for_cell
 
 ANALYSIS_ARTIFACTS = (
     "calibration.csv",
@@ -668,18 +668,17 @@ def _coverage_report(
             "unexpected_records": len(records),
         }
     config = manifest["config"]
-    instances_per_family = 4 if config["task_name"] == "decision_agent_bench_v0_2" else 1
-    category_counts = Counter(str(spec["category"]) for spec in load_task_specs())
     repetitions = int(config["repetitions"])
     sample_limit = config.get("sample_limit")
     cell_reports: list[dict[str, Any]] = []
     claimed_records: set[int] = set()
     for cell in manifest["cells"]:
         category = cell.get("category")
-        family_count = category_counts[str(category)] if category else sum(category_counts.values())
-        samples_per_epoch = family_count * instances_per_family
-        if sample_limit is not None:
-            samples_per_epoch = min(samples_per_epoch, int(sample_limit))
+        samples_per_epoch = sample_count_for_cell(
+            str(config["task_name"]),
+            category=str(category) if category is not None else None,
+            sample_limit=int(sample_limit) if sample_limit is not None else None,
+        )
         expected = samples_per_epoch * repetitions
         matching = [
             (position, record)

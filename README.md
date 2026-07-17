@@ -113,13 +113,16 @@ docker run --rm decision-agent-bench:0.1.0
 Plan a matched-budget experiment without contacting a model provider:
 
 ```bash
+decision-agent-bench estimate-experiment configs/experiments/v0.1.template.json
 decision-agent-bench plan-experiment configs/experiments/smoke.json --output runs
 decision-agent-bench run-experiment runs/<run-id>/manifest.json
 ```
 
-Execution requires both `--execute` and `--acknowledge-costs`. A publishable configuration is
-rejected unless it covers all tasks, both variants, both baselines, at least three repetitions, and
-an explicit per-sample cost cap. See the [experiment guide](docs/experiment-guide.md).
+Execution requires both `--execute` and `--acknowledge-costs`. A publishable run additionally
+requires the exact `--acknowledge-max-cost-usd` amount printed by preflight. Publishable
+configurations are rejected unless they cover all tasks, both variants, both reference baselines,
+at least three repetitions, and explicit per-sample and whole-study cost limits. See the
+[experiment guide](docs/experiment-guide.md).
 
 After analysis, verify the shareable result bundle on its own or bind it back to the exact raw logs
 and immutable experiment manifest:

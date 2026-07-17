@@ -79,6 +79,7 @@ class Budget:
     max_output_tokens: int = 2_048
     time_limit_seconds: int = 300
     cost_limit_usd: float | None = None
+    study_cost_limit_usd: float | None = None
     max_connections: int = 4
     max_samples: int = 4
     temperature: float = 0.2
@@ -93,6 +94,11 @@ class Budget:
             cost_limit_usd=(
                 float(payload["cost_limit_usd"])
                 if payload.get("cost_limit_usd") is not None
+                else None
+            ),
+            study_cost_limit_usd=(
+                float(payload["study_cost_limit_usd"])
+                if payload.get("study_cost_limit_usd") is not None
                 else None
             ),
             max_connections=int(payload.get("max_connections", 4)),
@@ -110,6 +116,8 @@ class Budget:
             raise ValueError("temperature must be between 0 and 2")
         if self.cost_limit_usd is not None and self.cost_limit_usd <= 0:
             raise ValueError("cost_limit_usd must be positive when supplied")
+        if self.study_cost_limit_usd is not None and self.study_cost_limit_usd <= 0:
+            raise ValueError("study_cost_limit_usd must be positive when supplied")
 
 
 @dataclass(frozen=True)
@@ -199,6 +207,8 @@ class ExperimentConfig:
                 protocol_errors.append("no sample limit")
             if self.budget.cost_limit_usd is None:
                 protocol_errors.append("an explicit per-sample cost limit")
+            if self.budget.study_cost_limit_usd is None:
+                protocol_errors.append("an explicit whole-study cost limit")
             if protocol_errors:
                 raise ValueError(
                     "publishable experiments require " + ", ".join(protocol_errors)

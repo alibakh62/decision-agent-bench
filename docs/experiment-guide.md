@@ -7,9 +7,11 @@ budgets to every model, and requires two explicit CLI flags before execution.
 ## 1. Configure
 
 Copy `configs/experiments/v0.1.template.json`, replace the current model identifiers, review
-provider pricing, set `cost_limit_usd`, and enable the intended models. The template names three
-provider families without freezing model recommendations that will become stale. Credentials must
-come from provider environment variables and are rejected in `model_args`.
+provider pricing, set both `cost_limit_usd` and `study_cost_limit_usd`, and enable the intended
+models. The first value is Inspect's per-sample stop; the second is the maximum aggregate exposure
+you authorize for the complete grid. The template names three provider families without freezing
+model recommendations that will become stale. Credentials must come from provider environment
+variables and are rejected in `model_args`.
 
 Official v0.1 results require both baselines, both variants, all 25 task families, and at least
 three repetitions. `configs/experiments/smoke.json` is deliberately limited and non-publishable.
@@ -17,22 +19,32 @@ three repetitions. `configs/experiments/smoke.json` is deliberately limited and 
 ## 2. Plan
 
 ```bash
+decision-agent-bench estimate-experiment my-experiment.json
 decision-agent-bench plan-experiment my-experiment.json --output runs
 decision-agent-bench run-experiment runs/<run-id>/manifest.json
 ```
 
-The first command records the Git commit, task entrypoint, reference-world digest, Python and
-Inspect versions, matched budgets, every grid cell, and the exact argument-vector command. The
-second command is a dry run by default and prints those commands. Editing the manifest invalidates
-its SHA-256 check. A publishable plan also requires a clean Git working tree; development plans
-record the dirty state but remain ineligible as release evidence.
+Preflight reports cells, unique samples, repeated sample executions, aggregate token limits, and
+configured dollar exposure before a manifest exists. Planning rejects a publishable grid if that
+exposure exceeds `study_cost_limit_usd`. The manifest records the same estimate, Git commit, task
+entrypoint, reference-world digest, Python and Inspect versions, matched budgets, every grid cell,
+and exact argument-vector commands. The final command is a dry run by default and prints those
+commands. Editing the manifest invalidates its SHA-256 check. A publishable plan also requires a
+clean Git working tree; development plans record the dirty state but remain ineligible as release
+evidence.
 
 ## 3. Execute with an explicit cost gate
 
 ```bash
 decision-agent-bench run-experiment runs/<run-id>/manifest.json \
-  --execute --acknowledge-costs
+  --execute --acknowledge-costs --acknowledge-max-cost-usd <exact-preflight-amount>
 ```
+
+For publishable models, the amount-specific flag must match `configured_cost_exposure_usd` in the
+immutable manifest. This prevents a generic confirmation from authorizing a materially larger grid
+after a configuration change. The estimate is conservative to the next cent, but provider
+metering and the last in-flight request can still produce a small overrun; use headroom when setting
+the study limit.
 
 Inspect model API request bodies are not logged. Per-cell stdout and stderr tails are credential-
 redacted before the execution report is written. The runner stops after the first failed cell so a

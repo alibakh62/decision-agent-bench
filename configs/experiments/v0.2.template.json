@@ -1,7 +1,8 @@
 {
-  "name": "decision-agent-bench-v0.1-matched-models",
-  "benchmark_version": "0.1.0",
+  "name": "decision-agent-bench-v0.2-architecture-ablation-study",
+  "benchmark_version": "0.2.0",
   "task_version": "0.1.0",
+  "task_name": "decision_agent_bench_v0_2",
   "models": [
     {
       "model": "openai/<replace-with-current-model-id>",
@@ -32,13 +33,22 @@
       "publishable": false
     }
   ],
-  "baselines": ["single_agent", "planner_executor"],
+  "baselines": [
+    "single_agent",
+    "planner_executor",
+    "independent_verifier",
+    "multi_agent",
+    "memory_feedback",
+    "corrupted_context",
+    "no_policy_prompt",
+    "no_evidence_prompt"
+  ],
   "variants": ["clean", "perturbed"],
   "repetitions": 3,
   "categories": [],
   "sample_limit": null,
   "budget": {
-    "token_limit": 120000,
+    "token_limit": 160000,
     "max_output_tokens": 2048,
     "time_limit_seconds": 300,
     "cost_limit_usd": null,
@@ -48,5 +58,5 @@
     "temperature": 0.2,
     "seed": 20260717
   },
-  "notes": "Replace current model IDs, verify provider pricing, enable intended models, and set both per-sample and whole-study cost limits before paid execution. Credentials belong only in provider environment variables."
+  "notes": "Full registered architecture and ablation grid. Replace current model IDs, disable the mock model, enable approved provider models, and set both cost limits before planning. Credentials belong only in provider environment variables."
 }

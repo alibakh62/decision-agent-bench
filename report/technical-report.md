@@ -214,6 +214,12 @@ can require the exact raw-log and experiment-manifest inputs for full provenance
 Publishable plans cannot be created from a dirty Git working tree; non-publishable development
 plans retain that state explicitly in their manifest.
 
+Before planning, a deterministic preflight expands the model, baseline, variant, category,
+instance, and repetition axes into exact sample-execution and token counts. It multiplies Inspect's
+per-sample dollar stop across the full grid, rounds exposure upward to the next cent, rejects plans
+above the separately authorized study limit, and requires the operator to acknowledge that exact
+amount at execution time.
+
 ### 6.1 Human and judge agreement
 
 A stratified sample is exported into blinded packets containing only the prompt, visible tool

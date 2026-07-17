@@ -31,6 +31,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   hash-locked dependency audit, and Dependabot coverage for Python, Actions, and Docker.
 - Content-addressed analysis bundles bind every sanitized result artifact to exact source-log and
   experiment-manifest hashes, with an independent verifier and strict source-provenance mode.
+- Whole-grid preflight reports sample, token, and dollar exposure; publishable execution requires
+  clean-source planning, a whole-study ceiling, and acknowledgement of the exact planned amount.
 
 ## [0.1.0] - 2026-07-17
 

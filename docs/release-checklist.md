@@ -9,7 +9,8 @@
 
 ## Evidence gates
 
-- [ ] Freeze the preregistered model/baseline grid and cost ceiling.
+- [ ] Freeze the preregistered model/baseline grid, archive its preflight, and authorize the exact
+      configured exposure under a whole-study cost ceiling.
 - [ ] Run at least three current model families with three or more repetitions.
 - [ ] Complete the blinded human agreement study and adjudication.
 - [ ] Regenerate every report table and figure from immutable manifests.

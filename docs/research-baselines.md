@@ -26,8 +26,12 @@ verifier can inspect the transcript but cannot call tools or change simulated st
 - Resource endpoints: total tokens, provider-reported cost, latency, turns, and tool calls.
 - Unit of pairing: model, baseline, task family, scenario seed, and epoch.
 - Minimum public run: all 200 samples, at least three repetitions, immutable manifest, and explicit
-  cost cap.
+  per-sample and whole-study cost limits.
 
 Architecture comparisons must use the same underlying model. Model comparisons must use the same
 architecture and budgets. Confirmatory claims require declaring comparisons before looking at the
 full results and controlling multiplicity; exploratory differences must be labeled exploratory.
+
+The complete registered grid is encoded in `configs/experiments/v0.2.template.json`. Its preflight
+contains 4,800 sample executions per enabled model, making staged budgeting and model selection an
+explicit research decision rather than an incidental runner setting.

@@ -31,6 +31,10 @@ def _parser() -> argparse.ArgumentParser:
         "verify-reference", help="regenerate and verify the published reference world"
     )
     reference.add_argument("manifest", nargs="?", type=Path)
+    estimate = subparsers.add_parser(
+        "estimate-experiment", help="size an experiment grid and calculate cost exposure"
+    )
+    estimate.add_argument("config", type=Path)
     plan = subparsers.add_parser(
         "plan-experiment", help="create an immutable matched-budget experiment manifest"
     )
@@ -42,6 +46,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("manifest", type=Path)
     run.add_argument("--execute", action="store_true")
     run.add_argument("--acknowledge-costs", action="store_true")
+    run.add_argument("--acknowledge-max-cost-usd", type=float)
     analyze = subparsers.add_parser(
         "analyze-results", help="create sanitized statistics and leaderboard artifacts"
     )
@@ -116,6 +121,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"logical_sha256={manifest['logical_sha256']} "
             f"tables={len(manifest['table_counts'])}"
         )
+    elif args.command == "estimate-experiment":
+        from decision_agent_bench.experiments.planning import estimate_experiment
+        from decision_agent_bench.experiments.schema import load_experiment_config
+
+        report = estimate_experiment(load_experiment_config(args.config))
+        print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "plan-experiment":
         from decision_agent_bench.experiments.manifest import plan_experiment
         from decision_agent_bench.experiments.schema import load_experiment_config
@@ -129,6 +140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.manifest,
             execute=args.execute,
             acknowledge_costs=args.acknowledge_costs,
+            acknowledge_max_cost_usd=args.acknowledge_max_cost_usd,
         )
         print(json.dumps(report, indent=2, sort_keys=True))
         if report.get("status") == "error":

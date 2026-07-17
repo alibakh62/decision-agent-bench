@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from decision_agent_bench import __version__
+from decision_agent_bench.experiments.planning import estimate_experiment, validate_cost_preflight
 from decision_agent_bench.experiments.schema import ExperimentConfig
 from decision_agent_bench.simulator.reference import default_reference_manifest_path
 
@@ -121,6 +122,8 @@ def plan_experiment(config: ExperimentConfig, output_directory: Path) -> Path:
     now = datetime.now(UTC)
     created_at = now.isoformat()
     config_payload = config.to_dict()
+    estimate = estimate_experiment(config)
+    validate_cost_preflight(config, estimate)
     source = _git_state(repository)
     if any(model.enabled and model.publishable for model in config.models) and not source[
         "working_tree_clean"
@@ -178,6 +181,7 @@ def plan_experiment(config: ExperimentConfig, output_directory: Path) -> Path:
         "status": "planned",
         "plan_sha256": plan_sha256,
         "config": config_payload,
+        "estimate": estimate,
         "source": {
             **source,
             "task_entrypoint": f"{TASK_FILE}@{config.task_name}",

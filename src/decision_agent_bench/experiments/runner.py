@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import subprocess
@@ -48,16 +49,33 @@ def execute_manifest(
     *,
     execute: bool = False,
     acknowledge_costs: bool = False,
+    acknowledge_max_cost_usd: float | None = None,
 ) -> dict[str, Any]:
     """Print or execute every cell, requiring two explicit flags for paid work."""
 
     manifest = load_manifest(manifest_path)
     if execute and not acknowledge_costs:
         raise ValueError("--execute also requires --acknowledge-costs")
+    estimate = manifest.get("estimate", {})
+    if execute and estimate.get("contains_publishable_models"):
+        configured_exposure = estimate.get("configured_cost_exposure_usd")
+        if configured_exposure is None:
+            raise ValueError("publishable manifest has no configured cost exposure")
+        if acknowledge_max_cost_usd is None or not math.isclose(
+            acknowledge_max_cost_usd,
+            float(configured_exposure),
+            rel_tol=0,
+            abs_tol=0.005,
+        ):
+            raise ValueError(
+                "publishable execution requires --acknowledge-max-cost-usd "
+                f"{float(configured_exposure):.2f}"
+            )
     if not execute:
         return {
             "run_id": manifest["run_id"],
             "mode": "dry-run",
+            "estimate": estimate,
             "commands": [cell["command"] for cell in manifest["cells"]],
         }
 
