@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "decision-agent-bench"
+version = "0.0.1"
+description = "A benchmark for reliable long-horizon business decision agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "DecisionAgentBench contributors" }]
+keywords = ["ai-agents", "benchmark", "evaluation", "inspect-ai", "reliability"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+  "ruff>=0.11,<1",
+]
+
+[project.scripts]
+decision-agent-bench = "decision_agent_bench.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/decision_agent_bench"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"data/task_specs/v0.1.json" = "decision_agent_bench/data/v0.1.json"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
