@@ -251,9 +251,8 @@ def _analysis_assets(directories: tuple[Path, ...]) -> tuple[list[ReleaseAsset],
         if not name or name in names:
             raise ValueError("analysis bundle names must be unique and portable")
         names.add(name)
-        manifest = json.loads((directory / "analysis-manifest.json").read_text(encoding="utf-8"))
         contains_publishable = contains_publishable or bool(
-            manifest.get("contains_publishable_runs")
+            report.get("contains_publishable_runs")
         )
         for path in sorted(directory.iterdir()):
             if path.is_file():
@@ -558,7 +557,7 @@ def _verify_release_semantics(
             )
         if isinstance(analysis_manifest, dict):
             contains_publishable = contains_publishable or bool(
-                analysis_manifest.get("contains_publishable_runs")
+                report.get("contains_publishable_runs")
             )
         else:
             issues.append(f"analysis bundle {result_name} manifest must be an object")

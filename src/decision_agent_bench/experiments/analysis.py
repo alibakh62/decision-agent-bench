@@ -6,18 +6,20 @@ import csv
 import json
 import math
 import random
+import re
 import statistics
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass
-from pathlib import Path
+from dataclasses import asdict, dataclass, fields
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from inspect_ai.log import EvalLog, read_eval_log
 
+from decision_agent_bench.evals.instances import expanded_instance_catalog
 from decision_agent_bench.evals.scorer import SCORE_KEYS, parse_submission
 from decision_agent_bench.experiments.manifest import load_manifest
-from decision_agent_bench.experiments.planning import sample_count_for_cell
+from decision_agent_bench.experiments.schema import ExperimentConfig
 from decision_agent_bench.integrity import (
     digest_payload as _digest_payload,
 )
@@ -30,6 +32,7 @@ from decision_agent_bench.integrity import (
 from decision_agent_bench.integrity import (
     verify_evidence_files as _verify_evidence_files,
 )
+from decision_agent_bench.specs import load_task_specs
 
 ANALYSIS_ARTIFACTS = (
     "calibration.csv",
@@ -527,6 +530,288 @@ def _write_samples(records: list[SampleRecord], path: Path) -> None:
             handle.write(json.dumps(asdict(record), sort_keys=True) + "\n")
 
 
+def _portable_publication_plan(manifest: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Strip runtime paths/commands while retaining enough plan state to recompute coverage."""
+
+    if manifest is None:
+        return None
+    return {
+        "run_id": manifest["run_id"],
+        "config": manifest["config"],
+        "source": {
+            "git_commit": manifest["source"]["git_commit"],
+            "working_tree_clean": bool(manifest["source"].get("working_tree_clean", False)),
+            "reference_world_sha256": manifest["source"]["reference_world_sha256"],
+        },
+        "cells": [
+            {
+                key: cell[key]
+                for key in (
+                    "cell_id",
+                    "model",
+                    "model_family",
+                    "display_name",
+                    "publishable",
+                    "baseline",
+                    "variant",
+                    "category",
+                )
+            }
+            for cell in manifest["cells"]
+        ],
+    }
+
+
+def _read_sanitized_records(path: Path) -> tuple[list[SampleRecord], list[str]]:
+    records: list[SampleRecord] = []
+    issues: list[str] = []
+    expected_fields = {field.name for field in fields(SampleRecord)}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as error:
+        return [], [f"sanitized samples are unreadable: {error}"]
+    identities: set[tuple[str, str, str, str, str, int]] = set()
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            issues.append(f"sanitized sample line {line_number} is empty")
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError as error:
+            issues.append(f"sanitized sample line {line_number} is invalid JSON: {error}")
+            continue
+        if not isinstance(item, dict) or set(item) != expected_fields:
+            issues.append(f"sanitized sample line {line_number} has an invalid field set")
+            continue
+        string_fields = {
+            "run_id",
+            "benchmark_version",
+            "task_version",
+            "model",
+            "model_family",
+            "display_name",
+            "baseline",
+            "sample_id",
+            "instance_id",
+            "task_id",
+            "category",
+            "difficulty",
+            "variant",
+        }
+        if any(not isinstance(item[key], str) or not item[key] for key in string_fields):
+            issues.append(f"sanitized sample line {line_number} has invalid text fields")
+            continue
+        integer_fields = {
+            "scenario_seed",
+            "epoch",
+            "input_tokens",
+            "output_tokens",
+            "tool_calls",
+            "recoveries",
+            "turn_count",
+        }
+        if any(
+            not isinstance(item[key], int) or isinstance(item[key], bool)
+            for key in integer_fields
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid integer fields")
+            continue
+        if item["epoch"] < 1 or any(
+            item[key] < 0 for key in integer_fields if key != "epoch"
+        ):
+            issues.append(f"sanitized sample line {line_number} has negative count fields")
+            continue
+        scores = item.get("scores")
+        if not isinstance(scores, dict) or set(scores) != set(SCORE_KEYS) or not all(
+            isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and math.isfinite(float(value))
+            and 0.0 <= float(value) <= 1.0
+            for value in scores.values()
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid scores")
+            continue
+        failures = item.get("failures")
+        if not isinstance(failures, list) or not all(
+            isinstance(value, str) for value in failures
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid failures")
+            continue
+        confidence = item.get("confidence")
+        if confidence is not None and (
+            not isinstance(confidence, int | float)
+            or isinstance(confidence, bool)
+            or not math.isfinite(float(confidence))
+            or not 0.0 <= float(confidence) <= 1.0
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid confidence")
+            continue
+        cost = item.get("cost_usd")
+        if cost is not None and (
+            not isinstance(cost, int | float)
+            or isinstance(cost, bool)
+            or not math.isfinite(float(cost))
+            or cost < 0
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid cost")
+            continue
+        durations = (item.get("latency_seconds"), item.get("working_seconds"))
+        if any(
+            not isinstance(value, int | float)
+            or isinstance(value, bool)
+            or not math.isfinite(float(value))
+            or value < 0
+            for value in durations
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid durations")
+            continue
+        if not isinstance(item.get("publishable"), bool) or not isinstance(
+            item.get("correct"), bool
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid booleans")
+            continue
+        if item.get("perturbation") is not None and not isinstance(
+            item["perturbation"], str
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid perturbation")
+            continue
+        item["failures"] = tuple(failures)
+        try:
+            record = SampleRecord(**item)
+        except TypeError as error:
+            issues.append(f"sanitized sample line {line_number} is invalid: {error}")
+            continue
+        if record.publishable and record.model.startswith("mockllm/"):
+            issues.append(f"sanitized sample line {line_number} marks a mock model publishable")
+            continue
+        identity = (
+            record.run_id,
+            record.model,
+            record.baseline,
+            record.variant,
+            record.sample_id,
+            record.epoch,
+        )
+        if identity in identities:
+            issues.append(f"sanitized sample line {line_number} duplicates a scored sample")
+            continue
+        identities.add(identity)
+        records.append(record)
+    return records, issues
+
+
+def _manifest_from_publication_plan(
+    plan: Any, records: list[SampleRecord]
+) -> tuple[dict[str, Any] | None, list[str]]:
+    if plan is None:
+        return None, []
+    if not isinstance(plan, dict):
+        return None, ["publication plan must be an object"]
+    issues: list[str] = []
+    if set(plan) != {"run_id", "config", "source", "cells"}:
+        issues.append("publication plan has an invalid field set")
+    config_payload = plan.get("config")
+    try:
+        if not isinstance(config_payload, dict):
+            raise ValueError("config must be an object")
+        config = ExperimentConfig.from_dict(config_payload)
+    except (TypeError, ValueError) as error:
+        return None, [f"publication plan config is invalid: {error}"]
+    if _digest_payload(config.to_dict()) != _digest_payload(config_payload):
+        issues.append("publication plan config is not canonical and complete")
+    run_id = plan.get("run_id")
+    if not isinstance(run_id, str) or not run_id:
+        issues.append("publication plan run_id is missing")
+    source = plan.get("source")
+    if not isinstance(source, dict):
+        issues.append("publication plan source must be an object")
+        source = {}
+    elif set(source) != {
+        "git_commit",
+        "working_tree_clean",
+        "reference_world_sha256",
+    }:
+        issues.append("publication plan source has an invalid field set")
+    if re.fullmatch(r"[0-9a-f]{40}", str(source.get("git_commit", ""))) is None:
+        issues.append("publication plan source commit must be a full Git SHA")
+    if source.get("working_tree_clean") is not True:
+        issues.append("publication plan source is not clean")
+    if re.fullmatch(
+        r"[0-9a-f]{64}", str(source.get("reference_world_sha256", ""))
+    ) is None:
+        issues.append("publication plan reference-world digest is invalid")
+
+    cells = plan.get("cells")
+    if not isinstance(cells, list):
+        return None, [*issues, "publication plan cells must be a list"]
+    enabled_models = {model.model: model for model in config.models if model.enabled}
+    categories: tuple[str | None, ...] = config.categories or (None,)
+    expected_cells = {
+        (model.model, baseline, variant, category)
+        for model in enabled_models.values()
+        for baseline in config.baselines
+        for variant in config.variants
+        for category in categories
+    }
+    observed_cells: set[tuple[str, str, str, str | None]] = set()
+    cell_ids: set[str] = set()
+    required_cell_fields = {
+        "cell_id",
+        "model",
+        "model_family",
+        "display_name",
+        "publishable",
+        "baseline",
+        "variant",
+        "category",
+    }
+    for index, cell in enumerate(cells):
+        if not isinstance(cell, dict) or set(cell) != required_cell_fields:
+            issues.append(f"publication plan cell {index} has an invalid field set")
+            continue
+        identity = (
+            str(cell["model"]),
+            str(cell["baseline"]),
+            str(cell["variant"]),
+            str(cell["category"]) if cell["category"] is not None else None,
+        )
+        if identity in observed_cells:
+            issues.append(f"publication plan cell {index} duplicates a grid cell")
+        observed_cells.add(identity)
+        cell_id = str(cell["cell_id"])
+        if not cell_id or cell_id in cell_ids:
+            issues.append(f"publication plan cell {index} has a duplicate or empty cell_id")
+        cell_ids.add(cell_id)
+        model = enabled_models.get(str(cell["model"]))
+        if model is None:
+            issues.append(f"publication plan cell {index} uses a disabled or unknown model")
+        elif (
+            cell["publishable"] is not model.publishable
+            or cell["model_family"] != model.family
+            or cell["display_name"] != model.display_name
+        ):
+            issues.append(f"publication plan cell {index} model metadata is inconsistent")
+    if observed_cells != expected_cells:
+        issues.append("publication plan cells do not match the configured experiment grid")
+    for index, record in enumerate(records):
+        model = enabled_models.get(record.model)
+        if model is None:
+            issues.append(f"sanitized record {index} uses a disabled or unknown model")
+        elif (
+            record.publishable is not model.publishable
+            or record.model_family != model.family
+            or record.display_name != model.display_name
+        ):
+            issues.append(f"sanitized record {index} model metadata is inconsistent")
+    if issues:
+        return None, issues
+    return {
+        "run_id": run_id,
+        "config": config_payload,
+        "cells": cells,
+    }, []
+
+
 def _write_group_csv(summary: dict[str, Any], path: Path) -> None:
     fieldnames = [
         "model",
@@ -664,11 +949,47 @@ def _coverage_report(
     claimed_records: set[int] = set()
     for cell in manifest["cells"]:
         category = cell.get("category")
-        samples_per_epoch = sample_count_for_cell(
-            str(config["task_name"]),
-            category=str(category) if category is not None else None,
-            sample_limit=int(sample_limit) if sample_limit is not None else None,
-        )
+        task_name = str(config["task_name"])
+        selected_category = str(category) if category is not None else None
+        if task_name == "decision_agent_bench_v0_2":
+            catalog = [
+                {
+                    "sample_id": item[f"{cell['variant']}_sample_id"],
+                    "instance_id": item["instance_id"],
+                    "task_id": item["family_id"],
+                    "task_version": item["contract_version"],
+                    "scenario_seed": item["scenario_seed"],
+                    "category": item["category"],
+                    "difficulty": item["difficulty"],
+                    "perturbation": (
+                        item["perturbation"] if cell["variant"] == "perturbed" else None
+                    ),
+                }
+                for item in expanded_instance_catalog()
+                if selected_category is None or item["category"] == selected_category
+            ]
+        else:
+            catalog = [
+                {
+                    "sample_id": f"{spec['id']}-{cell['variant']}",
+                    "instance_id": f"{spec['id']}-i1",
+                    "task_id": spec["id"],
+                    "task_version": spec["version"],
+                    "scenario_seed": 20260717,
+                    "category": spec["category"],
+                    "difficulty": spec["difficulty"],
+                    "perturbation": (
+                        spec["perturbations"][0]
+                        if cell["variant"] == "perturbed"
+                        else None
+                    ),
+                }
+                for spec in load_task_specs()
+                if selected_category is None or spec["category"] == selected_category
+            ]
+        if sample_limit is not None:
+            catalog = catalog[: int(sample_limit)]
+        samples_per_epoch = len(catalog)
         expected = samples_per_epoch * repetitions
         matching = [
             (position, record)
@@ -681,13 +1002,46 @@ def _coverage_report(
         ]
         claimed_records.update(position for position, _record in matching)
         observed = len(matching)
+        expected_identities = {
+            (str(sample["sample_id"]), epoch)
+            for sample in catalog
+            for epoch in range(1, repetitions + 1)
+        }
+        observed_identities = {(record.sample_id, record.epoch) for _, record in matching}
+        expected_metadata = {str(sample["sample_id"]): sample for sample in catalog}
+        invalid_metadata = sum(
+            expected_metadata.get(record.sample_id) is None
+            or any(
+                getattr(record, key) != expected_metadata[record.sample_id][key]
+                for key in (
+                    "instance_id",
+                    "task_id",
+                    "task_version",
+                    "scenario_seed",
+                    "category",
+                    "difficulty",
+                    "perturbation",
+                )
+            )
+            or record.variant != cell["variant"]
+            or (
+                "benchmark_version" in config
+                and record.benchmark_version != config["benchmark_version"]
+            )
+            for _, record in matching
+        )
         cell_reports.append(
             {
                 "cell_id": cell["cell_id"],
                 "publishable": bool(cell["publishable"]),
                 "expected": expected,
                 "observed": observed,
-                "complete": observed == expected,
+                "invalid_records": invalid_metadata,
+                "complete": (
+                    observed == expected
+                    and observed_identities == expected_identities
+                    and invalid_metadata == 0
+                ),
             }
         )
     unexpected = len(records) - len(claimed_records)
@@ -820,6 +1174,7 @@ def analyze_logs(
             "source_working_tree_clean": bool(
                 manifest["source"].get("working_tree_clean", False)
             ),
+            "publication_plan": _portable_publication_plan(manifest),
         }
     analysis_manifest = {
         "schema_version": "2.0.0",
@@ -828,7 +1183,11 @@ def analyze_logs(
         "source_log_status_counts": dict(sorted(log_status_counts.items())),
         "scored_samples": len(records),
         "run_ids": sorted({record.run_id for record in records}),
-        "contains_publishable_runs": coverage["publication_eligible"],
+        "contains_publishable_runs": (
+            coverage["publication_eligible"]
+            and bool(source_log_evidence)
+            and log_status_counts["success"] > 0
+        ),
         "coverage": coverage,
         "experiment_manifest": experiment_manifest,
         "artifacts": [
@@ -857,10 +1216,55 @@ def verify_analysis_bundle(
     """Verify a result bundle and, when supplied, its raw-log and experiment provenance."""
 
     analysis_directory = analysis_directory.resolve()
-    payload = json.loads(
-        (analysis_directory / "analysis-manifest.json").read_text(encoding="utf-8")
-    )
+    try:
+        payload = json.loads(
+            (analysis_directory / "analysis-manifest.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError) as error:
+        return {
+            "schema_version": "1.0.0",
+            "verified": False,
+            "full_provenance_verified": False,
+            "analysis_manifest_sha256": None,
+            "artifact_count": 0,
+            "contains_publishable_runs": False,
+            "source_log_count": 0,
+            "source_logs_supplied": log_directory is not None,
+            "experiment_manifest_supplied": manifest_path is not None,
+            "issues": [f"analysis manifest is missing or invalid: {error}"],
+        }
+    if not isinstance(payload, dict):
+        return {
+            "schema_version": "1.0.0",
+            "verified": False,
+            "full_provenance_verified": False,
+            "analysis_manifest_sha256": None,
+            "artifact_count": 0,
+            "contains_publishable_runs": False,
+            "source_log_count": 0,
+            "source_logs_supplied": log_directory is not None,
+            "experiment_manifest_supplied": manifest_path is not None,
+            "issues": ["analysis manifest must be a JSON object"],
+        }
     issues: list[str] = []
+    expected_manifest_fields = {
+        "schema_version",
+        "source_log_count",
+        "source_logs",
+        "source_log_status_counts",
+        "scored_samples",
+        "run_ids",
+        "contains_publishable_runs",
+        "coverage",
+        "experiment_manifest",
+        "artifacts",
+        "sanitization",
+        "manifest_sha256",
+    }
+    if set(payload) != expected_manifest_fields:
+        issues.append("analysis manifest has an invalid field set")
+    if not isinstance(payload.get("sanitization"), str) or not payload["sanitization"]:
+        issues.append("analysis sanitization statement is missing")
     expected_manifest_sha256 = payload.get("manifest_sha256")
     unsigned_payload = {key: value for key, value in payload.items() if key != "manifest_sha256"}
     if payload.get("schema_version") != "2.0.0":
@@ -889,18 +1293,67 @@ def verify_analysis_bundle(
         if unexpected:
             issues.append(f"artifact set has unexpected entries: {unexpected}")
 
+    records, record_issues = _read_sanitized_records(
+        analysis_directory / "samples.sanitized.jsonl"
+    )
+    issues.extend(record_issues)
+    if payload.get("scored_samples") != len(records):
+        issues.append("scored-sample count does not match sanitized records")
+    run_ids = sorted({record.run_id for record in records})
+    if payload.get("run_ids") != run_ids:
+        issues.append("run IDs do not match sanitized records")
+
     source_log_issues: list[str] | None = None
     source_logs = payload.get("source_logs", [])
+    source_evidence_valid = True
     if not isinstance(source_logs, list):
         issues.append("source logs must be a list")
         source_logs = []
+        source_evidence_valid = False
+    source_paths_seen: set[str] = set()
+    for index, item in enumerate(source_logs):
+        if not isinstance(item, dict) or set(item) != {
+            "path",
+            "bytes",
+            "sha256",
+            "status",
+        }:
+            issues.append(f"source-log evidence {index} has an invalid field set")
+            source_evidence_valid = False
+            continue
+        path = item["path"]
+        portable_path = PurePosixPath(path) if isinstance(path, str) else None
+        if (
+            portable_path is None
+            or portable_path.is_absolute()
+            or not portable_path.parts
+            or ".." in portable_path.parts
+            or portable_path.suffix != ".eval"
+            or path in source_paths_seen
+        ):
+            issues.append(f"source-log evidence {index} has an unsafe or duplicate path")
+            source_evidence_valid = False
+        else:
+            source_paths_seen.add(path)
+        if (
+            not isinstance(item["bytes"], int)
+            or isinstance(item["bytes"], bool)
+            or item["bytes"] < 0
+            or re.fullmatch(r"[0-9a-f]{64}", str(item["sha256"])) is None
+            or not isinstance(item["status"], str)
+            or not item["status"]
+        ):
+            issues.append(f"source-log evidence {index} has invalid metadata")
+            source_evidence_valid = False
     if payload.get("source_log_count") != len(source_logs):
         issues.append("source-log count does not match the evidence list")
+        source_evidence_valid = False
     declared_status_counts = Counter(
         str(item.get("status")) for item in source_logs if isinstance(item, dict)
     )
     if payload.get("source_log_status_counts") != dict(sorted(declared_status_counts.items())):
         issues.append("source-log status counts do not match the evidence list")
+        source_evidence_valid = False
     if log_directory is not None:
         resolved_logs = log_directory.resolve()
         source_log_issues, source_paths = _verify_evidence_files(
@@ -927,11 +1380,76 @@ def verify_analysis_bundle(
                 if status != item.get("status"):
                     source_log_issues.append(f"status mismatch: {item['path']}")
         issues.extend(source_log_issues)
+        if source_log_issues:
+            source_evidence_valid = False
     elif require_sources:
         issues.append("source-log directory is required")
 
     experiment_manifest_issues: list[str] | None = None
     expected_experiment_manifest = payload.get("experiment_manifest")
+    if expected_experiment_manifest is not None:
+        required_evidence_fields = {
+            "sha256",
+            "manifest_sha256",
+            "run_id",
+            "source_git_commit",
+            "source_working_tree_clean",
+            "publication_plan",
+        }
+        if (
+            not isinstance(expected_experiment_manifest, dict)
+            or set(expected_experiment_manifest) != required_evidence_fields
+        ):
+            issues.append("experiment manifest evidence has an invalid field set")
+        else:
+            if re.fullmatch(
+                r"[0-9a-f]{64}", str(expected_experiment_manifest["sha256"])
+            ) is None or re.fullmatch(
+                r"[0-9a-f]{64}", str(expected_experiment_manifest["manifest_sha256"])
+            ) is None:
+                issues.append("experiment manifest evidence has invalid digests")
+            if not isinstance(expected_experiment_manifest["run_id"], str) or not isinstance(
+                expected_experiment_manifest["source_working_tree_clean"], bool
+            ):
+                issues.append("experiment manifest evidence has invalid control fields")
+            if re.fullmatch(
+                r"[0-9a-f]{40}",
+                str(expected_experiment_manifest["source_git_commit"]),
+            ) is None:
+                issues.append("experiment manifest evidence has an invalid source commit")
+    publication_plan = (
+        expected_experiment_manifest.get("publication_plan")
+        if isinstance(expected_experiment_manifest, dict)
+        else None
+    )
+    portable_manifest, plan_issues = _manifest_from_publication_plan(
+        publication_plan, records
+    )
+    issues.extend(plan_issues)
+    if isinstance(expected_experiment_manifest, dict) and isinstance(publication_plan, dict):
+        plan_source = publication_plan.get("source")
+        if (
+            expected_experiment_manifest.get("run_id") != publication_plan.get("run_id")
+            or not isinstance(plan_source, dict)
+            or expected_experiment_manifest.get("source_git_commit")
+            != plan_source.get("git_commit")
+            or expected_experiment_manifest.get("source_working_tree_clean")
+            is not plan_source.get("working_tree_clean")
+        ):
+            issues.append("experiment manifest evidence does not match the publication plan")
+    recomputed_coverage = _coverage_report(records, portable_manifest)
+    if payload.get("coverage") != recomputed_coverage:
+        issues.append("coverage report does not match sanitized records and publication plan")
+    evidence_is_publishable = (
+        recomputed_coverage["publication_eligible"]
+        and bool(source_logs)
+        and declared_status_counts["success"] > 0
+        and source_evidence_valid
+        and isinstance(expected_experiment_manifest, dict)
+        and not plan_issues
+    )
+    if payload.get("contains_publishable_runs") is not evidence_is_publishable:
+        issues.append("publishable-results claim does not match recomputed evidence")
     if manifest_path is not None:
         experiment_manifest_issues = []
         try:
@@ -952,6 +1470,7 @@ def verify_analysis_bundle(
                     "source_working_tree_clean": bool(
                         experiment_manifest["source"].get("working_tree_clean", False)
                     ),
+                    "publication_plan": _portable_publication_plan(experiment_manifest),
                 }
                 if comparisons != expected_experiment_manifest:
                     experiment_manifest_issues.append("experiment manifest evidence mismatch")
@@ -974,7 +1493,8 @@ def verify_analysis_bundle(
         ),
         "analysis_manifest_sha256": expected_manifest_sha256,
         "artifact_count": len(artifact_paths),
-        "source_log_count": len(payload.get("source_logs", [])),
+        "contains_publishable_runs": evidence_is_publishable,
+        "source_log_count": len(source_logs),
         "source_logs_supplied": log_directory is not None,
         "experiment_manifest_supplied": manifest_path is not None,
         "issues": issues,

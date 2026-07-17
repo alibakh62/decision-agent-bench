@@ -198,9 +198,11 @@ calibration includes Brier score and fixed-width reliability bins. Confirmatory 
 must report effect sizes and intervals and control the declared family of tests. Execution order
 should be randomized within provider constraints.
 
-The analyzer checks every record against the immutable manifest. An incomplete publishable cell,
-an unexpected record, or a missing manifest prevents leaderboard inclusion. The full implemented
-estimand definitions appear in `docs/statistical-analysis.md`.
+The analyzer checks every record against the immutable manifest. The standalone verifier repeats
+that check from sanitized records and a path- and command-free copy of the publication plan. An
+incomplete publishable cell, malformed or duplicate record, inconsistent model identity, unexpected
+record, or missing manifest prevents leaderboard inclusion. The full implemented estimand
+definitions appear in `docs/statistical-analysis.md`.
 
 The analyzer emits sanitized sample telemetry, group summaries, failure counts, robustness and
 failure matrices, and a publishable-only leaderboard. Prompts, targets, transcripts, raw tool

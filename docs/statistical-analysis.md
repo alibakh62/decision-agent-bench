@@ -62,11 +62,13 @@ accuracy, and absolute calibration gap. Invalid or missing confidence values are
 
 ## Coverage and publication eligibility
 
-An analysis without its content-hashed experiment manifest is never leaderboard-eligible. With a
-manifest, the analyzer derives the expected record count for every model, architecture, variant,
-category slice, repetition count, and benchmark version. Every publishable cell must be complete and
-every analyzed record must match a manifest cell. Partial or unexpected results remain analyzable
-for debugging but are excluded from the public leaderboard.
+An analysis without its content-hashed experiment manifest is never leaderboard-eligible. The
+shareable bundle carries a path- and command-free copy of the preregistered plan. Its independent
+verifier parses the sanitized sample records and re-derives the expected record count for every
+model, architecture, variant, category slice, repetition count, and benchmark version. The plan
+must contain at least three distinct publishable model families. Every publishable cell must be
+complete and every analyzed record must match a manifest cell. Partial, duplicate, malformed, mock,
+or unexpected results remain ineligible even if an analysis manifest is regenerated around them.
 
 Execution reports are resumable and append-only at the cell-attempt level. A failed cell retains its
 redacted stdout/stderr record, successful cells are not charged or executed twice during a resume,

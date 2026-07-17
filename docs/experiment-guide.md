@@ -13,8 +13,9 @@ you authorize for the complete grid. The template names three provider families 
 model recommendations that will become stale. Credentials must come from provider environment
 variables and are rejected in `model_args`.
 
-Official v0.1 results require both baselines, both variants, all 25 task families, and at least
-three repetitions. `configs/experiments/smoke.json` is deliberately limited and non-publishable.
+Official v0.1 results require at least three distinct publishable model families, both baselines,
+both variants, all 25 task families, and at least three repetitions.
+`configs/experiments/smoke.json` is deliberately limited and non-publishable.
 
 ## 2. Plan
 
@@ -72,7 +73,8 @@ The analyzer emits:
   model-baseline-variant error profiles;
 - `leaderboard.md`: publishable runs only, ranked by composite score; and
 - `analysis-manifest.json`: SHA-256 and byte-size evidence for every source log and generated
-  artifact, the immutable experiment-manifest identity, coverage, and sanitization provenance.
+  artifact, the immutable experiment-manifest identity, a path- and command-free publication plan,
+  coverage, and sanitization provenance.
 
 The analyzer refuses to mix a new run into a non-empty output directory and verifies that source
 logs did not change during analysis. Verify a downloaded shareable bundle without raw logs:
@@ -90,9 +92,11 @@ decision-agent-bench verify-analysis results/generated/<run-id> \
   --require-sources
 ```
 
-The first form proves that the published files match their content-addressed manifest. The strict
-form also proves that the bundle was derived from the declared complete raw-log set and content-
-hashed experiment plan. Any missing, added, or changed file fails verification.
+The first form parses every sanitized record and independently reconstructs grid coverage and
+publication eligibility from the portable plan; a rehashed manifest cannot promote missing,
+duplicate, malformed, mock, or plan-inconsistent records. The strict form also proves that the
+bundle was derived from the declared complete raw-log set and content-hashed experiment plan. Any
+missing, added, or changed file fails verification.
 
 The analysis manifest also counts successful and failed source logs so operational retries remain
 visible in a public run card.

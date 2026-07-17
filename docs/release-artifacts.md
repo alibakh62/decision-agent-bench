@@ -21,9 +21,10 @@ shape or an empty scanner report is not evidence of dependency coverage.
 and instance counts from the bundled catalogs, verifies the reference-world digest claim, rechecks
 SBOM and vulnerability-report inventories against the bundled lock, requires current OpenVEX
 coverage for every finding, verifies every embedded analysis bundle, and recomputes whether the
-release contains publishable results. For final releases it additionally requires passing container
-provenance, the matching source tag, and a verified publishable analysis. Rewriting an artifact and
-then regenerating the outer manifest and checksums does not bypass these checks.
+release contains publishable results from its sanitized records and portable three-family
+publication plan. For final releases it additionally requires passing container provenance, the
+matching source tag, and a verified publishable analysis. Rewriting an artifact and then
+regenerating the outer manifest and checksums does not bypass these checks.
 
 ## Local release-candidate rehearsal
 

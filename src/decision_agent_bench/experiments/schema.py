@@ -195,6 +195,8 @@ class ExperimentConfig:
         publishable = [model for model in self.models if model.enabled and model.publishable]
         if publishable:
             protocol_errors = []
+            if len({model.family for model in publishable}) < 3:
+                protocol_errors.append("at least three publishable model families")
             if self.repetitions < 3:
                 protocol_errors.append("at least three repetitions")
             if not REFERENCE_BASELINES <= set(self.baselines):

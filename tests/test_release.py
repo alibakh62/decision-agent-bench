@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
 
-from decision_agent_bench.experiments.analysis import ANALYSIS_ARTIFACTS
+from decision_agent_bench.experiments.analysis import (
+    ANALYSIS_ARTIFACTS,
+    SampleRecord,
+    _coverage_report,
+    verify_analysis_bundle,
+)
+from decision_agent_bench.experiments.schema import ExperimentConfig
 from decision_agent_bench.integrity import digest_payload, file_evidence, sha256_file
 from decision_agent_bench.release import assemble_release_bundle, verify_release_bundle
+from decision_agent_bench.specs import load_task_specs
 
 
 def _write_fake_repository(root: Path, version: str = "0.2.0.dev0") -> Path:
@@ -53,19 +61,141 @@ def _clean_state(version: str = "0.2.0.dev0") -> dict[str, object]:
 
 def _write_publishable_analysis(directory: Path) -> None:
     directory.mkdir()
+    run_id = "20260717T170000Z-publication"
+    config = ExperimentConfig.from_dict(
+        {
+            "name": "primary-study",
+            "models": [
+                {
+                    "model": f"provider-{index}/model",
+                    "family": f"provider-{index}",
+                    "display_name": f"Provider {index}",
+                    "publishable": True,
+                }
+                for index in range(1, 4)
+            ],
+            "repetitions": 3,
+            "budget": {"cost_limit_usd": 0.01, "study_cost_limit_usd": 9.0},
+        }
+    )
+    config_payload = config.to_dict()
+    cells = [
+        {
+            "cell_id": f"{model.family}-{baseline}-{variant}",
+            "model": model.model,
+            "model_family": model.family,
+            "display_name": model.display_name,
+            "publishable": model.publishable,
+            "baseline": baseline,
+            "variant": variant,
+            "category": None,
+        }
+        for model in config.models
+        for baseline in config.baselines
+        for variant in config.variants
+    ]
+    scores = {
+        "task_effectiveness": 0.9,
+        "decision_quality": 0.9,
+        "safety": 1.0,
+        "robustness": 0.8,
+        "calibration": 0.9,
+        "efficiency": 0.8,
+        "recovery": 0.8,
+        "explainability": 0.9,
+        "composite": 0.875,
+    }
+    records = [
+        SampleRecord(
+            run_id=run_id,
+            benchmark_version=config.benchmark_version,
+            task_version=str(spec["version"]),
+            model=model.model,
+            model_family=model.family,
+            display_name=model.display_name,
+            publishable=model.publishable,
+            baseline=baseline,
+            sample_id=f"{spec['id']}-{variant}",
+            instance_id=f"{spec['id']}-i1",
+            task_id=str(spec["id"]),
+            scenario_seed=20260717,
+            category=str(spec["category"]),
+            difficulty=str(spec["difficulty"]),
+            variant=variant,
+            perturbation=(
+                str(spec["perturbations"][0]) if variant == "perturbed" else None
+            ),
+            epoch=epoch,
+            scores=scores,
+            confidence=0.9,
+            correct=True,
+            failures=(),
+            input_tokens=100,
+            output_tokens=20,
+            cost_usd=0.001,
+            latency_seconds=1.0,
+            working_seconds=0.9,
+            tool_calls=2,
+            recoveries=1 if variant == "perturbed" else 0,
+            turn_count=3,
+        )
+        for model in config.models
+        for baseline in config.baselines
+        for variant in config.variants
+        for spec in load_task_specs()
+        for epoch in range(1, config.repetitions + 1)
+    ]
     for name in ANALYSIS_ARTIFACTS:
-        (directory / name).write_text(f"published: {name}\n", encoding="utf-8")
+        if name != "samples.sanitized.jsonl":
+            (directory / name).write_text(f"published: {name}\n", encoding="utf-8")
+    (directory / "samples.sanitized.jsonl").write_text(
+        "".join(json.dumps(asdict(record), sort_keys=True) + "\n" for record in records),
+        encoding="utf-8",
+    )
+    plan = {
+        "run_id": run_id,
+        "config": config_payload,
+        "source": {
+            "git_commit": "b" * 40,
+            "working_tree_clean": True,
+            "reference_world_sha256": "a" * 64,
+        },
+        "cells": cells,
+    }
+    coverage = _coverage_report(
+        records, {"run_id": run_id, "config": config_payload, "cells": cells}
+    )
+    source_logs = [
+        {
+            "path": f"{cell['cell_id']}/results.eval",
+            "bytes": 1,
+            "sha256": "c" * 64,
+            "status": "success",
+        }
+        for cell in cells
+    ]
     payload: dict[str, object] = {
         "schema_version": "2.0.0",
-        "source_log_count": 0,
-        "source_logs": [],
-        "source_log_status_counts": {},
+        "source_log_count": len(source_logs),
+        "source_logs": source_logs,
+        "source_log_status_counts": {"success": len(source_logs)},
+        "scored_samples": len(records),
+        "run_ids": [run_id],
         "contains_publishable_runs": True,
-        "experiment_manifest": None,
+        "coverage": coverage,
+        "experiment_manifest": {
+            "sha256": "d" * 64,
+            "manifest_sha256": "e" * 64,
+            "run_id": run_id,
+            "source_git_commit": "b" * 40,
+            "source_working_tree_clean": True,
+            "publication_plan": plan,
+        },
         "artifacts": [
             file_evidence(directory / name, relative_to=directory)
             for name in ANALYSIS_ARTIFACTS
         ],
+        "sanitization": "test fixture excludes raw provider content",
     }
     payload["manifest_sha256"] = digest_payload(payload)
     (directory / "analysis-manifest.json").write_text(
@@ -93,6 +223,40 @@ def _resign_outer_bundle(directory: Path) -> None:
         "".join(f"{sha256_file(directory / path)}  {path}\n" for path in checksum_paths),
         encoding="utf-8",
     )
+
+
+def _resign_analysis_bundle(directory: Path) -> None:
+    manifest_path = directory / "analysis-manifest.json"
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["artifacts"] = [
+        file_evidence(directory / name, relative_to=directory)
+        for name in ANALYSIS_ARTIFACTS
+    ]
+    payload.pop("manifest_sha256", None)
+    payload["manifest_sha256"] = digest_payload(payload)
+    manifest_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
+def test_publishable_analysis_rejects_rehashed_model_identity_tamper(
+    tmp_path: Path,
+) -> None:
+    analysis = tmp_path / "primary"
+    _write_publishable_analysis(analysis)
+    samples_path = analysis / "samples.sanitized.jsonl"
+    lines = samples_path.read_text(encoding="utf-8").splitlines()
+    first = json.loads(lines[0])
+    first["model_family"] = "counterfeit-family"
+    lines[0] = json.dumps(first, sort_keys=True)
+    samples_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _resign_analysis_bundle(analysis)
+
+    report = verify_analysis_bundle(analysis)
+
+    assert report["verified"] is False
+    assert report["contains_publishable_runs"] is False
+    assert "sanitized record 0 model metadata is inconsistent" in report["issues"]
 
 
 def test_release_bundle_is_exact_and_detects_tampering(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -29,6 +30,18 @@ def _config_path(name: str) -> Path:
     return Path(__file__).parents[1] / "configs" / "experiments" / name
 
 
+def _publishable_models() -> list[dict[str, object]]:
+    return [
+        {
+            "model": f"provider-{index}/model",
+            "family": f"provider-{index}",
+            "display_name": f"Provider {index}",
+            "publishable": True,
+        }
+        for index in range(1, 4)
+    ]
+
+
 def _record(
     variant: str,
     composite: float,
@@ -36,6 +49,10 @@ def _record(
     epoch: int = 1,
     instance_id: str = "DAB-SAL-001-i1",
     task_id: str = "DAB-SAL-001",
+    sample_id: str | None = None,
+    category: str = "sales_diagnosis",
+    difficulty: str = "medium",
+    task_version: str = "0.1.0",
     safety: float = 1.0,
     confidence: float | None = 0.9,
 ) -> SampleRecord:
@@ -53,18 +70,18 @@ def _record(
     return SampleRecord(
         run_id="run-1",
         benchmark_version="0.2.0",
-        task_version="0.1.0",
+        task_version=task_version,
         model="provider/model",
         model_family="provider",
         display_name="Provider model",
         publishable=True,
         baseline="single_agent",
-        sample_id=f"{instance_id}-{variant}",
+        sample_id=sample_id or f"{instance_id}-{variant}",
         instance_id=instance_id,
         task_id=task_id,
         scenario_seed=20260717,
-        category="sales_diagnosis",
-        difficulty="medium",
+        category=category,
+        difficulty=difficulty,
         variant=variant,
         perturbation="missing_store_day_partition" if variant == "perturbed" else None,
         epoch=epoch,
@@ -275,22 +292,35 @@ def test_publishable_config_enforces_full_protocol_and_cost_cap() -> None:
         ExperimentConfig.from_dict(payload)
 
 
+def test_publishable_config_requires_three_distinct_model_families() -> None:
+    payload = {
+        "name": "single-family-study",
+        "models": [
+            {
+                "model": f"provider/model-{index}",
+                "family": "provider",
+                "display_name": f"Provider model {index}",
+                "publishable": True,
+            }
+            for index in range(3)
+        ],
+        "repetitions": 3,
+        "budget": {"cost_limit_usd": 1.0, "study_cost_limit_usd": 900.0},
+    }
+
+    with pytest.raises(ValueError, match="three publishable model families"):
+        ExperimentConfig.from_dict(payload)
+
+
 def test_publishable_plan_rejects_dirty_worktree(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config = ExperimentConfig.from_dict(
         {
             "name": "publishable-study",
-            "models": [
-                {
-                    "model": "provider/model",
-                    "family": "provider",
-                    "display_name": "Provider model",
-                    "publishable": True,
-                }
-            ],
+            "models": _publishable_models(),
             "repetitions": 3,
-            "budget": {"cost_limit_usd": 1.0, "study_cost_limit_usd": 300.0},
+            "budget": {"cost_limit_usd": 1.0, "study_cost_limit_usd": 900.0},
         }
     )
     monkeypatch.setattr(
@@ -307,30 +337,23 @@ def test_publishable_plan_enforces_aggregate_cost_and_amount_acknowledgement(
 ) -> None:
     payload = {
         "name": "publishable-study",
-        "models": [
-            {
-                "model": "provider/model",
-                "family": "provider",
-                "display_name": "Provider model",
-                "publishable": True,
-            }
-        ],
+        "models": _publishable_models(),
         "repetitions": 3,
-        "budget": {"cost_limit_usd": 1.0, "study_cost_limit_usd": 299.0},
+        "budget": {"cost_limit_usd": 1.0, "study_cost_limit_usd": 899.0},
     }
     monkeypatch.setattr(
         "decision_agent_bench.experiments.manifest._git_state",
         lambda _repository: {"git_commit": "a" * 40, "working_tree_clean": True},
     )
-    with pytest.raises(ValueError, match=r"\$300.00 exceeds study cost limit \$299.00"):
+    with pytest.raises(ValueError, match=r"\$900.00 exceeds study cost limit \$899.00"):
         plan_experiment(ExperimentConfig.from_dict(payload), tmp_path)
 
-    payload["budget"]["study_cost_limit_usd"] = 300.0
+    payload["budget"]["study_cost_limit_usd"] = 900.0
     manifest_path = plan_experiment(ExperimentConfig.from_dict(payload), tmp_path)
     manifest = load_manifest(manifest_path)
 
-    assert manifest["estimate"]["configured_cost_exposure_usd"] == 300.0
-    with pytest.raises(ValueError, match="--acknowledge-max-cost-usd 300.00"):
+    assert manifest["estimate"]["configured_cost_exposure_usd"] == 900.0
+    with pytest.raises(ValueError, match="--acknowledge-max-cost-usd 900.00"):
         execute_manifest(manifest_path, execute=True, acknowledge_costs=True)
     monkeypatch.setattr(
         "decision_agent_bench.experiments.runner.subprocess.run",
@@ -341,11 +364,11 @@ def test_publishable_plan_enforces_aggregate_cost_and_amount_acknowledgement(
         manifest_path,
         execute=True,
         acknowledge_costs=True,
-        acknowledge_max_cost_usd=300.0,
+        acknowledge_max_cost_usd=900.0,
     )
 
     assert executed["status"] == "success"
-    assert len(executed["cells"]) == 4
+    assert len(executed["cells"]) == 12
 
 
 def test_summary_reports_reliability_and_paired_robustness_delta() -> None:
@@ -443,6 +466,10 @@ def test_publishable_coverage_requires_every_manifest_sample() -> None:
             0.9,
             instance_id=f"{spec['id']}-i1",
             task_id=str(spec["id"]),
+            sample_id=f"{spec['id']}-clean",
+            category=str(spec["category"]),
+            difficulty=str(spec["difficulty"]),
+            task_version=str(spec["version"]),
         )
         for spec in load_task_specs()
     ]
@@ -467,11 +494,17 @@ def test_publishable_coverage_requires_every_manifest_sample() -> None:
 
     complete = _coverage_report(records, manifest)
     incomplete = _coverage_report(records[:-1], manifest)
+    counterfeit = _coverage_report(
+        [replace(records[0], sample_id="counterfeit-clean"), *records[1:]], manifest
+    )
 
     assert complete["publication_eligible"] is True
     assert complete["cells"][0]["observed"] == 25
     assert incomplete["publication_eligible"] is False
     assert incomplete["cells"][0]["observed"] == 24
+    assert counterfeit["publication_eligible"] is False
+    assert counterfeit["cells"][0]["observed"] == 25
+    assert counterfeit["cells"][0]["invalid_records"] == 1
 
 
 def test_coverage_without_manifest_is_never_publishable() -> None:
@@ -484,23 +517,48 @@ def test_coverage_without_manifest_is_never_publishable() -> None:
 def _write_test_analysis_bundle(directory: Path) -> dict[str, object]:
     directory.mkdir()
     for name in ANALYSIS_ARTIFACTS:
-        (directory / name).write_text(f"test artifact: {name}\n", encoding="utf-8")
+        content = "" if name == "samples.sanitized.jsonl" else f"test artifact: {name}\n"
+        (directory / name).write_text(content, encoding="utf-8")
     payload: dict[str, object] = {
         "schema_version": "2.0.0",
         "source_log_count": 0,
         "source_logs": [],
         "source_log_status_counts": {},
+        "scored_samples": 0,
+        "run_ids": [],
+        "contains_publishable_runs": False,
+        "coverage": _coverage_report([], None),
         "experiment_manifest": None,
         "artifacts": [
             _file_evidence(directory / name, relative_to=directory)
             for name in ANALYSIS_ARTIFACTS
         ],
+        "sanitization": "test fixture contains no raw provider content",
     }
     payload["manifest_sha256"] = _digest_payload(payload)
     (directory / "analysis-manifest.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return payload
+
+
+def test_analysis_bundle_rejects_self_declared_publishability_without_evidence(
+    tmp_path: Path,
+) -> None:
+    analysis = tmp_path / "analysis"
+    payload = _write_test_analysis_bundle(analysis)
+    payload["contains_publishable_runs"] = True
+    payload.pop("manifest_sha256")
+    payload["manifest_sha256"] = _digest_payload(payload)
+    (analysis / "analysis-manifest.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    report = verify_analysis_bundle(analysis)
+
+    assert report["verified"] is False
+    assert report["contains_publishable_runs"] is False
+    assert "publishable-results claim does not match recomputed evidence" in report["issues"]
 
 
 def test_analysis_bundle_verifier_detects_artifact_tampering(tmp_path: Path) -> None:

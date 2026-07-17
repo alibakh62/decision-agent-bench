@@ -123,7 +123,8 @@ decision-agent-bench run-experiment runs/<run-id>/manifest.json
 Execution requires both `--execute` and `--acknowledge-costs`. A publishable run additionally
 requires the exact `--acknowledge-max-cost-usd` amount printed by preflight. Publishable
 configurations are rejected unless they cover all tasks, both variants, both reference baselines,
-at least three repetitions, and explicit per-sample and whole-study cost limits. See the
+at least three repetitions, at least three distinct publishable model families, and explicit
+per-sample and whole-study cost limits. See the
 [experiment guide](docs/experiment-guide.md).
 
 After analysis, verify the shareable result bundle on its own or bind it back to the exact raw logs
