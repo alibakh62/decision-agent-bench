@@ -69,13 +69,42 @@ def execute_manifest(
     execution_environment["HOME"] = str(runtime_home)
     execution_environment["XDG_CACHE_HOME"] = str(runtime_home / ".cache")
     execution_environment["TIKTOKEN_CACHE_DIR"] = str(runtime_home / ".cache" / "tiktoken")
-    execution: dict[str, Any] = {
-        "run_id": manifest["run_id"],
-        "started_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
-        "status": "running",
-        "cells": [],
+    if execution_path.exists():
+        execution = json.loads(execution_path.read_text(encoding="utf-8"))
+        if execution.get("run_id") != manifest["run_id"]:
+            raise ValueError("execution run_id does not match the manifest")
+        if execution.get("status") == "success":
+            raise ValueError("manifest execution is already complete")
+        execution.setdefault("resumed_at", []).append(
+            datetime.now(UTC).replace(microsecond=0).isoformat()
+        )
+        execution["status"] = "running"
+    else:
+        execution = {
+            "schema_version": "2.0.0",
+            "run_id": manifest["run_id"],
+            "started_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+            "status": "running",
+            "cells": [],
+        }
+    existing_cells = {
+        str(cell["cell_id"]): cell
+        for cell in execution["cells"]
+        if isinstance(cell, dict) and cell.get("cell_id")
     }
     for cell in manifest["cells"]:
+        cell_result = existing_cells.get(cell["cell_id"])
+        if cell_result and cell_result.get("status") == "success":
+            continue
+        if cell_result is None:
+            cell_result = {
+                "cell_id": cell["cell_id"],
+                "status": "pending",
+                "attempts": [],
+            }
+            execution["cells"].append(cell_result)
+            existing_cells[cell["cell_id"]] = cell_result
+        attempts = cell_result.setdefault("attempts", [])
         result = subprocess.run(
             list(cell["command"]),
             cwd=repository,
@@ -90,8 +119,8 @@ def execute_manifest(
             and bool(eval_statuses)
             and all(status == "success" for status in eval_statuses)
         )
-        cell_result = {
-            "cell_id": cell["cell_id"],
+        attempt = {
+            "attempt": len(attempts) + 1,
             "exit_code": result.returncode,
             "eval_statuses": eval_statuses,
             "status": "success" if succeeded else "error",
@@ -99,7 +128,9 @@ def execute_manifest(
             "stderr_tail": _redact(result.stderr),
             "completed_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         }
-        execution["cells"].append(cell_result)
+        attempts.append(attempt)
+        cell_result["status"] = attempt["status"]
+        cell_result["completed_at"] = attempt["completed_at"]
         execution_path.write_text(
             json.dumps(execution, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )

@@ -64,6 +64,11 @@ def test_expanded_dataset_has_100_instances_and_200_paired_samples() -> None:
     assert len(clean) == 100
     assert len(both) == 200
     assert len({sample.id for sample in both}) == 200
+    assert len({sample.metadata["instance_id"] for sample in both}) == 100
+    assert all(
+        clean_sample.metadata["instance_id"] == perturbed_sample.metadata["instance_id"]
+        for clean_sample, perturbed_sample in zip(both[::2], both[1::2], strict=True)
+    )
     assert {sample.metadata["scenario_seed"] for sample in both} == {
         20260717,
         20260718,

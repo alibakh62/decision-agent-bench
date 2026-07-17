@@ -35,7 +35,9 @@ decision-agent-bench run-experiment runs/<run-id>/manifest.json \
 
 Inspect model API request bodies are not logged. Per-cell stdout and stderr tails are credential-
 redacted before the execution report is written. The runner stops after the first failed cell so a
-bad credential, model ID, or rate limit does not multiply costs.
+bad credential, model ID, or rate limit does not multiply costs. Re-running the same manifest
+preserves the failed attempt, retries that cell, and skips cells already marked successful. A
+completed manifest cannot be executed again.
 
 ## 4. Analyze and publish
 
@@ -48,15 +50,26 @@ The analyzer emits:
 
 - `samples.sanitized.jsonl`: scores and resource telemetry without prompts, targets, transcripts,
   tool results, temporary paths, or raw provider payloads;
-- `summary.json` and `summary.csv`: means, sample standard deviations, and deterministic 95%
-  bootstrap intervals by model, baseline, and variant;
+- `summary.json` and `summary.csv`: means, sample standard deviations, task-family cluster-bootstrap
+  intervals, Wilson safety intervals, and calibration diagnostics by model, baseline, and variant;
+- `paired-effects.csv`: clean-to-perturbed score and resource deltas with family-cluster intervals;
+- `calibration.csv`: fixed-bin confidence, accuracy, and absolute-gap data;
 - `failure-counts.csv`: public taxonomy counts;
 - `robustness-matrix.csv` and `failure-matrix.csv`: category/perturbation outcomes and
   model-baseline-variant error profiles;
 - `leaderboard.md`: publishable runs only, ranked by composite score; and
 - `analysis-manifest.json`: source-log and sanitization provenance.
 
-Clean and perturbed samples are paired by model, baseline, task, and epoch. The paired robustness
-effect is reported as perturbed minus clean composite score. Reliability is shown through repeated-
-run variability; confidence intervals are descriptive and should not be treated as proof of model
-superiority without a preregistered comparison and multiplicity-aware analysis.
+The analysis manifest also counts successful and failed source logs so operational retries remain
+visible in a public run card.
+
+Clean and perturbed samples are paired by run, model, baseline, seeded instance, and epoch. The
+paired robustness effect is reported as perturbed minus clean for all score dimensions, tool calls,
+tokens, and latency. Reliability is computed across repeated epochs of the same instance. The
+analyzer resamples whole task families because four v0.2 instances from one family are not
+independent concepts. See the [statistical analysis protocol](statistical-analysis.md).
+
+The leaderboard requires a verified immutable manifest and complete coverage of every publishable
+cell. Partial runs remain useful diagnostics but are excluded from ranking. Confidence intervals are
+descriptive and should not be treated as proof of model superiority without a preregistered
+comparison and multiplicity-aware analysis.

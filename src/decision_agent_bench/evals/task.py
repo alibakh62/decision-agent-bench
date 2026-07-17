@@ -53,6 +53,7 @@ def build_dataset(
                     str(spec["perturbations"][0]) if selected_variant == "perturbed" else None
                 )
                 target = case.target()
+                instance_id = f"{case.task_id}-i{instance_index + 1}"
                 instance_suffix = (
                     f"-i{instance_index + 1}" if instances_per_family > 1 else ""
                 )
@@ -67,6 +68,7 @@ def build_dataset(
                             "category": spec["category"],
                             "difficulty": spec["difficulty"],
                             "horizon": spec["horizon"],
+                            "instance_id": instance_id,
                             "instance_index": instance_index + 1,
                             "scenario_seed": 20260717 + instance_index,
                             "variant": selected_variant,

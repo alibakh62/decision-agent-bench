@@ -146,7 +146,8 @@ kappa, majority labels, and three-way confusion comparisons.
 
 See also [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md),
 [the failure taxonomy](docs/failure-taxonomy.md), [the synthetic-data card](docs/data-card.md),
-[the staged roadmap](docs/roadmap.md), and the [public-release checklist](docs/release-checklist.md).
+[the statistical analysis protocol](docs/statistical-analysis.md), [the staged roadmap](docs/roadmap.md),
+and the [public-release checklist](docs/release-checklist.md).
 
 ## Contributing
 

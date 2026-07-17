@@ -22,6 +22,11 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   editable, speaker-noted research-talk deck.
 - Citation and archive metadata, leaderboard governance, external reproduction, current Inspect
   Evals registration guidance, and an evidence-gated release checklist.
+- Analysis schema 2.0: seeded-instance identity, correct 100-pair v0.2 matching,
+  within-instance reliability, task-family cluster bootstrap intervals, Wilson safety intervals,
+  calibration tables, paired resource effects, and manifest-completeness leaderboard gating.
+- Resumable execution schema 2.0 preserves failed cell attempts, skips completed paid cells, and
+  prevents a completed immutable plan from being executed twice.
 
 ## [0.1.0] - 2026-07-17
 

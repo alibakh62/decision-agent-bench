@@ -190,12 +190,17 @@ code commit and dirty flag, reference-world digest, model IDs, generation settin
 scenario coverage, budgets, cost cap, and exact commands. Execution is dry by default and requires
 separate execute and cost-acknowledgement flags.
 
-Clean and perturbed samples are paired by run, model, baseline, task, and epoch. Primary reports
-include means and sample standard deviations, within-task variability, deterministic bootstrap
-intervals, and perturbed-minus-clean paired effects. Binary safety violations require counts and
-intervals even when zero. Confirmatory system contrasts should use a family-cluster bootstrap or
-hierarchical model, report effect sizes and intervals, and control the declared family of tests.
-Execution order should be randomized within provider constraints.
+Clean and perturbed samples are paired by run, model, baseline, seeded instance, and epoch. Primary
+reports include means and sample standard deviations, within-instance repeatability, deterministic
+task-family cluster-bootstrap intervals, and perturbed-minus-clean paired score and resource
+effects. Binary safety violations include counts and Wilson intervals even when zero. Confidence
+calibration includes Brier score and fixed-width reliability bins. Confirmatory system contrasts
+must report effect sizes and intervals and control the declared family of tests. Execution order
+should be randomized within provider constraints.
+
+The analyzer checks every record against the immutable manifest. An incomplete publishable cell,
+an unexpected record, or a missing manifest prevents leaderboard inclusion. The full implemented
+estimand definitions appear in `docs/statistical-analysis.md`.
 
 The analyzer emits sanitized sample telemetry, group summaries, failure counts, robustness and
 failure matrices, and a publishable-only leaderboard. Prompts, targets, transcripts, raw tool
