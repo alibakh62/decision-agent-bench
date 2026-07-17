@@ -1,6 +1,6 @@
 IMAGE ?= decision-agent-bench:0.2.0-dev
 
-.PHONY: check test validate verify-reference audit demo docker-build docker-verify docker-audit
+.PHONY: check test validate verify-reference audit audit-inspect demo docker-build docker-verify docker-audit
 
 check:
 	python -m ruff check .
@@ -21,6 +21,9 @@ verify-reference:
 
 audit:
 	PYTHONPATH=src python -m decision_agent_bench audit-release --output build/release-audit.json
+
+audit-inspect:
+	PYTHONPATH=src python -m decision_agent_bench audit-inspect-registration
 
 demo:
 	PYTHONPATH=src python -m decision_agent_bench demo --host 127.0.0.1 --port 7860

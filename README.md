@@ -156,6 +156,9 @@ kappa, majority labels, and three-way confusion comparisons.
 - [Leaderboard governance](docs/leaderboard-governance.md) and [external reproduction](docs/external-reproduction.md)
 - [Current Inspect Evals registration package](docs/inspect-evals-registration.md)
 
+The registration package includes an offline preflight that verifies the current upstream
+requirements without publishing anything: `make audit-inspect`.
+
 See also [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md),
 [the failure taxonomy](docs/failure-taxonomy.md), [the synthetic-data card](docs/data-card.md),
 [the statistical analysis protocol](docs/statistical-analysis.md), [the staged roadmap](docs/roadmap.md),

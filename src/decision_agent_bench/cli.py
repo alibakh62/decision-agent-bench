@@ -103,6 +103,29 @@ def _parser() -> argparse.ArgumentParser:
         "verify-release", help="verify an archival release bundle and checksums"
     )
     verify_release.add_argument("bundle", type=Path)
+    inspect_audit = subparsers.add_parser(
+        "audit-inspect-registration",
+        help="audit readiness for an Inspect Evals Register issue",
+    )
+    inspect_audit.add_argument("--repository", type=Path, default=Path.cwd())
+    inspect_audit.add_argument("--repository-url")
+    inspect_audit.add_argument("--commit")
+    inspect_audit.add_argument("--arxiv-url")
+    inspect_audit.add_argument("--maintainer", action="append", default=[])
+    inspect_audit.add_argument("--task", default="decision_agent_bench_v0_2")
+    inspect_audit.add_argument("--output", type=Path)
+    inspect_audit.add_argument("--strict", action="store_true")
+    inspect_prepare = subparsers.add_parser(
+        "prepare-inspect-registration",
+        help="write validated Inspect Evals issue-form values",
+    )
+    inspect_prepare.add_argument("output", type=Path)
+    inspect_prepare.add_argument("--repository", type=Path, default=Path.cwd())
+    inspect_prepare.add_argument("--repository-url", required=True)
+    inspect_prepare.add_argument("--commit")
+    inspect_prepare.add_argument("--arxiv-url", required=True)
+    inspect_prepare.add_argument("--maintainer", action="append", default=[])
+    inspect_prepare.add_argument("--task", default="decision_agent_bench_v0_2")
     return parser
 
 
@@ -232,6 +255,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
         if not report["verified"]:
             return 1
+    elif args.command == "audit-inspect-registration":
+        from decision_agent_bench.inspect_registry import audit_inspect_registration
+
+        report = audit_inspect_registration(
+            args.repository,
+            repository_url=args.repository_url,
+            commit=args.commit,
+            arxiv_url=args.arxiv_url,
+            maintainers=tuple(args.maintainer),
+            task_name=args.task,
+        )
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(
+                json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+        print(json.dumps(report, indent=2, sort_keys=True))
+        if report["status"] == "fail" or (args.strict and report["status"] != "pass"):
+            return 1
+    elif args.command == "prepare-inspect-registration":
+        from decision_agent_bench.inspect_registry import prepare_inspect_submission
+
+        report = prepare_inspect_submission(
+            args.repository,
+            args.output,
+            repository_url=args.repository_url,
+            commit=args.commit,
+            arxiv_url=args.arxiv_url,
+            maintainers=tuple(args.maintainer),
+            task_name=args.task,
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 
 
