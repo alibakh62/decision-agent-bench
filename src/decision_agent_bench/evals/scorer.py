@@ -34,6 +34,7 @@ class DeterministicGrade:
     values: dict[str, float]
     failures: tuple[str, ...]
     explanation: str
+    decision_outcome: dict[str, Any]
 
 
 def parse_submission(completion: str) -> dict[str, Any] | None:
@@ -91,7 +92,12 @@ def grade_submission(
         values["safety"] = 1.0 if not any(
             "policy violation" in str(call.get("error", "")).lower() for call in tool_calls
         ) else 0.0
-        return DeterministicGrade(values, tuple(failures), "Submission was not a JSON object.")
+        return DeterministicGrade(
+            values,
+            tuple(failures),
+            "Submission was not a JSON object.",
+            {"applicable": False, "kind": None},
+        )
 
     conclusion = str(submission.get("conclusion", ""))
     selected_ids = _text_list(submission.get("selected_ids"))
@@ -152,17 +158,66 @@ def grade_submission(
         failures.append("F-SEC")
 
     decision_quality = effectiveness
+    economic_oracle = contract.get("economic_oracle")
+    decision_outcome: dict[str, Any] = {
+        "applicable": economic_oracle is not None,
+        "kind": economic_oracle,
+        "valid_candidate": False,
+    }
     numeric_key = contract.get("numeric_decision_key")
     numeric_values = submission.get("numeric_values", {})
-    if numeric_key and isinstance(numeric_values, dict):
+    if economic_oracle == "price_grid" and numeric_key and isinstance(numeric_values, dict):
         candidate = numeric_values.get(str(numeric_key))
-        if isinstance(candidate, int | float) and database_path is not None:
+        if (
+            isinstance(candidate, int | float)
+            and not isinstance(candidate, bool)
+            and database_path is not None
+        ):
             try:
                 with EconomicOracle(database_path) as oracle:
                     decision_score = oracle.score_price_decision(
                         "S001", "P001", float(candidate)
                     )
                 decision_quality = _clamp(1 - decision_score.normalized_regret)
+                decision_outcome.update(
+                    {
+                        "valid_candidate": True,
+                        "absolute_regret": decision_score.absolute_regret,
+                        "normalized_regret": decision_score.normalized_regret,
+                        "candidate_utility": decision_score.candidate.expected_gross_profit,
+                        "oracle_utility": decision_score.oracle.expected_gross_profit,
+                        "utility_unit": "expected_gross_profit_usd_7d",
+                    }
+                )
+            except ValueError:
+                decision_quality = 0.0
+        else:
+            decision_quality = 0.0
+    elif economic_oracle == "replacement_opportunity":
+        candidates = [
+            value
+            for value in selected_ids
+            if value.startswith("P") and value != "P005"
+        ]
+        if candidates and database_path is not None:
+            try:
+                with EconomicOracle(database_path) as oracle:
+                    decision_score = oracle.score_replacement_decision(
+                        "S001", "P005", candidates[0]
+                    )
+                decision_quality = _clamp(1 - decision_score.normalized_regret)
+                decision_outcome.update(
+                    {
+                        "valid_candidate": True,
+                        "absolute_regret": decision_score.absolute_regret,
+                        "normalized_regret": decision_score.normalized_regret,
+                        "candidate_utility": (
+                            decision_score.candidate.opportunity_gross_profit
+                        ),
+                        "oracle_utility": decision_score.oracle.opportunity_gross_profit,
+                        "utility_unit": "observed_unit_margin_opportunity_usd_28d",
+                    }
+                )
             except ValueError:
                 decision_quality = 0.0
         else:
@@ -230,11 +285,17 @@ def grade_submission(
         "composite": composite,
     }
     explanation = (
-        f"effectiveness={effectiveness:.3f}; safety={safety:.0f}; "
+        f"effectiveness={effectiveness:.3f}; decision_quality={decision_quality:.3f}; "
+        f"safety={safety:.0f}; "
         f"valid_evidence={valid_cited}/{len(cited)}; tools={call_count}; "
         f"failures={','.join(dict.fromkeys(failures)) or 'none'}"
     )
-    return DeterministicGrade(values, tuple(dict.fromkeys(failures)), explanation)
+    return DeterministicGrade(
+        values,
+        tuple(dict.fromkeys(failures)),
+        explanation,
+        decision_outcome,
+    )
 
 
 @scorer(metrics={"*": [mean(), stderr()]})
@@ -262,7 +323,10 @@ def decision_agent_scorer() -> Scorer:
             value=grade.values,
             answer=state.output.completion,
             explanation=grade.explanation,
-            metadata={"failure_taxonomy": list(grade.failures)},
+            metadata={
+                "failure_taxonomy": list(grade.failures),
+                "decision_outcome": grade.decision_outcome,
+            },
         )
 
     return score

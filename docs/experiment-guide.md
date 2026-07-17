@@ -63,9 +63,11 @@ decision-agent-bench analyze-results runs/<run-id>/logs results/generated/<run-i
 The analyzer emits:
 
 - `samples.sanitized.jsonl`: scores and resource telemetry without prompts, targets, transcripts,
-  tool results, temporary paths, or raw provider payloads;
+  tool results, temporary paths, or raw provider payloads; oracle-applicable samples retain the
+  oracle kind, utility unit, candidate/oracle utility, and absolute and normalized regret;
 - `summary.json` and `summary.csv`: means, sample standard deviations, task-family cluster-bootstrap
-  intervals, Wilson safety intervals, and calibration diagnostics by model, baseline, and variant;
+  intervals, Wilson safety intervals, calibration diagnostics, and valid/invalid oracle outcome
+  counts with regret summaries by model, baseline, and variant;
 - `paired-effects.csv`: clean-to-perturbed score and resource deltas with family-cluster intervals;
 - `calibration.csv`: fixed-bin confidence, accuracy, and absolute-gap data;
 - `failure-counts.csv`: public taxonomy counts;

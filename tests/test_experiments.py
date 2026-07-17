@@ -273,6 +273,26 @@ def test_config_rejects_embedded_credentials() -> None:
         ExperimentConfig.from_dict(payload)
 
 
+def test_config_rejects_task_and_scoring_version_mismatch() -> None:
+    payload = {
+        "name": "mismatched-v02",
+        "task_name": "decision_agent_bench_v0_2",
+        "benchmark_version": "0.2.0",
+        "task_version": "0.1.0",
+        "models": [
+            {
+                "model": "mockllm/model",
+                "family": "mock",
+                "display_name": "Mock",
+                "publishable": False,
+            }
+        ],
+    }
+
+    with pytest.raises(ValueError, match="requires benchmark_version and task_version 0.2.0"):
+        ExperimentConfig.from_dict(payload)
+
+
 def test_publishable_config_enforces_full_protocol_and_cost_cap() -> None:
     payload = {
         "name": "incomplete-public-run",
@@ -386,6 +406,32 @@ def test_summary_reports_reliability_and_paired_robustness_delta() -> None:
     assert clean["metrics"]["composite"]["std"] > 0
     assert paired["pairs"] == 2
     assert paired["perturbed_minus_clean_composite"]["mean"] == pytest.approx(-0.3)
+
+
+def test_summary_preserves_absolute_and_normalized_business_regret() -> None:
+    records = [
+        replace(
+            _record("clean", 0.9, instance_id=f"DAB-ASS-001-i{index}"),
+            task_id="DAB-ASS-001",
+            category="assortment",
+            oracle_kind="replacement_opportunity",
+            absolute_regret=regret,
+            normalized_regret=normalized,
+            candidate_utility=208.28 - regret,
+            oracle_utility=208.28,
+            utility_unit="observed_unit_margin_opportunity_usd_28d",
+        )
+        for index, (regret, normalized) in enumerate(
+            ((0.0, 0.0), (64.44, 0.309391)), start=1
+        )
+    ]
+
+    outcomes = summarize_records(records)["groups"][0]["decision_outcomes"]
+
+    assert outcomes["applicable_n"] == 2
+    assert outcomes["valid_n"] == 2
+    assert outcomes["normalized_regret_mean"] == pytest.approx(0.154696)
+    assert outcomes["by_oracle"][0]["absolute_regret"]["mean"] == 32.22
 
 
 def test_v02_pairs_distinct_instances_in_the_same_family() -> None:
@@ -520,7 +566,7 @@ def _write_test_analysis_bundle(directory: Path) -> dict[str, object]:
         content = "" if name == "samples.sanitized.jsonl" else f"test artifact: {name}\n"
         (directory / name).write_text(content, encoding="utf-8")
     payload: dict[str, object] = {
-        "schema_version": "2.0.0",
+        "schema_version": "2.1.0",
         "source_log_count": 0,
         "source_logs": [],
         "source_log_status_counts": {},

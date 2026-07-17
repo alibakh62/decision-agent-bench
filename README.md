@@ -16,8 +16,9 @@ The first domain is a fully synthetic convenience-retail company. No proprietary
 > registration remain evidence gates; no frontier-model performance claims have been made.
 
 The research track also includes a registered v0.2 expansion with 100 seeded instances (200 paired
-samples), four advanced architectures, and two prompt ablations. These are tested research
-infrastructure, not empirical performance claims.
+samples), four advanced architectures, two prompt ablations, and a versioned assortment-regret
+oracle in addition to the frozen v0.1 pricing oracle. These are tested research infrastructure, not
+empirical performance claims.
 
 ## Why this benchmark
 

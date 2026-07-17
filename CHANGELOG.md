@@ -47,6 +47,12 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   release eligibility instead of trusting a self-declared publication flag.
 - Release audits and provenance checks support allow-listed Docker or Podman runtimes and record the
   selected engine, preserving identical image verification in CI and local OCI environments.
+- The v0.2 scoring contract adds an exhaustive information-matched replacement-product oracle while
+  retaining frozen v0.1 semantics; manifests now reject benchmark/scoring version mismatches and
+  the instance catalog records both v0.2 contract and inherited family-spec versions.
+- Analysis schema 2.1 preserves oracle applicability, utility units, candidate and feasible-optimal
+  utility, and absolute and normalized regret in sanitized records and group summaries instead of
+  reducing executable economic outcomes to one composite input.
 
 ## [0.1.0] - 2026-07-17
 

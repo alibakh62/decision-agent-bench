@@ -37,6 +37,12 @@ test optimality and tolerance. Tool failures do not grant the oracle hidden futu
 paired analysis separately measures whether the agent recovers access to valid decision-time
 evidence.
 
+The implemented examples make this boundary concrete. The v0.1 pricing oracle exhaustively searches
+the policy-feasible one-cent price grid. The versioned v0.2 replacement oracle enumerates active
+same-category products with feasible vendors and compares observed 28-day unit-margin opportunity.
+Because the latter changes the scoring estimand, it is added only to the v0.2 contract rather than
+silently rewriting v0.1 leaderboard values.
+
 ## Why a fluent answer can be economically wrong
 
 Language rewards coherence. A detailed promotion narrative can emphasize unit lift and customer

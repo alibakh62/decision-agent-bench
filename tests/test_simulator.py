@@ -138,3 +138,23 @@ def test_oracle_reports_zero_regret_for_its_optimal_price(world: Path) -> None:
 
     assert initial.oracle.expected_gross_profit >= initial.candidate.expected_gross_profit
     assert optimal.normalized_regret == 0
+
+
+def test_replacement_oracle_exhaustively_ranks_feasible_same_category_products(
+    world: Path,
+) -> None:
+    with EconomicOracle(world) as oracle:
+        outcomes = oracle.replacement_outcomes("S001", "P005")
+        optimal = oracle.score_replacement_decision("S001", "P005", "P021")
+        dominated = oracle.score_replacement_decision("S001", "P005", "P001")
+
+    assert {outcome.candidate_product_id for outcome in outcomes} == {
+        "P001",
+        "P009",
+        "P013",
+        "P017",
+        "P021",
+    }
+    assert optimal.oracle.candidate_product_id == "P021"
+    assert optimal.normalized_regret == 0
+    assert dominated.normalized_regret > 0

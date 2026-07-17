@@ -89,6 +89,12 @@ class SampleRecord:
     tool_calls: int
     recoveries: int
     turn_count: int
+    oracle_kind: str | None = None
+    absolute_regret: float | None = None
+    normalized_regret: float | None = None
+    candidate_utility: float | None = None
+    oracle_utility: float | None = None
+    utility_unit: str | None = None
 
 
 def _model_lookup(manifest: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
@@ -143,6 +149,9 @@ def records_from_eval_log(
         tool_calls = sample_store.get("dab.tool_calls", [])
         recoveries = sample_store.get("dab.recoveries", [])
         failures = tuple(str(item) for item in (score.metadata or {}).get("failure_taxonomy", []))
+        decision_outcome = (score.metadata or {}).get("decision_outcome", {})
+        if not isinstance(decision_outcome, dict):
+            decision_outcome = {}
         completion = str(getattr(sample.output, "completion", ""))
         submission = parse_submission(completion)
         raw_confidence = submission.get("confidence") if submission else None
@@ -189,6 +198,36 @@ def records_from_eval_log(
                 tool_calls=len(tool_calls) if isinstance(tool_calls, list) else 0,
                 recoveries=len(recoveries) if isinstance(recoveries, list) else 0,
                 turn_count=int(sample.turn_count or 0),
+                oracle_kind=(
+                    str(decision_outcome["kind"])
+                    if decision_outcome.get("kind") is not None
+                    else None
+                ),
+                absolute_regret=(
+                    float(decision_outcome["absolute_regret"])
+                    if decision_outcome.get("absolute_regret") is not None
+                    else None
+                ),
+                normalized_regret=(
+                    float(decision_outcome["normalized_regret"])
+                    if decision_outcome.get("normalized_regret") is not None
+                    else None
+                ),
+                candidate_utility=(
+                    float(decision_outcome["candidate_utility"])
+                    if decision_outcome.get("candidate_utility") is not None
+                    else None
+                ),
+                oracle_utility=(
+                    float(decision_outcome["oracle_utility"])
+                    if decision_outcome.get("oracle_utility") is not None
+                    else None
+                ),
+                utility_unit=(
+                    str(decision_outcome["utility_unit"])
+                    if decision_outcome.get("utility_unit") is not None
+                    else None
+                ),
             )
         )
     return records
@@ -328,6 +367,64 @@ def _calibration_summary(items: list[SampleRecord]) -> dict[str, Any]:
     }
 
 
+def _decision_outcome_summary(
+    items: list[SampleRecord], *, seed: int
+) -> dict[str, Any]:
+    applicable = [item for item in items if item.oracle_kind is not None]
+    valid = [item for item in applicable if item.normalized_regret is not None]
+    by_oracle = []
+    for offset, kind in enumerate(
+        sorted({str(item.oracle_kind) for item in applicable})
+    ):
+        kind_items = [item for item in applicable if item.oracle_kind == kind]
+        kind_valid = [item for item in kind_items if item.normalized_regret is not None]
+        units = sorted(
+            {str(item.utility_unit) for item in kind_valid if item.utility_unit is not None}
+        )
+        by_oracle.append(
+            {
+                "kind": kind,
+                "utility_unit": units[0] if len(units) == 1 else None,
+                "applicable_n": len(kind_items),
+                "valid_n": len(kind_valid),
+                "invalid_candidate_n": len(kind_items) - len(kind_valid),
+                "absolute_regret": _metric_summary(
+                    [float(item.absolute_regret) for item in kind_valid],
+                    [item.task_id for item in kind_valid],
+                    seed=seed + offset * 17,
+                ),
+                "normalized_regret": _metric_summary(
+                    [float(item.normalized_regret) for item in kind_valid],
+                    [item.task_id for item in kind_valid],
+                    seed=seed + offset * 17 + 1,
+                ),
+                "candidate_utility": _metric_summary(
+                    [float(item.candidate_utility) for item in kind_valid],
+                    [item.task_id for item in kind_valid],
+                    seed=seed + offset * 17 + 2,
+                ),
+                "oracle_utility": _metric_summary(
+                    [float(item.oracle_utility) for item in kind_valid],
+                    [item.task_id for item in kind_valid],
+                    seed=seed + offset * 17 + 3,
+                ),
+            }
+        )
+    return {
+        "applicable_n": len(applicable),
+        "valid_n": len(valid),
+        "invalid_candidate_n": len(applicable) - len(valid),
+        "normalized_regret_mean": (
+            round(
+                statistics.fmean(float(item.normalized_regret) for item in valid), 6
+            )
+            if valid
+            else None
+        ),
+        "by_oracle": by_oracle,
+    }
+
+
 def summarize_records(records: list[SampleRecord], *, seed: int = 20260717) -> dict[str, Any]:
     """Aggregate metrics and paired robustness deltas with deterministic bootstrap CIs."""
 
@@ -380,6 +477,9 @@ def summarize_records(records: list[SampleRecord], *, seed: int = 20260717) -> d
                     )[1],
                 },
                 "calibration": _calibration_summary(items),
+                "decision_outcomes": _decision_outcome_summary(
+                    items, seed=seed + 50_000 + index * 101
+                ),
                 "failure_counts": dict(sorted(failures.items())),
             }
         )
@@ -460,7 +560,7 @@ def summarize_records(records: list[SampleRecord], *, seed: int = 20260717) -> d
             }
         )
     return {
-        "analysis_schema_version": "2.0.0",
+        "analysis_schema_version": "2.1.0",
         "uncertainty_method": "task-family cluster bootstrap (2,000 draws)",
         "groups": summaries,
         "paired_robustness": robustness,
@@ -675,6 +775,60 @@ def _read_sanitized_records(path: Path) -> tuple[list[SampleRecord], list[str]]:
         ):
             issues.append(f"sanitized sample line {line_number} has invalid perturbation")
             continue
+        oracle_kind = item.get("oracle_kind")
+        utility_unit = item.get("utility_unit")
+        oracle_numbers = {
+            key: item.get(key)
+            for key in (
+                "absolute_regret",
+                "normalized_regret",
+                "candidate_utility",
+                "oracle_utility",
+            )
+        }
+        if oracle_kind is None:
+            if utility_unit is not None or any(
+                value is not None for value in oracle_numbers.values()
+            ):
+                issues.append(
+                    f"sanitized sample line {line_number} has orphaned oracle telemetry"
+                )
+                continue
+        else:
+            values_present = [
+                value is not None for value in oracle_numbers.values()
+            ]
+            if (
+                oracle_kind not in {"price_grid", "replacement_opportunity"}
+                or (any(values_present) and not all(values_present))
+                or (not any(values_present) and utility_unit is not None)
+                or (
+                    all(values_present)
+                    and (
+                        not isinstance(utility_unit, str)
+                        or not utility_unit
+                        or any(
+                            not isinstance(value, int | float)
+                            or isinstance(value, bool)
+                            or not math.isfinite(float(value))
+                            for value in oracle_numbers.values()
+                        )
+                    )
+                )
+                or (
+                    all(values_present)
+                    and (
+                        float(oracle_numbers["absolute_regret"]) < 0
+                        or not 0
+                        <= float(oracle_numbers["normalized_regret"])
+                        <= 1
+                    )
+                )
+            ):
+                issues.append(
+                    f"sanitized sample line {line_number} has invalid oracle telemetry"
+                )
+                continue
         item["failures"] = tuple(failures)
         try:
             record = SampleRecord(**item)
@@ -832,6 +986,9 @@ def _write_group_csv(summary: dict[str, Any], path: Path) -> None:
         "safety_violation_wilson95_high",
         "calibration_eligible_n",
         "brier_score",
+        "oracle_applicable_n",
+        "oracle_valid_n",
+        "normalized_regret_mean",
     ]
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -853,6 +1010,11 @@ def _write_group_csv(summary: dict[str, Any], path: Path) -> None:
                     ],
                     "calibration_eligible_n": group["calibration"]["eligible_n"],
                     "brier_score": group["calibration"]["brier_score"],
+                    "oracle_applicable_n": group["decision_outcomes"]["applicable_n"],
+                    "oracle_valid_n": group["decision_outcomes"]["valid_n"],
+                    "normalized_regret_mean": group["decision_outcomes"][
+                        "normalized_regret_mean"
+                    ],
                 }
             )
             writer.writerow(row)
@@ -1177,7 +1339,7 @@ def analyze_logs(
             "publication_plan": _portable_publication_plan(manifest),
         }
     analysis_manifest = {
-        "schema_version": "2.0.0",
+        "schema_version": "2.1.0",
         "source_log_count": len(paths),
         "source_logs": source_log_evidence,
         "source_log_status_counts": dict(sorted(log_status_counts.items())),
@@ -1267,7 +1429,7 @@ def verify_analysis_bundle(
         issues.append("analysis sanitization statement is missing")
     expected_manifest_sha256 = payload.get("manifest_sha256")
     unsigned_payload = {key: value for key, value in payload.items() if key != "manifest_sha256"}
-    if payload.get("schema_version") != "2.0.0":
+    if payload.get("schema_version") != "2.1.0":
         issues.append("unsupported analysis manifest schema")
     if expected_manifest_sha256 != _digest_payload(unsigned_payload):
         issues.append("analysis manifest hash mismatch")

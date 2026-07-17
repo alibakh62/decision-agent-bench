@@ -18,6 +18,7 @@ class CaseDefinition:
     required_tools: tuple[str, ...]
     expected_ids: tuple[str, ...] = ()
     expects_escalation: bool | None = None
+    economic_oracle: str | None = None
     numeric_decision_key: str | None = None
     min_evidence: int = 2
     optimal_tool_calls: int = 4
@@ -99,6 +100,7 @@ CASES = (
         "For an S001/P001 pricing pilot, recommend a `new_price` within all policy limits that maximizes expected seven-day gross profit. Explain how unit cost, price response, inventory cover, and the margin guardrail affect the decision.",
         (("gross profit", "margin"), ("price", "elastic"), ("inventory", "cover")),
         ("retail_sql", "forecast_demand", "search_documents"),
+        economic_oracle="price_grid",
         numeric_decision_key="new_price",
     ),
     CaseDefinition(
@@ -229,3 +231,12 @@ def validate_cases() -> None:
         missing = sorted(spec_ids - case_ids)
         extra = sorted(case_ids - spec_ids)
         raise ValueError(f"case/spec mismatch; missing={missing}, extra={extra}")
+    unknown_oracles = sorted(
+        {
+            str(case.economic_oracle)
+            for case in CASES
+            if case.economic_oracle not in {None, "price_grid"}
+        }
+    )
+    if unknown_oracles:
+        raise ValueError(f"unknown economic oracles: {unknown_oracles}")

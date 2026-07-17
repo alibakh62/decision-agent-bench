@@ -1,7 +1,7 @@
 # Statistical analysis protocol
 
 This document defines the implemented DecisionAgentBench estimands and uncertainty calculations.
-It is normative for analysis schema `2.0.0`. Any change to these definitions is result-affecting and
+It is normative for analysis schema `2.1.0`. Any change to these definitions is result-affecting and
 requires a changelog entry and a new analysis-schema version.
 
 ## Analysis grains
@@ -74,6 +74,15 @@ Execution reports are resumable and append-only at the cell-attempt level. A fai
 redacted stdout/stderr record, successful cells are not charged or executed twice during a resume,
 and an already completed manifest cannot be rerun. Analysis manifests disclose source-log status
 counts so retries cannot disappear from the result package.
+
+## Executable decision utility
+
+For oracle-applicable samples, schema 2.1 retains the oracle kind and utility unit, candidate and
+optimal feasible utility, absolute regret, and normalized regret in sanitized telemetry. A missing
+or infeasible candidate is counted as an invalid oracle outcome rather than silently imputed.
+Absolute utilities are summarized only within the same oracle kind and unit; normalized regret can
+be compared across oracle types. Task-family cluster-bootstrap intervals are reported for each
+oracle-specific outcome group.
 
 ## Confirmatory comparisons
 

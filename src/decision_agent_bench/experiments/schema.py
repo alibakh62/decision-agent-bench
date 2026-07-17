@@ -187,6 +187,17 @@ class ExperimentConfig:
             raise ValueError("baselines and variants cannot be empty")
         if self.task_name not in KNOWN_TASKS:
             raise ValueError(f"unknown task_name {self.task_name!r}")
+        expected_version = (
+            "0.2.0" if self.task_name == "decision_agent_bench_v0_2" else "0.1.0"
+        )
+        if (
+            self.benchmark_version != expected_version
+            or self.task_version != expected_version
+        ):
+            raise ValueError(
+                f"{self.task_name} requires benchmark_version and task_version "
+                f"{expected_version}"
+            )
         if self.repetitions < 1:
             raise ValueError("repetitions must be positive")
         if self.sample_limit is not None and self.sample_limit < 1:

@@ -27,6 +27,7 @@ def build_dataset(
     category: str | None = None,
     variant: str = "clean",
     instances_per_family: int = 1,
+    benchmark_version: str = "0.1.0",
 ) -> MemoryDataset:
     """Build the versioned in-memory dataset used by the Inspect task."""
 
@@ -53,6 +54,8 @@ def build_dataset(
                     str(spec["perturbations"][0]) if selected_variant == "perturbed" else None
                 )
                 target = case.target()
+                if benchmark_version == "0.2.0" and case.task_id == "DAB-ASS-001":
+                    target["economic_oracle"] = "replacement_opportunity"
                 instance_id = f"{case.task_id}-i{instance_index + 1}"
                 instance_suffix = (
                     f"-i{instance_index + 1}" if instances_per_family > 1 else ""
@@ -64,7 +67,12 @@ def build_dataset(
                         target=json.dumps(target, sort_keys=True),
                         metadata={
                             "task_id": case.task_id,
-                            "task_version": spec["version"],
+                            "task_version": (
+                                benchmark_version
+                                if benchmark_version == "0.2.0"
+                                else spec["version"]
+                            ),
+                            "family_spec_version": spec["version"],
                             "category": spec["category"],
                             "difficulty": spec["difficulty"],
                             "horizon": spec["horizon"],
@@ -79,7 +87,8 @@ def build_dataset(
     return MemoryDataset(
         samples=samples,
         name=(
-            f"decision_agent_bench_v0_1_{category or 'all'}_{variant}_"
+            f"decision_agent_bench_{'v0_2' if benchmark_version == '0.2.0' else 'v0_1'}_"
+            f"{category or 'all'}_{variant}_"
             f"{instances_per_family}x"
         ),
     )
@@ -98,6 +107,7 @@ def _benchmark_task(
             category=category,
             variant=variant,
             instances_per_family=instances_per_family,
+            benchmark_version=version,
         ),
         setup=setup_environment(),
         solver=baseline_solver(baseline),

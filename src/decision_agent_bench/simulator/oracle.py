@@ -39,6 +39,29 @@ class PriceDecisionScore:
     normalized_regret: float
 
 
+@dataclass(frozen=True)
+class ReplacementOutcome:
+    """Observed unit-margin opportunity for one feasible replacement product."""
+
+    store_id: str
+    delisted_product_id: str
+    candidate_product_id: str
+    vendor_id: str
+    observed_units_28d: int
+    unit_margin: float
+    opportunity_gross_profit: float
+
+
+@dataclass(frozen=True)
+class ReplacementDecisionScore:
+    """Candidate replacement outcome compared with the best feasible alternative."""
+
+    candidate: ReplacementOutcome
+    oracle: ReplacementOutcome
+    absolute_regret: float
+    normalized_regret: float
+
+
 class EconomicOracle:
     """Read-only counterfactual simulator for deterministic graders."""
 
@@ -151,6 +174,90 @@ class EconomicOracle:
         regret = max(0.0, oracle.expected_gross_profit - candidate.expected_gross_profit)
         normalized = regret / max(abs(oracle.expected_gross_profit), 1e-9)
         return PriceDecisionScore(
+            candidate=candidate,
+            oracle=oracle,
+            absolute_regret=round(regret, 4),
+            normalized_regret=round(normalized, 6),
+        )
+
+    def replacement_outcomes(
+        self, store_id: str, delisted_product_id: str
+    ) -> tuple[ReplacementOutcome, ...]:
+        """Enumerate active, same-category products using decision-time observed economics."""
+
+        delisted = self._connection.execute(
+            "SELECT category FROM products WHERE product_id=?",
+            (delisted_product_id,),
+        ).fetchone()
+        if delisted is None:
+            raise ValueError("unknown delisted product")
+        max_date = date.fromisoformat(
+            self._connection.execute(
+                "SELECT MAX(date(sold_at)) FROM transactions"
+            ).fetchone()[0]
+        )
+        start = (max_date - timedelta(days=27)).isoformat()
+        rows = self._connection.execute(
+            """
+            SELECT p.product_id, p.vendor_id, p.unit_cost, pr.unit_price,
+                   v.min_order_cases, v.capacity_cases_per_week,
+                   COALESCE(SUM(t.units), 0) AS observed_units
+            FROM products p
+            JOIN prices pr ON pr.product_id=p.product_id AND pr.store_id=?
+            JOIN vendors v USING (vendor_id)
+            LEFT JOIN transactions t
+              ON t.product_id=p.product_id AND t.store_id=pr.store_id
+             AND date(t.sold_at)>=?
+            WHERE p.category=? AND p.product_id<>? AND p.active=1 AND v.active=1
+            GROUP BY p.product_id
+            ORDER BY p.product_id
+            """,
+            (store_id, start, str(delisted["category"]), delisted_product_id),
+        ).fetchall()
+        outcomes = []
+        for row in rows:
+            if int(row["capacity_cases_per_week"]) < int(row["min_order_cases"]):
+                continue
+            observed_units = int(row["observed_units"])
+            unit_margin = round(float(row["unit_price"]) - float(row["unit_cost"]), 4)
+            outcomes.append(
+                ReplacementOutcome(
+                    store_id=store_id,
+                    delisted_product_id=delisted_product_id,
+                    candidate_product_id=str(row["product_id"]),
+                    vendor_id=str(row["vendor_id"]),
+                    observed_units_28d=observed_units,
+                    unit_margin=unit_margin,
+                    opportunity_gross_profit=round(observed_units * unit_margin, 4),
+                )
+            )
+        if not outcomes:
+            raise ValueError("no feasible replacement products")
+        return tuple(outcomes)
+
+    def score_replacement_decision(
+        self, store_id: str, delisted_product_id: str, candidate_product_id: str
+    ) -> ReplacementDecisionScore:
+        """Compare a candidate with the exhaustive feasible replacement set."""
+
+        outcomes = self.replacement_outcomes(store_id, delisted_product_id)
+        by_product = {outcome.candidate_product_id: outcome for outcome in outcomes}
+        candidate = by_product.get(candidate_product_id)
+        if candidate is None:
+            raise ValueError("candidate is not a feasible replacement product")
+        oracle = max(
+            outcomes,
+            key=lambda outcome: (
+                outcome.opportunity_gross_profit,
+                outcome.candidate_product_id,
+            ),
+        )
+        regret = max(
+            0.0,
+            oracle.opportunity_gross_profit - candidate.opportunity_gross_profit,
+        )
+        normalized = regret / max(abs(oracle.opportunity_gross_profit), 1e-9)
+        return ReplacementDecisionScore(
             candidate=candidate,
             oracle=oracle,
             absolute_regret=round(regret, 4),

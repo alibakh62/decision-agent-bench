@@ -13,7 +13,11 @@ from decision_agent_bench.evals.baselines import baseline_solver
 from decision_agent_bench.evals.cases import CASES_BY_ID, validate_cases
 from decision_agent_bench.evals.instances import expanded_instance_catalog
 from decision_agent_bench.evals.runtime import apply_perturbation
-from decision_agent_bench.evals.scorer import grade_submission, parse_submission
+from decision_agent_bench.evals.scorer import (
+    DeterministicGrade,
+    grade_submission,
+    parse_submission,
+)
 from decision_agent_bench.evals.task import (
     build_dataset,
     decision_agent_bench,
@@ -58,8 +62,12 @@ def test_category_filter_uses_versioned_spec_categories() -> None:
 
 
 def test_expanded_dataset_has_100_instances_and_200_paired_samples() -> None:
-    clean = build_dataset(variant="clean", instances_per_family=4)
-    both = build_dataset(variant="both", instances_per_family=4)
+    clean = build_dataset(
+        variant="clean", instances_per_family=4, benchmark_version="0.2.0"
+    )
+    both = build_dataset(
+        variant="both", instances_per_family=4, benchmark_version="0.2.0"
+    )
 
     assert len(clean) == 100
     assert len(both) == 200
@@ -75,6 +83,8 @@ def test_expanded_dataset_has_100_instances_and_200_paired_samples() -> None:
         20260719,
         20260720,
     }
+    assert {sample.metadata["task_version"] for sample in both} == {"0.2.0"}
+    assert clean.name.startswith("decision_agent_bench_v0_2_")
     assert len(decision_agent_bench_v0_2().dataset) == 200
     catalog = expanded_instance_catalog()
     assert len(catalog) == 100
@@ -134,9 +144,13 @@ def test_expanded_seeds_preserve_key_answer_contracts(tmp_path: Path) -> None:
                 "SELECT customer_id FROM refunds GROUP BY customer_id "
                 "ORDER BY COUNT(*) DESC LIMIT 1"
             )
+        with EconomicOracle(database) as oracle:
+            replacement = oracle.score_replacement_decision("S001", "P005", "P021")
         assert regions[0]["region_id"] == "R03"
         assert {store_id for _, store_id in forecasts[-3:]} == {"S001", "S004", "S007"}
         assert refund[0]["customer_id"] == "C00001"
+        assert replacement.oracle.candidate_product_id == "P021"
+        assert replacement.normalized_regret == 0
 
 
 def test_advanced_architectures_execute_under_inspect(
@@ -332,6 +346,64 @@ def test_price_decision_quality_matches_economic_oracle(tmp_path: Path) -> None:
     )
 
     assert grade.values["decision_quality"] == 1
+    assert grade.decision_outcome["kind"] == "price_grid"
+    assert grade.decision_outcome["normalized_regret"] == 0
+    assert grade.decision_outcome["oracle_utility"] >= grade.decision_outcome[
+        "candidate_utility"
+    ]
+
+
+def test_v02_adds_replacement_regret_without_rewriting_v01_contract(
+    tmp_path: Path,
+) -> None:
+    database = generate_world(tmp_path / "world", GenerationConfig())
+    v01_sample = next(
+        sample
+        for sample in build_dataset(category="assortment", variant="clean")
+        if sample.metadata["task_id"] == "DAB-ASS-001"
+    )
+    v02_sample = next(
+        sample
+        for sample in build_dataset(
+            category="assortment", variant="clean", benchmark_version="0.2.0"
+        )
+        if sample.metadata["task_id"] == "DAB-ASS-001"
+    )
+    v01_contract = json.loads(v01_sample.target)
+    v02_contract = json.loads(v02_sample.target)
+    calls = [_successful_call("retail_sql", "E001", 1)]
+
+    def grade(candidate: str) -> DeterministicGrade:
+        return grade_submission(
+            contract=v02_contract,
+            submission={
+                "conclusion": "Use the replacement with the strongest vendor-feasible margin.",
+                "confidence": 0.8,
+                "evidence_ids": ["E001"],
+                "selected_ids": [candidate],
+                "numeric_values": {},
+                "escalate": False,
+                "data_quality_issues": [],
+            },
+            tool_calls=calls,
+            recoveries=[],
+            variant="clean",
+            perturbation_kind="none",
+            database_path=database,
+        )
+    assert v01_contract["economic_oracle"] is None
+    assert v01_sample.metadata["task_version"] == "0.1.0"
+    assert v02_contract["economic_oracle"] == "replacement_opportunity"
+    assert v02_sample.metadata["task_version"] == "0.2.0"
+    optimal = grade("P021")
+    dominated = grade("P001")
+    assert optimal.values["decision_quality"] == 1
+    assert optimal.decision_outcome["normalized_regret"] == 0
+    assert optimal.decision_outcome["utility_unit"] == (
+        "observed_unit_margin_opportunity_usd_28d"
+    )
+    assert dominated.values["decision_quality"] < 0.8
+    assert dominated.decision_outcome["absolute_regret"] > 0
 
 
 @solver
