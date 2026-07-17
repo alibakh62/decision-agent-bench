@@ -83,6 +83,17 @@ docker build --tag decision-agent-bench:0.1.0 .
 docker run --rm decision-agent-bench:0.1.0
 ```
 
+Plan a matched-budget experiment without contacting a model provider:
+
+```bash
+decision-agent-bench plan-experiment configs/experiments/smoke.json --output runs
+decision-agent-bench run-experiment runs/<run-id>/manifest.json
+```
+
+Execution requires both `--execute` and `--acknowledge-costs`. A publishable configuration is
+rejected unless it covers all tasks, both variants, both baselines, at least three repetitions, and
+an explicit per-sample cost cap. See the [experiment guide](docs/experiment-guide.md).
+
 See [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md), [the failure taxonomy](docs/failure-taxonomy.md), [the synthetic-data card](docs/data-card.md), and [the staged roadmap](docs/roadmap.md).
 
 ## Contributing

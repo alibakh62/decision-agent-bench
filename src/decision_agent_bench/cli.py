@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -30,6 +31,23 @@ def _parser() -> argparse.ArgumentParser:
         "verify-reference", help="regenerate and verify the published reference world"
     )
     reference.add_argument("manifest", nargs="?", type=Path)
+    plan = subparsers.add_parser(
+        "plan-experiment", help="create an immutable matched-budget experiment manifest"
+    )
+    plan.add_argument("config", type=Path)
+    plan.add_argument("--output", type=Path, default=Path("runs"))
+    run = subparsers.add_parser(
+        "run-experiment", help="dry-run or explicitly execute an experiment manifest"
+    )
+    run.add_argument("manifest", type=Path)
+    run.add_argument("--execute", action="store_true")
+    run.add_argument("--acknowledge-costs", action="store_true")
+    analyze = subparsers.add_parser(
+        "analyze-results", help="create sanitized statistics and leaderboard artifacts"
+    )
+    analyze.add_argument("logs", type=Path)
+    analyze.add_argument("output", type=Path)
+    analyze.add_argument("--manifest", type=Path)
     return parser
 
 
@@ -63,6 +81,28 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"logical_sha256={manifest['logical_sha256']} "
             f"tables={len(manifest['table_counts'])}"
         )
+    elif args.command == "plan-experiment":
+        from decision_agent_bench.experiments.manifest import plan_experiment
+        from decision_agent_bench.experiments.schema import load_experiment_config
+
+        manifest_path = plan_experiment(load_experiment_config(args.config), args.output)
+        print(f"planned experiment {manifest_path}")
+    elif args.command == "run-experiment":
+        from decision_agent_bench.experiments.runner import execute_manifest
+
+        report = execute_manifest(
+            args.manifest,
+            execute=args.execute,
+            acknowledge_costs=args.acknowledge_costs,
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
+        if report.get("status") == "error":
+            return 1
+    elif args.command == "analyze-results":
+        from decision_agent_bench.experiments.analysis import analyze_logs
+
+        report = analyze_logs(args.logs, args.output, manifest_path=args.manifest)
+        print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 
 

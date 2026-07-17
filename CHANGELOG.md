@@ -4,6 +4,13 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+### Added
+
+- Tamper-evident experiment manifests and matched-budget Inspect command grids.
+- Double-confirmed, cost-capped provider execution with isolated runtime state and redacted logs.
+- Sanitized sample telemetry, deterministic bootstrap intervals, within-task reliability, paired
+  robustness deltas, failure summaries, and publishable-only leaderboard generation.
+
 ## [0.1.0] - 2026-07-17
 
 ### Added

@@ -26,7 +26,9 @@ Implement the 25 task families as Inspect AI tasks. Add SQL, analytics, forecast
 
 ## Milestone 3 — Reproducible experiments
 
-**Status:** next.
+**Status:** in progress. The immutable planning, cost-gated launcher, sanitized analysis,
+uncertainty, paired-robustness, and leaderboard pipeline are implemented; paid multi-model runs are
+pending current model selection and explicit cost authorization.
 
 Run at least three model families with matched budgets and repeated trials. Analyze task success, regret, safety, robustness, calibration, efficiency, recovery, evidence quality, and variability.
 

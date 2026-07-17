@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from inspect_ai import eval
@@ -13,6 +14,7 @@ from decision_agent_bench.evals.runtime import apply_perturbation
 from decision_agent_bench.evals.scorer import grade_submission, parse_submission
 from decision_agent_bench.evals.task import build_dataset, decision_agent_bench
 from decision_agent_bench.evals.tools import retail_sql
+from decision_agent_bench.experiments.analysis import records_from_eval_log
 from decision_agent_bench.simulator import GenerationConfig, generate_world
 from decision_agent_bench.simulator.oracle import EconomicOracle
 from decision_agent_bench.simulator.validation import logical_digest
@@ -266,3 +268,7 @@ def test_inspect_end_to_end_executes_setup_tools_scorer_and_cleanup(
     assert logs[0].status == "success"
     assert logs[0].results is not None
     assert logs[0].results.completed_samples == 1
+    records = records_from_eval_log(logs[0])
+    assert len(records) == 1
+    sanitized = asdict(records[0])
+    assert not ({"input", "target", "messages", "store", "output"} & sanitized.keys())
