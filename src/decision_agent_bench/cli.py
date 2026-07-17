@@ -48,6 +48,13 @@ def _parser() -> argparse.ArgumentParser:
     analyze.add_argument("logs", type=Path)
     analyze.add_argument("output", type=Path)
     analyze.add_argument("--manifest", type=Path)
+    verify_analysis = subparsers.add_parser(
+        "verify-analysis", help="verify a content-addressed analysis result bundle"
+    )
+    verify_analysis.add_argument("analysis", type=Path)
+    verify_analysis.add_argument("--logs", type=Path)
+    verify_analysis.add_argument("--manifest", type=Path)
+    verify_analysis.add_argument("--require-sources", action="store_true")
     export = subparsers.add_parser(
         "export-instances", help="write the expanded v0.2 task-instance catalog"
     )
@@ -131,6 +138,18 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         report = analyze_logs(args.logs, args.output, manifest_path=args.manifest)
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "verify-analysis":
+        from decision_agent_bench.experiments.analysis import verify_analysis_bundle
+
+        report = verify_analysis_bundle(
+            args.analysis,
+            log_directory=args.logs,
+            manifest_path=args.manifest,
+            require_sources=args.require_sources,
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
+        if not report["verified"]:
+            return 1
     elif args.command == "export-instances":
         from decision_agent_bench.evals.instances import write_expanded_instance_catalog
 

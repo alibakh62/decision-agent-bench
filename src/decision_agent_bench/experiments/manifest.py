@@ -28,15 +28,25 @@ def _digest(payload: Any) -> str:
     return hashlib.sha256(_canonical(payload).encode()).hexdigest()
 
 
-def _git_commit(repository: Path) -> str:
-    result = subprocess.run(
+def _git_state(repository: Path) -> dict[str, Any]:
+    commit = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=repository,
         check=False,
         capture_output=True,
         text=True,
     )
-    return result.stdout.strip() if result.returncode == 0 else "unknown"
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return {
+        "git_commit": commit.stdout.strip() if commit.returncode == 0 else "unknown",
+        "working_tree_clean": status.returncode == 0 and not status.stdout.strip(),
+    }
 
 
 def _slug(value: str) -> str:
@@ -111,6 +121,11 @@ def plan_experiment(config: ExperimentConfig, output_directory: Path) -> Path:
     now = datetime.now(UTC)
     created_at = now.isoformat()
     config_payload = config.to_dict()
+    source = _git_state(repository)
+    if any(model.enabled and model.publishable for model in config.models) and not source[
+        "working_tree_clean"
+    ]:
+        raise ValueError("publishable experiments require a clean Git working tree")
     plan_sha256 = _digest(config_payload)
     run_nonce = _digest({"plan_sha256": plan_sha256, "created_at": created_at})[:12]
     run_id = f"{now.strftime('%Y%m%dT%H%M%SZ')}-{run_nonce}"
@@ -157,14 +172,14 @@ def plan_experiment(config: ExperimentConfig, output_directory: Path) -> Path:
                     )
                     cells.append(cell)
     manifest: dict[str, Any] = {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "run_id": run_id,
         "created_at": created_at,
         "status": "planned",
         "plan_sha256": plan_sha256,
         "config": config_payload,
         "source": {
-            "git_commit": _git_commit(repository),
+            **source,
             "task_entrypoint": f"{TASK_FILE}@{config.task_name}",
             "reference_world_sha256": reference["logical_sha256"],
         },

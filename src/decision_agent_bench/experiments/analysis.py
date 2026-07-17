@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
 import random
@@ -18,6 +19,48 @@ from inspect_ai.log import EvalLog, read_eval_log
 from decision_agent_bench.evals.scorer import SCORE_KEYS, parse_submission
 from decision_agent_bench.experiments.manifest import load_manifest
 from decision_agent_bench.specs import load_task_specs
+
+ANALYSIS_ARTIFACTS = (
+    "calibration.csv",
+    "failure-counts.csv",
+    "failure-matrix.csv",
+    "leaderboard.md",
+    "paired-effects.csv",
+    "robustness-matrix.csv",
+    "samples.sanitized.jsonl",
+    "summary.csv",
+    "summary.json",
+)
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _digest_payload(payload: Any) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def _file_evidence(path: Path, *, relative_to: Path) -> dict[str, Any]:
+    return {
+        "path": path.relative_to(relative_to).as_posix(),
+        "bytes": path.stat().st_size,
+        "sha256": _sha256_file(path),
+    }
+
+
+def _source_log_evidence(paths: list[Path], log_directory: Path) -> list[dict[str, Any]]:
+    evidence = []
+    for path in sorted(paths):
+        item = _file_evidence(path, relative_to=log_directory)
+        item["status"] = str(read_eval_log(str(path)).status)
+        evidence.append(item)
+    return evidence
 
 
 @dataclass(frozen=True)
@@ -744,10 +787,15 @@ def analyze_logs(
     """Analyze `.eval` logs and write only sanitized, shareable result artifacts."""
 
     manifest = load_manifest(manifest_path) if manifest_path else None
-    paths = list(log_directory.rglob("*.eval"))
+    log_directory = log_directory.resolve()
+    output_directory = output_directory.resolve()
+    paths = sorted(log_directory.rglob("*.eval"))
+    source_log_evidence = _source_log_evidence(paths, log_directory)
     records = records_from_paths(paths, manifest=manifest)
     if not records:
         raise ValueError(f"no completed scored samples found under {log_directory}")
+    if output_directory.exists() and any(output_directory.iterdir()):
+        raise ValueError(f"analysis output directory is not empty: {output_directory}")
     output_directory.mkdir(parents=True, exist_ok=True)
     summary = summarize_records(records)
     coverage = _coverage_report(records, manifest)
@@ -764,26 +812,216 @@ def analyze_logs(
         _leaderboard_markdown(records, coverage), encoding="utf-8"
     )
     failures = Counter(failure for record in records for failure in record.failures)
-    log_status_counts = Counter(str(read_eval_log(str(path)).status) for path in paths)
+    if source_log_evidence != _source_log_evidence(paths, log_directory):
+        raise ValueError("source logs changed while analysis was running")
+    log_status_counts = Counter(str(item["status"]) for item in source_log_evidence)
     with (output_directory / "failure-counts.csv").open(
         "w", encoding="utf-8", newline=""
     ) as handle:
         writer = csv.writer(handle)
         writer.writerow(["failure_code", "count"])
         writer.writerows(sorted(failures.items()))
+    experiment_manifest = None
+    if manifest is not None and manifest_path is not None:
+        experiment_manifest = {
+            "sha256": _sha256_file(manifest_path),
+            "manifest_sha256": manifest["manifest_sha256"],
+            "run_id": manifest["run_id"],
+            "source_git_commit": manifest["source"]["git_commit"],
+            "source_working_tree_clean": bool(
+                manifest["source"].get("working_tree_clean", False)
+            ),
+        }
     analysis_manifest = {
-        "source_logs": len(paths),
+        "schema_version": "2.0.0",
+        "source_log_count": len(paths),
+        "source_logs": source_log_evidence,
         "source_log_status_counts": dict(sorted(log_status_counts.items())),
         "scored_samples": len(records),
         "run_ids": sorted({record.run_id for record in records}),
         "contains_publishable_runs": coverage["publication_eligible"],
         "coverage": coverage,
+        "experiment_manifest": experiment_manifest,
+        "artifacts": [
+            _file_evidence(output_directory / name, relative_to=output_directory)
+            for name in ANALYSIS_ARTIFACTS
+        ],
         "sanitization": (
             "Prompts, hidden targets, transcripts, tool results, environment paths, and raw "
             "provider requests are excluded."
         ),
     }
+    analysis_manifest["manifest_sha256"] = _digest_payload(analysis_manifest)
     (output_directory / "analysis-manifest.json").write_text(
         json.dumps(analysis_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return analysis_manifest
+
+
+def _verify_evidence_files(
+    base_directory: Path,
+    expected: list[dict[str, Any]],
+    *,
+    suffix: str | None = None,
+) -> tuple[list[str], set[str]]:
+    issues: list[str] = []
+    expected_paths: set[str] = set()
+    for item in expected:
+        if not isinstance(item, dict):
+            issues.append("evidence entry is not an object")
+            continue
+        relative = Path(str(item.get("path", "")))
+        relative_text = relative.as_posix()
+        if not relative_text or relative.is_absolute() or ".." in relative.parts:
+            issues.append(f"unsafe evidence path: {relative_text!r}")
+            continue
+        if suffix is not None and relative.suffix != suffix:
+            issues.append(f"unexpected evidence suffix: {relative_text}")
+            continue
+        if relative_text in expected_paths:
+            issues.append(f"duplicate evidence path: {relative_text}")
+            continue
+        expected_paths.add(relative_text)
+        path = base_directory / relative
+        if not path.is_file():
+            issues.append(f"missing file: {relative_text}")
+            continue
+        if path.stat().st_size != item.get("bytes"):
+            issues.append(f"size mismatch: {relative_text}")
+        if _sha256_file(path) != item.get("sha256"):
+            issues.append(f"sha256 mismatch: {relative_text}")
+    return issues, expected_paths
+
+
+def verify_analysis_bundle(
+    analysis_directory: Path,
+    *,
+    log_directory: Path | None = None,
+    manifest_path: Path | None = None,
+    require_sources: bool = False,
+) -> dict[str, Any]:
+    """Verify a result bundle and, when supplied, its raw-log and experiment provenance."""
+
+    analysis_directory = analysis_directory.resolve()
+    payload = json.loads(
+        (analysis_directory / "analysis-manifest.json").read_text(encoding="utf-8")
+    )
+    issues: list[str] = []
+    expected_manifest_sha256 = payload.get("manifest_sha256")
+    unsigned_payload = {key: value for key, value in payload.items() if key != "manifest_sha256"}
+    if payload.get("schema_version") != "2.0.0":
+        issues.append("unsupported analysis manifest schema")
+    if expected_manifest_sha256 != _digest_payload(unsigned_payload):
+        issues.append("analysis manifest hash mismatch")
+
+    artifacts = payload.get("artifacts", [])
+    if not isinstance(artifacts, list):
+        issues.append("analysis artifacts must be a list")
+        artifacts = []
+    artifact_issues, artifact_paths = _verify_evidence_files(analysis_directory, artifacts)
+    issues.extend(artifact_issues)
+    if artifact_paths != set(ANALYSIS_ARTIFACTS):
+        issues.append("declared artifact set does not match the analysis schema")
+    actual_artifact_paths = {
+        path.relative_to(analysis_directory).as_posix()
+        for path in analysis_directory.rglob("*")
+        if path.is_file() and path.name != "analysis-manifest.json"
+    }
+    if actual_artifact_paths != artifact_paths:
+        missing = sorted(artifact_paths - actual_artifact_paths)
+        unexpected = sorted(actual_artifact_paths - artifact_paths)
+        if missing:
+            issues.append(f"artifact set is missing entries: {missing}")
+        if unexpected:
+            issues.append(f"artifact set has unexpected entries: {unexpected}")
+
+    source_log_issues: list[str] | None = None
+    source_logs = payload.get("source_logs", [])
+    if not isinstance(source_logs, list):
+        issues.append("source logs must be a list")
+        source_logs = []
+    if payload.get("source_log_count") != len(source_logs):
+        issues.append("source-log count does not match the evidence list")
+    declared_status_counts = Counter(
+        str(item.get("status")) for item in source_logs if isinstance(item, dict)
+    )
+    if payload.get("source_log_status_counts") != dict(sorted(declared_status_counts.items())):
+        issues.append("source-log status counts do not match the evidence list")
+    if log_directory is not None:
+        resolved_logs = log_directory.resolve()
+        source_log_issues, source_paths = _verify_evidence_files(
+            resolved_logs, source_logs, suffix=".eval"
+        )
+        actual_source_paths = {
+            path.relative_to(resolved_logs).as_posix()
+            for path in resolved_logs.rglob("*.eval")
+            if path.is_file()
+        }
+        if actual_source_paths != source_paths:
+            source_log_issues.append("source-log file set differs from the analysis manifest")
+        for item in source_logs:
+            if not isinstance(item, dict) or str(item.get("path")) not in source_paths:
+                continue
+            path = resolved_logs / str(item["path"])
+            if not path.is_file():
+                continue
+            try:
+                status = str(read_eval_log(str(path)).status)
+            except (OSError, ValueError) as error:
+                source_log_issues.append(f"unreadable source log {item['path']}: {error}")
+            else:
+                if status != item.get("status"):
+                    source_log_issues.append(f"status mismatch: {item['path']}")
+        issues.extend(source_log_issues)
+    elif require_sources:
+        issues.append("source-log directory is required")
+
+    experiment_manifest_issues: list[str] | None = None
+    expected_experiment_manifest = payload.get("experiment_manifest")
+    if manifest_path is not None:
+        experiment_manifest_issues = []
+        try:
+            experiment_manifest = load_manifest(manifest_path)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            experiment_manifest_issues.append(f"invalid experiment manifest: {error}")
+        else:
+            if expected_experiment_manifest is None:
+                experiment_manifest_issues.append(
+                    "analysis did not declare an experiment manifest"
+                )
+            else:
+                comparisons = {
+                    "sha256": _sha256_file(manifest_path),
+                    "manifest_sha256": experiment_manifest["manifest_sha256"],
+                    "run_id": experiment_manifest["run_id"],
+                    "source_git_commit": experiment_manifest["source"]["git_commit"],
+                    "source_working_tree_clean": bool(
+                        experiment_manifest["source"].get("working_tree_clean", False)
+                    ),
+                }
+                if comparisons != expected_experiment_manifest:
+                    experiment_manifest_issues.append("experiment manifest evidence mismatch")
+        issues.extend(experiment_manifest_issues)
+    elif require_sources:
+        issues.append(
+            "experiment manifest is required"
+            if expected_experiment_manifest is not None
+            else "analysis did not declare an experiment manifest"
+        )
+
+    return {
+        "schema_version": "1.0.0",
+        "verified": not issues,
+        "full_provenance_verified": (
+            not issues
+            and log_directory is not None
+            and expected_experiment_manifest is not None
+            and manifest_path is not None
+        ),
+        "analysis_manifest_sha256": expected_manifest_sha256,
+        "artifact_count": len(artifact_paths),
+        "source_log_count": len(payload.get("source_logs", [])),
+        "source_logs_supplied": log_directory is not None,
+        "experiment_manifest_supplied": manifest_path is not None,
+        "issues": issues,
+    }

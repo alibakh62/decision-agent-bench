@@ -207,6 +207,13 @@ failure matrices, and a publishable-only leaderboard. Prompts, targets, transcri
 results, local paths, and raw provider payloads are excluded. Mock runs validate plumbing but are
 programmatically excluded from public rankings.
 
+The analysis manifest content-addresses every source log and public artifact with SHA-256 and byte
+size, records the immutable experiment-manifest identity, and hashes its own canonical payload. An
+independent verification command rejects altered, missing, extra, or path-traversing evidence and
+can require the exact raw-log and experiment-manifest inputs for full provenance verification.
+Publishable plans cannot be created from a dirty Git working tree; non-publishable development
+plans retain that state explicitly in their manifest.
+
 ### 6.1 Human and judge agreement
 
 A stratified sample is exported into blinded packets containing only the prompt, visible tool

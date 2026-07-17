@@ -11,9 +11,17 @@ at least three repetitions, matched limits, and sanitized sample telemetry. The 
 must verify source-log hashes. Mock models, development subsets, unreviewed prompt modifications,
 and runs with missing cells do not enter the primary table.
 
+The planner refuses to create a publishable manifest from a dirty Git working tree. This makes the
+recorded source commit a complete code identity rather than a partial description of local state.
+
 Self-reported submissions are welcome through a GitHub issue. Maintainers rerun the manifest and
 analysis checks before merging. Provider-hosted models may be reproduced through the same API or,
 when that version is no longer available, listed as historical and non-reproducible.
+
+Every entry's analysis manifest must bind the complete raw-log set, immutable experiment manifest,
+and all generated public artifacts by SHA-256 and byte size. Maintainer admission runs
+`verify-analysis --require-sources`; a standalone public mirror must at minimum pass artifact-bundle
+verification. Added, missing, or modified files invalidate the entry until it is regenerated.
 
 ## Ranking and uncertainty
 

@@ -24,7 +24,8 @@ decision-agent-bench run-experiment runs/<run-id>/manifest.json
 The first command records the Git commit, task entrypoint, reference-world digest, Python and
 Inspect versions, matched budgets, every grid cell, and the exact argument-vector command. The
 second command is a dry run by default and prints those commands. Editing the manifest invalidates
-its SHA-256 check.
+its SHA-256 check. A publishable plan also requires a clean Git working tree; development plans
+record the dirty state but remain ineligible as release evidence.
 
 ## 3. Execute with an explicit cost gate
 
@@ -58,7 +59,28 @@ The analyzer emits:
 - `robustness-matrix.csv` and `failure-matrix.csv`: category/perturbation outcomes and
   model-baseline-variant error profiles;
 - `leaderboard.md`: publishable runs only, ranked by composite score; and
-- `analysis-manifest.json`: source-log and sanitization provenance.
+- `analysis-manifest.json`: SHA-256 and byte-size evidence for every source log and generated
+  artifact, the immutable experiment-manifest identity, coverage, and sanitization provenance.
+
+The analyzer refuses to mix a new run into a non-empty output directory and verifies that source
+logs did not change during analysis. Verify a downloaded shareable bundle without raw logs:
+
+```bash
+decision-agent-bench verify-analysis results/generated/<run-id>
+```
+
+For a full local provenance check, require the exact source logs and experiment manifest:
+
+```bash
+decision-agent-bench verify-analysis results/generated/<run-id> \
+  --logs runs/<run-id>/logs \
+  --manifest runs/<run-id>/manifest.json \
+  --require-sources
+```
+
+The first form proves that the published files match their content-addressed manifest. The strict
+form also proves that the bundle was derived from the declared complete raw-log set and content-
+hashed experiment plan. Any missing, added, or changed file fails verification.
 
 The analysis manifest also counts successful and failed source logs so operational retries remain
 visible in a public run card.

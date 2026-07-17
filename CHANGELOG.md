@@ -29,6 +29,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   prevents a completed immutable plan from being executed twice.
 - Release audit CLI, oracle-boundary and provenance checks, OpenVEX policy, CodeQL, Gitleaks,
   hash-locked dependency audit, and Dependabot coverage for Python, Actions, and Docker.
+- Content-addressed analysis bundles bind every sanitized result artifact to exact source-log and
+  experiment-manifest hashes, with an independent verifier and strict source-provenance mode.
 
 ## [0.1.0] - 2026-07-17
 

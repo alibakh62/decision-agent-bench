@@ -38,9 +38,14 @@ the run an exact reproduction and label it a model-update replication.
 ```bash
 decision-agent-bench analyze-results runs/<run-id>/logs results/reproduction \
   --manifest runs/<run-id>/manifest.json
+decision-agent-bench verify-analysis results/reproduction \
+  --logs runs/<run-id>/logs \
+  --manifest runs/<run-id>/manifest.json \
+  --require-sources
 ```
 
-Compare task coverage, failures, group means, paired robustness effects, and uncertainty intervals.
+The verification report must set both `verified` and `full_provenance_verified` to true. Compare
+task coverage, failures, group means, paired robustness effects, and uncertainty intervals.
 Do not expect bitwise-identical stochastic model outputs. Investigate whether differences exceed
 the preregistered tolerance or materially change a conclusion.
 

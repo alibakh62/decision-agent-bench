@@ -121,6 +121,15 @@ Execution requires both `--execute` and `--acknowledge-costs`. A publishable con
 rejected unless it covers all tasks, both variants, both baselines, at least three repetitions, and
 an explicit per-sample cost cap. See the [experiment guide](docs/experiment-guide.md).
 
+After analysis, verify the shareable result bundle on its own or bind it back to the exact raw logs
+and immutable experiment manifest:
+
+```bash
+decision-agent-bench verify-analysis results/generated/<run-id>
+decision-agent-bench verify-analysis results/generated/<run-id> \
+  --logs runs/<run-id>/logs --manifest runs/<run-id>/manifest.json --require-sources
+```
+
 Export a blinded human/LLM-judge study after a successful run:
 
 ```bash

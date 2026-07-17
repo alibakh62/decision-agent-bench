@@ -7,9 +7,13 @@ from types import SimpleNamespace
 import pytest
 
 from decision_agent_bench.experiments.analysis import (
+    ANALYSIS_ARTIFACTS,
     SampleRecord,
     _coverage_report,
+    _digest_payload,
+    _file_evidence,
     summarize_records,
+    verify_analysis_bundle,
 )
 from decision_agent_bench.experiments.manifest import load_manifest, plan_experiment
 from decision_agent_bench.experiments.runner import _eval_statuses, execute_manifest
@@ -91,6 +95,7 @@ def test_smoke_config_and_manifest_create_four_matched_cells(tmp_path: Path) -> 
         assert "--token-limit" in command
         assert "--no-log-model-api" in command
         assert "--no-epochs-reducer" in command
+    assert isinstance(manifest["source"]["working_tree_clean"], bool)
 
 
 def test_research_smoke_plans_every_architecture_and_ablation(tmp_path: Path) -> None:
@@ -235,6 +240,33 @@ def test_publishable_config_enforces_full_protocol_and_cost_cap() -> None:
         ExperimentConfig.from_dict(payload)
 
 
+def test_publishable_plan_rejects_dirty_worktree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = ExperimentConfig.from_dict(
+        {
+            "name": "publishable-study",
+            "models": [
+                {
+                    "model": "provider/model",
+                    "family": "provider",
+                    "display_name": "Provider model",
+                    "publishable": True,
+                }
+            ],
+            "repetitions": 3,
+            "budget": {"cost_limit_usd": 1.0},
+        }
+    )
+    monkeypatch.setattr(
+        "decision_agent_bench.experiments.manifest._git_state",
+        lambda _repository: {"git_commit": "a" * 40, "working_tree_clean": False},
+    )
+
+    with pytest.raises(ValueError, match="clean Git working tree"):
+        plan_experiment(config, tmp_path)
+
+
 def test_summary_reports_reliability_and_paired_robustness_delta() -> None:
     records = [
         _record("clean", 0.9, epoch=1),
@@ -366,3 +398,96 @@ def test_coverage_without_manifest_is_never_publishable() -> None:
 
     assert coverage["verified"] is False
     assert coverage["publication_eligible"] is False
+
+
+def _write_test_analysis_bundle(directory: Path) -> dict[str, object]:
+    directory.mkdir()
+    for name in ANALYSIS_ARTIFACTS:
+        (directory / name).write_text(f"test artifact: {name}\n", encoding="utf-8")
+    payload: dict[str, object] = {
+        "schema_version": "2.0.0",
+        "source_log_count": 0,
+        "source_logs": [],
+        "source_log_status_counts": {},
+        "experiment_manifest": None,
+        "artifacts": [
+            _file_evidence(directory / name, relative_to=directory)
+            for name in ANALYSIS_ARTIFACTS
+        ],
+    }
+    payload["manifest_sha256"] = _digest_payload(payload)
+    (directory / "analysis-manifest.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return payload
+
+
+def test_analysis_bundle_verifier_detects_artifact_tampering(tmp_path: Path) -> None:
+    analysis = tmp_path / "analysis"
+    _write_test_analysis_bundle(analysis)
+
+    verified = verify_analysis_bundle(analysis)
+    (analysis / "summary.json").write_text('{"result": 2}\n', encoding="utf-8")
+    tampered = verify_analysis_bundle(analysis)
+
+    assert verified["verified"] is True
+    assert verified["full_provenance_verified"] is False
+    assert tampered["verified"] is False
+    assert "sha256 mismatch: summary.json" in tampered["issues"]
+
+
+def test_analysis_bundle_verifies_exact_source_log_set(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    analysis = tmp_path / "analysis"
+    payload = _write_test_analysis_bundle(analysis)
+    logs = tmp_path / "logs"
+    log = logs / "cell" / "result.eval"
+    log.parent.mkdir(parents=True)
+    log.write_bytes(b"content-addressed inspect log")
+    source = _file_evidence(log, relative_to=logs)
+    source["status"] = "success"
+    payload["source_logs"] = [source]
+    payload["source_log_count"] = 1
+    payload["source_log_status_counts"] = {"success": 1}
+    payload.pop("manifest_sha256")
+    payload["manifest_sha256"] = _digest_payload(payload)
+    (analysis / "analysis-manifest.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        "decision_agent_bench.experiments.analysis.read_eval_log",
+        lambda _path: SimpleNamespace(status="success"),
+    )
+
+    verified = verify_analysis_bundle(analysis, log_directory=logs)
+    strict_without_manifest = verify_analysis_bundle(
+        analysis, log_directory=logs, require_sources=True
+    )
+    (logs / "unexpected.eval").write_bytes(b"not declared")
+    unexpected = verify_analysis_bundle(analysis, log_directory=logs)
+
+    assert verified["verified"] is True
+    assert verified["full_provenance_verified"] is False
+    assert strict_without_manifest["verified"] is False
+    assert "analysis did not declare an experiment manifest" in strict_without_manifest["issues"]
+    assert unexpected["verified"] is False
+    assert "source-log file set differs from the analysis manifest" in unexpected["issues"]
+
+
+def test_analysis_bundle_rejects_unsafe_evidence_path(tmp_path: Path) -> None:
+    analysis = tmp_path / "analysis"
+    payload = _write_test_analysis_bundle(analysis)
+    payload["artifacts"] = [
+        {"path": "../outside.json", "bytes": 0, "sha256": "0" * 64}
+    ]
+    payload.pop("manifest_sha256")
+    payload["manifest_sha256"] = _digest_payload(payload)
+    (analysis / "analysis-manifest.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    report = verify_analysis_bundle(analysis)
+
+    assert report["verified"] is False
+    assert "unsafe evidence path: '../outside.json'" in report["issues"]
