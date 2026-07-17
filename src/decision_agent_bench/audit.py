@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import struct
 import subprocess
 import tempfile
 import zipfile
@@ -149,6 +150,7 @@ def _artifact_check(repository: Path) -> AuditCheck:
     articles = sorted((repository / "articles").glob("*.md"))
     presentation = repository / "talk/decision-agent-bench-research-talk.pptx"
     report = repository / "report/technical-report.md"
+    social_preview = repository / "docs/assets/social-preview.png"
     errors = []
     if len(articles) != 3:
         errors.append(f"expected 3 articles, found {len(articles)}")
@@ -156,6 +158,51 @@ def _artifact_check(repository: Path) -> AuditCheck:
         errors.append("technical report is missing")
     if not presentation.is_file() or not zipfile.is_zipfile(presentation):
         errors.append("editable presentation is missing or structurally invalid")
+    preview_evidence: dict[str, Any] = {
+        "path": "docs/assets/social-preview.png",
+        "dimensions": None,
+        "bytes": None,
+        "opaque": None,
+    }
+    try:
+        content = social_preview.read_bytes()
+        header = content[:26]
+        if (
+            len(header) < 26
+            or header[:8] != b"\x89PNG\r\n\x1a\n"
+            or header[12:16] != b"IHDR"
+        ):
+            raise ValueError("not a PNG with an IHDR header")
+        width, height = struct.unpack(">II", header[16:24])
+        color_type = header[25]
+        chunk_types: list[bytes] = []
+        offset = 8
+        while offset < len(content):
+            if offset + 12 > len(content):
+                raise ValueError("truncated PNG chunk")
+            length = struct.unpack(">I", content[offset : offset + 4])[0]
+            chunk_type = content[offset + 4 : offset + 8]
+            chunk_end = offset + 12 + length
+            if chunk_end > len(content):
+                raise ValueError("PNG chunk exceeds file length")
+            chunk_types.append(chunk_type)
+            offset = chunk_end
+            if chunk_type == b"IEND":
+                break
+        if not chunk_types or chunk_types[-1] != b"IEND":
+            raise ValueError("PNG has no terminal IEND chunk")
+        opaque = color_type not in {4, 6} and b"tRNS" not in chunk_types
+        preview_evidence["dimensions"] = [width, height]
+        preview_evidence["bytes"] = social_preview.stat().st_size
+        preview_evidence["opaque"] = opaque
+        if (width, height) != (1280, 640):
+            errors.append("social preview must be exactly 1280x640")
+        if social_preview.stat().st_size >= 1_000_000:
+            errors.append("social preview must be smaller than 1 MB")
+        if not opaque:
+            errors.append("social preview must have a solid opaque background")
+    except (OSError, ValueError, struct.error) as error:
+        errors.append(f"social preview is missing or invalid: {error}")
     return AuditCheck(
         "research_artifacts",
         "fail" if errors else "pass",
@@ -164,7 +211,11 @@ def _artifact_check(repository: Path) -> AuditCheck:
             if errors
             else "report, articles, and deck are present"
         ),
-        {"errors": errors, "articles": [path.name for path in articles]},
+        {
+            "errors": errors,
+            "articles": [path.name for path in articles],
+            "social_preview": preview_evidence,
+        },
     )
 
 

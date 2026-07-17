@@ -20,6 +20,7 @@ def _write_fake_repository(root: Path, version: str = "0.2.0.dev0") -> Path:
         "data/reference-world-manifest.json": json.dumps({"logical_sha256": "a" * 64}),
         "report/technical-report.md": "# Report\n",
         "talk/decision-agent-bench-research-talk.pptx": "presentation",
+        "docs/assets/social-preview.png": "preview",
         "CITATION.cff": "cff-version: 1.2.0\n",
         ".zenodo.json": "{}\n",
         "LICENSE": "MIT\n",
@@ -99,7 +100,7 @@ def test_release_bundle_is_exact_and_detects_tampering(
         "reference_world_sha256": "a" * 64,
     }
     assert verified["verified"] is True
-    assert verified["artifact_count"] == 16
+    assert verified["artifact_count"] == 17
     assert tampered["verified"] is False
     assert "sha256 mismatch: research/technical-report.md" in tampered["issues"]
     assert "SHA256SUMS does not match release contents" in tampered["issues"]
@@ -180,4 +181,4 @@ def test_final_release_accepts_complete_tagged_evidence(
 
     assert manifest["contains_publishable_results"] is True
     assert verified["verified"] is True
-    assert verified["artifact_count"] == 28
+    assert verified["artifact_count"] == 29

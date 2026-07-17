@@ -165,6 +165,12 @@ def _base_assets(
             "presentation",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         ),
+        ReleaseAsset(
+            repository / "docs/assets/social-preview.png",
+            "media/social-preview.png",
+            "social-preview",
+            "image/png",
+        ),
         ReleaseAsset(repository / "CITATION.cff", "metadata/CITATION.cff", "citation", "text/yaml"),
         ReleaseAsset(
             repository / ".zenodo.json",

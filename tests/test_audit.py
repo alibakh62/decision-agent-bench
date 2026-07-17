@@ -41,6 +41,12 @@ def test_repository_audit_passes_deterministic_safety_checks() -> None:
     assert checks["secrets"]["status"] == "pass"
     assert checks["provenance"]["status"] == "pass"
     assert checks["research_artifacts"]["status"] == "pass"
+    assert checks["research_artifacts"]["evidence"]["social_preview"] == {
+        "path": "docs/assets/social-preview.png",
+        "dimensions": [1280, 640],
+        "bytes": (repository / "docs/assets/social-preview.png").stat().st_size,
+        "opaque": True,
+    }
     assert checks["dependencies"]["status"] == "pending"
     assert checks["container"]["status"] == "pending"
     assert report["status"] == "pending"

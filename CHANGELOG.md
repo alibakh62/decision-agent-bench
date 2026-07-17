@@ -35,6 +35,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   clean-source planning, a whole-study ceiling, and acknowledgement of the exact planned amount.
 - Deterministic archival release assembly binds packages, datasets, research artifacts, SBOM,
   vulnerability evidence, container identity, and admitted results under exact checksums.
+- A provenance-documented, audit-checked 1280×640 project banner is ready for GitHub social preview
+  and is preserved in archival release bundles.
 
 ## [0.1.0] - 2026-07-17
 

@@ -2,8 +2,9 @@
 
 DecisionAgentBench releases are exact evidence bundles rather than loose attachments. Each bundle
 contains the Python wheel and source distribution, both task catalogs, reference-world provenance,
-technical report, articles, presentation, citation and archive metadata, dependency lock, OpenVEX
-record, CycloneDX SBOM, vulnerability scan, container identity, and admitted sanitized results.
+technical report, articles, presentation, social-preview image, citation and archive metadata,
+dependency lock, OpenVEX record, CycloneDX SBOM, vulnerability scan, container identity, and
+admitted sanitized results.
 
 `release-manifest.json` records every asset's portable path, role, media type, byte size, and
 SHA-256. It also binds the software version, Git commit and commit timestamp, benchmark counts,

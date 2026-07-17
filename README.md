@@ -1,5 +1,7 @@
 # DecisionAgentBench
 
+![DecisionAgentBench — rigorous evaluation for long-horizon business decision agents](docs/assets/social-preview.png)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg)](https://www.python.org/)
 

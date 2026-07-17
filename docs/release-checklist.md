@@ -4,7 +4,8 @@
 
 - [ ] Replace `OWNER` placeholders in `CITATION.cff` and documentation.
 - [ ] Replace the collective creator with the maintainer's publication name and ORCID if desired.
-- [ ] Confirm repository description, topics, social preview, support contact, and security contact.
+- [ ] Confirm repository description, topics, support contact, and security contact; upload the
+      audited `docs/assets/social-preview.png` through repository settings.
 - [ ] Enable Zenodo, archive the GitHub release, and add the minted DOI to citation metadata.
 
 ## Evidence gates
