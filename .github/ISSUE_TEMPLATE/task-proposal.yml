@@ -1,0 +1,33 @@
+name: Task or perturbation proposal
+description: Propose a consequential, executable benchmark addition
+title: "[Task]: "
+labels: ["task-design", "needs-triage"]
+body:
+  - type: textarea
+    id: decision
+    attributes:
+      label: Consequential decision
+      description: What decision is made, and what can go wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: oracle
+    attributes:
+      label: Executable outcome and oracle
+      description: Define feasible actions, utility, policy constraints, and grading evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: perturbation
+    attributes:
+      label: Paired perturbation
+      description: Explain how answerability is preserved or why escalation is correct.
+    validations:
+      required: true
+  - type: textarea
+    id: provenance
+    attributes:
+      label: Data and policy provenance
+      description: Only synthetic or redistributable public material is accepted.
+    validations:
+      required: true

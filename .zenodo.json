@@ -1,0 +1,19 @@
+{
+  "title": "DecisionAgentBench: Reliable Long-Horizon Business Decision Agents",
+  "description": "An open benchmark and synthetic retail environment for process-aware evaluation of consequential AI decision agents.",
+  "creators": [
+    {
+      "name": "DecisionAgentBench Contributors"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "AI agents",
+    "agent evaluation",
+    "benchmark",
+    "reliability",
+    "Inspect AI"
+  ],
+  "upload_type": "software",
+  "access_right": "open"
+}

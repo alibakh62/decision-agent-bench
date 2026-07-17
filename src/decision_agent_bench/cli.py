@@ -53,6 +53,21 @@ def _parser() -> argparse.ArgumentParser:
     )
     export.add_argument("output", type=Path)
     export.add_argument("--instances-per-family", type=int, default=4)
+    demo = subparsers.add_parser("demo", help="launch the local interactive benchmark lab")
+    demo.add_argument("--host", default="127.0.0.1")
+    demo.add_argument("--port", type=int, default=7860)
+    annotations = subparsers.add_parser(
+        "export-annotations", help="create blinded annotation packets from Inspect logs"
+    )
+    annotations.add_argument("logs", type=Path)
+    annotations.add_argument("output", type=Path)
+    agreement = subparsers.add_parser(
+        "agreement-report", help="compare human, LLM-judge, and deterministic ratings"
+    )
+    agreement.add_argument("ratings", type=Path)
+    agreement.add_argument("private_key", type=Path)
+    agreement.add_argument("output", type=Path)
+    agreement.add_argument("--threshold", type=float, default=0.5)
     return parser
 
 
@@ -113,6 +128,22 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         output = write_expanded_instance_catalog(args.output, args.instances_per_family)
         print(f"exported expanded instance catalog {output}")
+    elif args.command == "demo":
+        from decision_agent_bench.demo import launch_demo
+
+        launch_demo(args.host, args.port)
+    elif args.command == "export-annotations":
+        from decision_agent_bench.research.annotation import export_annotation_bundle
+
+        report = export_annotation_bundle(args.logs, args.output)
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "agreement-report":
+        from decision_agent_bench.research.annotation import agreement_report
+
+        report = agreement_report(
+            args.ratings, args.private_key, args.output, threshold=args.threshold
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 
 

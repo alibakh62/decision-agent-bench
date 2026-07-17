@@ -46,6 +46,12 @@ Add independent-verifier, multi-agent, memory-and-feedback, and corrupted-contex
 
 ## Milestone 5 — Public research release
 
+**Status:** in progress. The interactive demo, technical report draft, three article drafts,
+presentation deck, citation/archive metadata, blinded annotation workflow, leaderboard governance,
+external reproduction protocol, and current Inspect Evals registration package are implemented.
+Public repository identity, paid empirical runs, human ratings, independent reproduction, arXiv,
+DOI, release tag, and accepted register entry remain external evidence gates.
+
 Ship the interactive demo, archival dataset release, reproducible Docker images, technical report or preprint, three research-oriented articles, presentation materials, contributor onboarding, and upstream contribution packages.
 
 **Exit evidence:** tagged release, DOI or archival identifier, public leaderboard governance, security review, external reproduction, and Inspect Evals register proposal when eligibility is established.

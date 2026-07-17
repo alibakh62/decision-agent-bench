@@ -14,6 +14,14 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   plus no-policy and no-evidence prompt ablations.
 - A v0.2 task registration with 100 seeded scenario instances, 200 paired evaluation samples, and a
   generated machine-readable instance catalog.
+- A provider-free Gradio research lab for task exploration, deterministic decision scoring, and
+  allow-listed reference-world inspection.
+- Blinded annotation export, private re-identification keys, strict rating validation, Fleiss'
+  kappa, and human/LLM-judge/deterministic agreement reports.
+- A methods-complete technical report draft, three preregistered research article drafts, and an
+  editable, speaker-noted research-talk deck.
+- Citation and archive metadata, leaderboard governance, external reproduction, current Inspect
+  Evals registration guidance, and an evidence-gated release checklist.
 
 ## [0.1.0] - 2026-07-17
 

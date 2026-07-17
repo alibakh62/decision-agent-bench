@@ -16,7 +16,7 @@ from decision_agent_bench.simulator import GenerationConfig, generate_world
 STORE_PREFIX = "dab."
 
 
-def _perturbation_kind(name: str | None) -> str:
+def perturbation_kind(name: str | None) -> str:
     if not name:
         return "none"
     if any(token in name for token in ("timeout", "tool_failure", "api_timeout")):
@@ -77,7 +77,7 @@ def _insert_document(
 def apply_perturbation(database_path: Path, perturbation: str | None) -> str:
     """Apply one answer-preserving perturbation and return its behavioral kind."""
 
-    kind = _perturbation_kind(perturbation)
+    kind = perturbation_kind(perturbation)
     if not perturbation or kind in {"none", "transient_tool_failure"}:
         return kind
     with sqlite3.connect(database_path) as connection:

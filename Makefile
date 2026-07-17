@@ -1,4 +1,4 @@
-.PHONY: check test validate verify-reference docker-build docker-verify
+.PHONY: check test validate verify-reference demo docker-build docker-verify
 
 check:
 	python -m ruff check .
@@ -16,6 +16,9 @@ validate:
 
 verify-reference:
 	PYTHONPATH=src python -m decision_agent_bench verify-reference
+
+demo:
+	PYTHONPATH=src python -m decision_agent_bench demo --host 127.0.0.1 --port 7860
 
 docker-build:
 	docker build --tag decision-agent-bench:0.1.0 .
