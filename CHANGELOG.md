@@ -39,6 +39,9 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   and is preserved in archival release bundles.
 - Release assembly now binds CycloneDX and `pip-audit` dependency inventories to the exact universal
   requirements lock and rejects empty, incomplete, duplicate, unexpected, or mismatched evidence.
+- Independent release verification now recomputes benchmark claims, security inventories, current
+  OpenVEX coverage, embedded analysis integrity, publishable-result state, and final-release gates;
+  a self-consistently rehashed but semantically altered bundle fails verification.
 
 ## [0.1.0] - 2026-07-17
 

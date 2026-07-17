@@ -19,6 +19,7 @@ from decision_agent_bench.integrity import (
     verify_evidence_files,
     verify_pip_audit_inventory,
     verify_sbom_inventory,
+    verify_vulnerability_dispositions,
 )
 
 RELEASE_MANIFEST = "release-manifest.json"
@@ -117,7 +118,7 @@ def _validate_sbom(path: Path | None, lock_path: Path) -> None:
         raise ValueError("SBOM does not cover requirements.lock: " + "; ".join(inventory["issues"]))
 
 
-def _validate_dependency_report(path: Path | None, lock_path: Path) -> None:
+def _validate_dependency_report(path: Path | None, lock_path: Path, vex_path: Path) -> None:
     if path is None:
         return
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -128,6 +129,16 @@ def _validate_dependency_report(path: Path | None, lock_path: Path) -> None:
         raise ValueError(
             "dependency audit does not cover requirements.lock: "
             + "; ".join(inventory["issues"])
+        )
+    vex_payload = json.loads(vex_path.read_text(encoding="utf-8"))
+    dispositions = verify_vulnerability_dispositions(payload, vex_payload)
+    if not dispositions["verified"]:
+        identifiers = sorted(
+            str(item["vulnerability"]) for item in dispositions["unreviewed"]
+        )
+        raise ValueError(
+            "dependency audit contains vulnerabilities without current OpenVEX coverage: "
+            + ", ".join(identifiers)
         )
 
 
@@ -284,7 +295,9 @@ def assemble_release_bundle(
         raise ValueError("final release requires SBOM, dependency audit, and container evidence")
     lock_path = repository / "requirements.lock"
     _validate_sbom(sbom_path, lock_path)
-    _validate_dependency_report(dependency_report, lock_path)
+    _validate_dependency_report(
+        dependency_report, lock_path, repository / "security/openvex.json"
+    )
     if output_directory.exists() and any(output_directory.iterdir()):
         raise ValueError(f"release output directory is not empty: {output_directory}")
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -376,13 +389,240 @@ def assemble_release_bundle(
     return manifest
 
 
+def _load_bundle_object(path: Path, label: str, issues: list[str]) -> dict[str, Any] | None:
+    if not path.is_file():
+        issues.append(f"{label} is missing")
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        issues.append(f"{label} is invalid JSON: {error}")
+        return None
+    if not isinstance(payload, dict):
+        issues.append(f"{label} must be a JSON object")
+        return None
+    return payload
+
+
+def _verify_release_semantics(
+    directory: Path,
+    payload: dict[str, Any],
+    artifact_paths: set[str],
+) -> list[str]:
+    """Recompute release claims from bundled artifacts rather than trusting the manifest."""
+
+    issues: list[str] = []
+    version = payload.get("version")
+    if payload.get("project") != "decision-agent-bench":
+        issues.append("unexpected release project identity")
+    if not isinstance(version, str) or not version:
+        issues.append("release version is missing or invalid")
+        version = "unknown"
+    expected_prerelease = bool(re.search(r"(?:\.dev|a|b|rc)\d*", version))
+    if payload.get("prerelease") is not expected_prerelease:
+        issues.append("prerelease flag does not match the project version")
+
+    source = payload.get("source")
+    if not isinstance(source, dict):
+        issues.append("release source metadata must be an object")
+        source = {}
+    commit = source.get("git_commit")
+    if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+        issues.append("source commit must be a full lowercase Git SHA")
+    if source.get("working_tree_clean") is not True:
+        issues.append("release source does not attest to a clean working tree")
+
+    package_stem = f"decision_agent_bench-{version}"
+    wheel_paths = {
+        path
+        for path in artifact_paths
+        if path.startswith(f"packages/{package_stem}-") and path.endswith(".whl")
+    }
+    sdist_path = f"packages/{package_stem}.tar.gz"
+    required_paths = {
+        "data/reference-world-manifest.json",
+        "data/task-instances-v0.2.json",
+        "data/task-specs-v0.1.json",
+        "media/social-preview.png",
+        "metadata/CITATION.cff",
+        "metadata/LICENSE",
+        "metadata/container-provenance.json",
+        "metadata/openvex.json",
+        "metadata/requirements.lock",
+        "metadata/zenodo.json",
+        "research/decision-agent-bench-research-talk.pptx",
+        "research/technical-report.md",
+        sdist_path,
+    }
+    missing_required = sorted(required_paths - artifact_paths)
+    if missing_required:
+        issues.append("required release artifacts are missing: " + ", ".join(missing_required))
+    if len(wheel_paths) != 1:
+        issues.append("release must contain exactly one version-matched wheel")
+    article_paths = sorted(
+        path
+        for path in artifact_paths
+        if path.startswith("research/articles/") and path.endswith(".md")
+    )
+    if len(article_paths) != 3:
+        issues.append(f"release must contain exactly three articles, found {len(article_paths)}")
+
+    try:
+        task_families = json.loads(
+            (directory / "data/task-specs-v0.1.json").read_text(encoding="utf-8")
+        )
+        task_instances = json.loads(
+            (directory / "data/task-instances-v0.2.json").read_text(encoding="utf-8")
+        )
+        reference = json.loads(
+            (directory / "data/reference-world-manifest.json").read_text(encoding="utf-8")
+        )
+        if not isinstance(task_families, list) or not isinstance(task_instances, list):
+            raise ValueError("task catalogs must be JSON arrays")
+        if not isinstance(reference, dict) or not isinstance(
+            reference.get("logical_sha256"), str
+        ):
+            raise ValueError("reference manifest has no logical_sha256")
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        issues.append(f"bundled benchmark metadata is invalid: {error}")
+    else:
+        recomputed_benchmark = {
+            "task_families": len(task_families),
+            "v0_2_instances": len(task_instances),
+            "v0_2_paired_samples": len(task_instances) * 2,
+            "reference_world_sha256": reference["logical_sha256"],
+        }
+        if payload.get("benchmark") != recomputed_benchmark:
+            issues.append("release benchmark summary does not match bundled data")
+
+    lock_path = directory / "metadata/requirements.lock"
+    sbom_path = directory / "metadata/sbom.cdx.json"
+    audit_path = directory / "metadata/pip-audit.json"
+    vex_path = directory / "metadata/openvex.json"
+    if sbom_path.is_file():
+        sbom = _load_bundle_object(sbom_path, "CycloneDX SBOM", issues)
+        if sbom is not None:
+            if sbom.get("bomFormat") != "CycloneDX":
+                issues.append("bundled SBOM is not CycloneDX")
+            try:
+                inventory = verify_sbom_inventory(lock_path, sbom)
+            except (OSError, ValueError) as error:
+                issues.append(f"SBOM inventory verification failed: {error}")
+            else:
+                issues.extend(f"SBOM inventory: {issue}" for issue in inventory["issues"])
+    if audit_path.is_file():
+        audit = _load_bundle_object(audit_path, "pip-audit report", issues)
+        vex = _load_bundle_object(vex_path, "OpenVEX document", issues)
+        if audit is not None:
+            try:
+                inventory = verify_pip_audit_inventory(lock_path, audit)
+            except (OSError, ValueError) as error:
+                issues.append(f"dependency inventory verification failed: {error}")
+            else:
+                issues.extend(
+                    f"dependency inventory: {issue}" for issue in inventory["issues"]
+                )
+            if vex is not None:
+                try:
+                    dispositions = verify_vulnerability_dispositions(audit, vex)
+                except ValueError as error:
+                    issues.append(f"OpenVEX verification failed: {error}")
+                else:
+                    for item in dispositions["unreviewed"]:
+                        issues.append(
+                            "unreviewed bundled vulnerability: "
+                            f"{item['package']}=={item['version']}:{item['vulnerability']}"
+                        )
+
+    result_names = sorted(
+        {
+            Path(path).parts[1]
+            for path in artifact_paths
+            if len(Path(path).parts) >= 3 and Path(path).parts[0] == "results"
+        }
+    )
+    contains_publishable = False
+    for result_name in result_names:
+        result_directory = directory / "results" / result_name
+        try:
+            report = verify_analysis_bundle(result_directory)
+            analysis_manifest = json.loads(
+                (result_directory / "analysis-manifest.json").read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            issues.append(f"analysis bundle {result_name} is invalid: {error}")
+            continue
+        if not report["verified"]:
+            issues.extend(
+                f"analysis bundle {result_name}: {issue}" for issue in report["issues"]
+            )
+        if isinstance(analysis_manifest, dict):
+            contains_publishable = contains_publishable or bool(
+                analysis_manifest.get("contains_publishable_runs")
+            )
+        else:
+            issues.append(f"analysis bundle {result_name} manifest must be an object")
+    if payload.get("contains_publishable_results") is not contains_publishable:
+        issues.append("publishable-results claim does not match bundled analyses")
+
+    container = _load_bundle_object(
+        directory / "metadata/container-provenance.json", "container provenance", issues
+    )
+    if container is not None and container.get("status") not in {"pass", "not_supplied"}:
+        issues.append("container provenance has a failed or unknown status")
+
+    if payload.get("prerelease") is False:
+        for required in (sbom_path, audit_path):
+            if not required.is_file():
+                issues.append(f"final release is missing {required.name}")
+        if container is None or container.get("status") != "pass":
+            issues.append("final release lacks passing container provenance")
+        if not contains_publishable:
+            issues.append("final release has no verified publishable analysis")
+        tags = source.get("tags")
+        if not isinstance(tags, list) or f"v{version}" not in tags:
+            issues.append("final release source does not attest to its matching tag")
+    return issues
+
+
 def verify_release_bundle(directory: Path) -> dict[str, Any]:
     """Verify exact assets, manifest identity, and GNU-style checksums."""
 
     directory = directory.resolve()
     manifest_path = directory / RELEASE_MANIFEST
-    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-    issues = []
+    issues: list[str] = []
+    if not manifest_path.is_file():
+        return {
+            "schema_version": "1.0.0",
+            "verified": False,
+            "version": None,
+            "git_commit": None,
+            "artifact_count": 0,
+            "manifest_sha256": None,
+            "issues": ["release manifest is missing"],
+        }
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return {
+            "schema_version": "1.0.0",
+            "verified": False,
+            "version": None,
+            "git_commit": None,
+            "artifact_count": 0,
+            "manifest_sha256": None,
+            "issues": [f"release manifest is invalid JSON: {error}"],
+        }
+    if not isinstance(payload, dict):
+        return {
+            "schema_version": "1.0.0",
+            "verified": False,
+            "version": None,
+            "git_commit": None,
+            "artifact_count": 0,
+            "manifest_sha256": None,
+            "issues": ["release manifest must be a JSON object"],
+        }
     expected_manifest_digest = payload.get("manifest_sha256")
     unsigned = {key: value for key, value in payload.items() if key != "manifest_sha256"}
     if payload.get("schema_version") != "1.0.0":
@@ -403,10 +643,13 @@ def verify_release_bundle(directory: Path) -> dict[str, Any]:
     }
     if actual_files != expected_files:
         issues.append("release file set differs from the manifest")
+    issues.extend(_verify_release_semantics(directory, payload, artifact_paths))
 
     expected_checksum_paths = artifact_paths | {RELEASE_MANIFEST}
     expected_checksums = {
-        relative: sha256_file(directory / relative) for relative in expected_checksum_paths
+        relative: sha256_file(directory / relative)
+        for relative in expected_checksum_paths
+        if (directory / relative).is_file()
     }
     observed_checksums: dict[str, str] = {}
     checksum_path = directory / CHECKSUMS
@@ -421,11 +664,14 @@ def verify_release_bundle(directory: Path) -> dict[str, Any]:
             observed_checksums[parts[1]] = parts[0]
         if observed_checksums != expected_checksums:
             issues.append("SHA256SUMS does not match release contents")
+    source_payload = payload.get("source")
     return {
         "schema_version": "1.0.0",
         "verified": not issues,
         "version": payload.get("version"),
-        "git_commit": payload.get("source", {}).get("git_commit"),
+        "git_commit": (
+            source_payload.get("git_commit") if isinstance(source_payload, dict) else None
+        ),
         "artifact_count": len(artifact_paths),
         "manifest_sha256": expected_manifest_digest,
         "issues": issues,

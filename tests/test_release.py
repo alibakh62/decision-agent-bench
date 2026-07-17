@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from decision_agent_bench.experiments.analysis import ANALYSIS_ARTIFACTS
-from decision_agent_bench.integrity import digest_payload, file_evidence
+from decision_agent_bench.integrity import digest_payload, file_evidence, sha256_file
 from decision_agent_bench.release import assemble_release_bundle, verify_release_bundle
 
 
@@ -73,6 +73,28 @@ def _write_publishable_analysis(directory: Path) -> None:
     )
 
 
+def _resign_outer_bundle(directory: Path) -> None:
+    manifest_path = directory / "release-manifest.json"
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for artifact in payload["artifacts"]:
+        path = directory / artifact["path"]
+        artifact["bytes"] = path.stat().st_size
+        artifact["sha256"] = sha256_file(path)
+    unsigned = {key: value for key, value in payload.items() if key != "manifest_sha256"}
+    payload["manifest_sha256"] = digest_payload(unsigned)
+    manifest_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    checksum_paths = sorted(
+        [str(artifact["path"]) for artifact in payload["artifacts"]]
+        + ["release-manifest.json"]
+    )
+    (directory / "SHA256SUMS").write_text(
+        "".join(f"{sha256_file(directory / path)}  {path}\n" for path in checksum_paths),
+        encoding="utf-8",
+    )
+
+
 def test_release_bundle_is_exact_and_detects_tampering(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -122,6 +144,30 @@ def test_release_bundle_rejects_unexpected_files(
 
     assert report["verified"] is False
     assert "release file set differs from the manifest" in report["issues"]
+
+
+def test_verifier_reports_missing_artifacts_and_malformed_manifests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repository"
+    distribution = _write_fake_repository(repository)
+    monkeypatch.setattr(
+        "decision_agent_bench.release._git_release_state", lambda _repository: _clean_state()
+    )
+    bundle = tmp_path / "bundle"
+    assemble_release_bundle(repository, distribution, bundle, allow_prerelease=True)
+    (bundle / "research/articles/one.md").unlink()
+
+    missing = verify_release_bundle(bundle)
+    absent = verify_release_bundle(tmp_path / "absent")
+    (bundle / "release-manifest.json").write_text("not json\n", encoding="utf-8")
+    malformed = verify_release_bundle(bundle)
+
+    assert missing["verified"] is False
+    assert "missing file: research/articles/one.md" in missing["issues"]
+    assert absent["issues"] == ["release manifest is missing"]
+    assert malformed["verified"] is False
+    assert malformed["issues"][0].startswith("release manifest is invalid JSON:")
 
 
 def test_release_assembly_requires_clean_source_and_final_evidence(
@@ -198,6 +244,16 @@ def test_final_release_accepts_complete_tagged_evidence(
     assert verified["verified"] is True
     assert verified["artifact_count"] == 29
 
+    result_path = tmp_path / "bundle/results/primary" / ANALYSIS_ARTIFACTS[0]
+    result_path.write_text("outer manifest was recomputed\n", encoding="utf-8")
+    _resign_outer_bundle(tmp_path / "bundle")
+    semantic_tamper = verify_release_bundle(tmp_path / "bundle")
+    assert semantic_tamper["verified"] is False
+    assert any(
+        issue.startswith("analysis bundle primary:")
+        for issue in semantic_tamper["issues"]
+    )
+
 
 def test_final_release_rejects_unbound_sbom_and_dependency_report(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -242,4 +298,96 @@ def test_final_release_rejects_unbound_sbom_and_dependency_report(
             sbom_path=sbom,
             dependency_report=dependency_report,
             container_image="image",
+        )
+
+
+def test_verifier_recomputes_security_and_benchmark_semantics_after_resigning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repository"
+    distribution = _write_fake_repository(repository)
+    monkeypatch.setattr(
+        "decision_agent_bench.release._git_release_state", lambda _repository: _clean_state()
+    )
+    sbom = tmp_path / "sbom.json"
+    sbom.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "components": [{"name": "inspect-ai", "version": "0.3.247"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    dependency_report = tmp_path / "pip-audit.json"
+    dependency_report.write_text(
+        json.dumps(
+            {
+                "dependencies": [
+                    {"name": "inspect-ai", "version": "0.3.247", "vulns": []}
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    bundle = tmp_path / "bundle"
+    assemble_release_bundle(
+        repository,
+        distribution,
+        bundle,
+        sbom_path=sbom,
+        dependency_report=dependency_report,
+        allow_prerelease=True,
+    )
+
+    (bundle / "metadata/sbom.cdx.json").write_text(
+        json.dumps({"bomFormat": "CycloneDX", "components": []}), encoding="utf-8"
+    )
+    (bundle / "metadata/pip-audit.json").write_text(
+        json.dumps({"dependencies": []}), encoding="utf-8"
+    )
+    (bundle / "data/task-instances-v0.2.json").write_text("[]\n", encoding="utf-8")
+    _resign_outer_bundle(bundle)
+
+    report = verify_release_bundle(bundle)
+
+    assert report["verified"] is False
+    assert "release benchmark summary does not match bundled data" in report["issues"]
+    assert any(issue.startswith("SBOM inventory: missing") for issue in report["issues"])
+    assert any(
+        issue.startswith("dependency inventory: missing") for issue in report["issues"]
+    )
+
+
+def test_release_rejects_unreviewed_vulnerability_even_with_complete_inventory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repository"
+    distribution = _write_fake_repository(repository)
+    monkeypatch.setattr(
+        "decision_agent_bench.release._git_release_state", lambda _repository: _clean_state()
+    )
+    report = tmp_path / "pip-audit.json"
+    report.write_text(
+        json.dumps(
+            {
+                "dependencies": [
+                    {
+                        "name": "inspect-ai",
+                        "version": "0.3.247",
+                        "vulns": [{"id": "CVE-2099-0001", "aliases": []}],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="without current OpenVEX coverage"):
+        assemble_release_bundle(
+            repository,
+            distribution,
+            tmp_path / "bundle",
+            dependency_report=report,
+            allow_prerelease=True,
         )

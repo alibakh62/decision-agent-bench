@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from collections import defaultdict
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -161,6 +162,99 @@ def verify_sbom_inventory(lock_path: Path, payload: dict[str, Any]) -> dict[str,
         "multi_version_names": multi_version_names,
         "duplicate_pairs": [f"{name}=={version}" for name, version in duplicate_pairs],
         "issues": issues,
+    }
+
+
+def accepted_vex_identifiers(
+    payload: dict[str, Any], *, on_date: date | None = None
+) -> set[str]:
+    """Return vulnerability IDs covered by a current fixed/not-affected statement."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("OpenVEX document must be a JSON object")
+    statements = payload.get("statements", [])
+    if not isinstance(statements, list):
+        raise ValueError("OpenVEX statements must be a list")
+    today = on_date or datetime.now(UTC).date()
+    identifiers: set[str] = set()
+    for index, statement in enumerate(statements):
+        if not isinstance(statement, dict):
+            raise ValueError(f"OpenVEX statement {index} is not an object")
+        status = statement.get("status")
+        if status not in {"fixed", "not_affected"}:
+            continue
+        if status == "not_affected":
+            review_by = statement.get("x_review_by")
+            if not review_by:
+                continue
+            try:
+                review_date = datetime.fromisoformat(str(review_by)).date()
+            except ValueError as error:
+                raise ValueError(
+                    f"OpenVEX statement {index} has invalid x_review_by"
+                ) from error
+            if review_date < today:
+                continue
+        vulnerability = statement.get("vulnerability")
+        if not isinstance(vulnerability, dict):
+            raise ValueError(f"OpenVEX statement {index} has no vulnerability object")
+        aliases = vulnerability.get("aliases", [])
+        if not isinstance(aliases, list):
+            raise ValueError(f"OpenVEX statement {index} aliases must be a list")
+        identifiers.add(str(vulnerability.get("@id", "")))
+        identifiers.update(str(alias) for alias in aliases)
+    return identifiers - {""}
+
+
+def verify_vulnerability_dispositions(
+    audit_payload: dict[str, Any],
+    vex_payload: dict[str, Any],
+    *,
+    on_date: date | None = None,
+) -> dict[str, Any]:
+    """Require every vulnerability in a pip-audit report to have current VEX coverage."""
+
+    if not isinstance(audit_payload, dict):
+        raise ValueError("pip-audit report must be a JSON object")
+    accepted = accepted_vex_identifiers(vex_payload, on_date=on_date)
+    dependencies = audit_payload.get("dependencies")
+    if not isinstance(dependencies, list):
+        raise ValueError("pip-audit dependencies must be a list")
+    reviewed: list[dict[str, str]] = []
+    unreviewed: list[dict[str, str]] = []
+    for dependency_index, dependency in enumerate(dependencies):
+        if not isinstance(dependency, dict):
+            raise ValueError(f"pip-audit dependency {dependency_index} is not an object")
+        vulnerabilities = dependency.get("vulns", [])
+        if not isinstance(vulnerabilities, list):
+            raise ValueError(
+                f"pip-audit dependency {dependency_index} vulnerabilities must be a list"
+            )
+        for vulnerability_index, vulnerability in enumerate(vulnerabilities):
+            if not isinstance(vulnerability, dict):
+                raise ValueError(
+                    f"pip-audit vulnerability {dependency_index}:{vulnerability_index} "
+                    "is not an object"
+                )
+            aliases = vulnerability.get("aliases", [])
+            if not isinstance(aliases, list):
+                raise ValueError(
+                    f"pip-audit vulnerability {dependency_index}:{vulnerability_index} "
+                    "aliases must be a list"
+                )
+            vulnerability_id = str(vulnerability.get("id", ""))
+            identifiers = {vulnerability_id, *(str(alias) for alias in aliases)} - {""}
+            item = {
+                "package": str(dependency.get("name", "")),
+                "version": str(dependency.get("version", "")),
+                "vulnerability": vulnerability_id,
+            }
+            (reviewed if identifiers & accepted else unreviewed).append(item)
+    return {
+        "verified": not unreviewed,
+        "accepted_vex_identifiers": sorted(accepted),
+        "reviewed_vex": reviewed,
+        "unreviewed": unreviewed,
     }
 
 

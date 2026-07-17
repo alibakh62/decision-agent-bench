@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Any
 
 from decision_agent_bench.evals.tools import benchmark_tools
-from decision_agent_bench.integrity import verify_pip_audit_inventory
+from decision_agent_bench.integrity import (
+    accepted_vex_identifiers,
+    verify_pip_audit_inventory,
+    verify_vulnerability_dispositions,
+)
 from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, generate_world
 from decision_agent_bench.simulator.environment import ToolError
 from decision_agent_bench.simulator.reference import verify_reference_world
@@ -245,20 +249,7 @@ def _vex_ids(repository: Path) -> set[str]:
     if not path.is_file():
         return set()
     payload = json.loads(path.read_text(encoding="utf-8"))
-    identifiers: set[str] = set()
-    today = datetime.now(UTC).date()
-    for statement in payload.get("statements", []):
-        if statement.get("status") not in {"fixed", "not_affected"}:
-            continue
-        review_by = statement.get("x_review_by")
-        if statement.get("status") == "not_affected" and (
-            not review_by or datetime.fromisoformat(str(review_by)).date() < today
-        ):
-            continue
-        vulnerability = statement.get("vulnerability", {})
-        identifiers.add(str(vulnerability.get("@id", "")))
-        identifiers.update(str(item) for item in vulnerability.get("aliases", []))
-    return identifiers - {""}
+    return accepted_vex_identifiers(payload)
 
 
 def _dependency_check(repository: Path, report_path: Path | None) -> AuditCheck:
@@ -271,8 +262,11 @@ def _dependency_check(repository: Path, report_path: Path | None) -> AuditCheck:
         )
     try:
         payload = json.loads(report_path.read_text(encoding="utf-8"))
-        vex_ids = _vex_ids(repository)
         inventory = verify_pip_audit_inventory(repository / "requirements.lock", payload)
+        vex_payload = json.loads(
+            (repository / "security/openvex.json").read_text(encoding="utf-8")
+        )
+        dispositions = verify_vulnerability_dispositions(payload, vex_payload)
     except (OSError, ValueError, TypeError) as error:
         return AuditCheck(
             "dependencies",
@@ -287,20 +281,8 @@ def _dependency_check(repository: Path, report_path: Path | None) -> AuditCheck:
             "dependency audit does not cover requirements.lock",
             {"inventory": inventory, "reviewed_vex": [], "unreviewed": []},
         )
-    unreviewed: list[dict[str, str]] = []
-    reviewed: list[dict[str, str]] = []
-    for dependency in payload.get("dependencies", []):
-        for vulnerability in dependency.get("vulns", []):
-            identifiers = {
-                str(vulnerability.get("id", "")),
-                *(str(alias) for alias in vulnerability.get("aliases", [])),
-            }
-            item = {
-                "package": str(dependency.get("name")),
-                "version": str(dependency.get("version")),
-                "vulnerability": str(vulnerability.get("id")),
-            }
-            (reviewed if identifiers & vex_ids else unreviewed).append(item)
+    unreviewed = dispositions["unreviewed"]
+    reviewed = dispositions["reviewed_vex"]
     return AuditCheck(
         "dependencies",
         "fail" if unreviewed else "pass",
