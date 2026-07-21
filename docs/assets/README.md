@@ -6,19 +6,20 @@ This is the canonical GitHub social-preview and project-banner asset. It is a 12
 kept below GitHub's 1 MB upload limit. The release audit verifies those properties, and archival
 release bundles include the exact file under `media/social-preview.png`.
 
-The illustration was generated for this project on 17 July 2026 with OpenAI's built-in image
-generation tool. No third-party logo, proprietary retailer imagery, or supplied reference image was
-used. Deterministic typography was added locally so project claims remain exact and legible.
+The original illustration was generated for this project on 17 July 2026 with OpenAI's built-in
+image generation tool. It was edited with the same tool on 21 July 2026 to correct the benchmark
+scope and evaluation-unit claims, then resized without changing its 2:1 composition. No third-party
+logo, proprietary retailer imagery, or external reference image was used.
 
-Final generation prompt:
+v0.2.1 edit prompt:
 
-> Create a polished, credible, wide GitHub social-preview illustration for an open-source benchmark
-> evaluating long-horizon enterprise decision agents. Use a deep navy technical canvas, reserve the
-> left side for title copy, and place a connected system of retail data, tool-call nodes, a
-> multi-step decision path, safety shield, verification check, recovery path, and oracle scorecard
-> on the right. Use restrained cyan, teal, and amber accents with research-lab credibility. Avoid
-> people, brand marks, proprietary imagery, robot heads, text, pseudo-writing, watermarks, and
-> cyberpunk clutter.
+> Edit this existing 1280×640 GitHub social-preview image. Preserve the exact composition,
+> background, node illustration, colors, spacing, typography style, title “DecisionAgentBench”,
+> badges “INSPECT AI” and “DETERMINISTIC GRADING”, and all other visual details. Change only these
+> two text areas: replace the subtitle with exactly “Rigorous evaluation for evidence-grounded
+> business decision agents”; replace the statistics line with exactly “25 TASK CONCEPTS • 100
+> SEEDED INSTANCES • 200 PAIRED SAMPLES”. Do not add, remove, or alter any other elements. Keep the
+> output 1280×640, opaque, crisp, legible, professional, and with exact spelling and punctuation.
 
-The deterministic overlay states only verified project properties: 25 task families, 200 evaluation
-samples, Inspect AI integration, and deterministic grading.
+The overlay states the reviewable scope precisely: 25 concepts, 100 seeded instances, and 200
+paired samples, plus Inspect AI integration and deterministic grading.

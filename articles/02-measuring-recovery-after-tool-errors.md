@@ -1,4 +1,4 @@
-# Measuring Recovery After Tool Errors in Long-Horizon Agents
+# Measuring Recovery After Tool Errors in Business Decision Agents
 
 **Research article draft — the protocol is frozen; model results remain pending.**
 

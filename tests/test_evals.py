@@ -12,7 +12,11 @@ from pytest import MonkeyPatch
 from decision_agent_bench.evals.baselines import baseline_solver
 from decision_agent_bench.evals.cases import CASES_BY_ID, validate_cases
 from decision_agent_bench.evals.instances import expanded_instance_catalog
-from decision_agent_bench.evals.runtime import apply_perturbation
+from decision_agent_bench.evals.runtime import (
+    apply_perturbation,
+    failure_tool_for_perturbation,
+    perturbation_kind,
+)
 from decision_agent_bench.evals.scorer import (
     DeterministicGrade,
     grade_submission,
@@ -63,10 +67,10 @@ def test_category_filter_uses_versioned_spec_categories() -> None:
 
 def test_expanded_dataset_has_100_instances_and_200_paired_samples() -> None:
     clean = build_dataset(
-        variant="clean", instances_per_family=4, benchmark_version="0.2.0"
+        variant="clean", instances_per_family=4, benchmark_version="0.2.1"
     )
     both = build_dataset(
-        variant="both", instances_per_family=4, benchmark_version="0.2.0"
+        variant="both", instances_per_family=4, benchmark_version="0.2.1"
     )
 
     assert len(clean) == 100
@@ -83,11 +87,20 @@ def test_expanded_dataset_has_100_instances_and_200_paired_samples() -> None:
         20260719,
         20260720,
     }
-    assert {sample.metadata["task_version"] for sample in both} == {"0.2.0"}
+    assert {sample.metadata["task_version"] for sample in both} == {"0.2.1"}
+    assert {sample.metadata["horizon_claim"] for sample in both} == {
+        "not_established"
+    }
+    assert {sample.metadata["enforced_dependency_depth"] for sample in both} == {0}
+    assert "long_horizon_workflow" not in {
+        sample.metadata["category"] for sample in both
+    }
+    assert "workflow_planning" in {sample.metadata["category"] for sample in both}
     assert clean.name.startswith("decision_agent_bench_v0_2_")
     assert len(decision_agent_bench_v0_2().dataset) == 200
     catalog = expanded_instance_catalog()
     assert len(catalog) == 100
+    assert len({item["perturbation"] for item in catalog}) == 53
     assert {item["instance_id"] for item in catalog} == {
         sample.id.removesuffix("-clean") for sample in clean
     }
@@ -97,6 +110,22 @@ def test_expanded_dataset_has_100_instances_and_200_paired_samples() -> None:
         )
     )
     assert published_catalog == catalog
+
+
+def test_v020_dataset_metadata_and_perturbation_schedule_remain_reproducible() -> None:
+    dataset = build_dataset(
+        variant="perturbed", instances_per_family=4, benchmark_version="0.2.0"
+    )
+
+    assert all("horizon" in sample.metadata for sample in dataset)
+    assert all("declared_workflow_steps" not in sample.metadata for sample in dataset)
+    for family_id in {sample.metadata["task_id"] for sample in dataset}:
+        perturbations = {
+            sample.metadata["perturbation"]
+            for sample in dataset
+            if sample.metadata["task_id"] == family_id
+        }
+        assert len(perturbations) == 1
 
 
 def test_all_reference_research_and_ablation_baselines_resolve() -> None:
@@ -181,20 +210,82 @@ def test_advanced_architectures_execute_under_inspect(
         assert logs[0].status == "success"
 
 
-def test_every_named_non_timeout_perturbation_changes_world_state(tmp_path: Path) -> None:
+def test_every_named_perturbation_is_executable_and_observable(tmp_path: Path) -> None:
     database = generate_world(tmp_path / "world", GenerationConfig())
     original_digest = logical_digest(database)
 
     for spec in load_task_specs():
-        perturbation = str(spec["perturbations"][0])
-        candidate = tmp_path / f"{spec['id']}.sqlite"
-        candidate.write_bytes(database.read_bytes())
-        kind = apply_perturbation(candidate, perturbation)
-        if "timeout" in perturbation:
-            assert kind == "transient_tool_failure"
-            assert logical_digest(candidate) == original_digest
-        else:
-            assert logical_digest(candidate) != original_digest, perturbation
+        for perturbation_value in spec["perturbations"]:
+            perturbation = str(perturbation_value)
+            candidate = tmp_path / f"{spec['id']}-{perturbation}.sqlite"
+            candidate.write_bytes(database.read_bytes())
+            kind = apply_perturbation(candidate, perturbation)
+            assert kind == perturbation_kind(perturbation)
+            if kind == "transient_tool_failure":
+                assert failure_tool_for_perturbation(perturbation) is not None
+                assert logical_digest(candidate) == original_digest
+            else:
+                assert logical_digest(candidate) != original_digest, perturbation
+
+
+def test_v021_keyword_answer_without_evidence_is_ineligible() -> None:
+    contract = CASES_BY_ID["DAB-SAL-001"].target()
+    contract["contract_version"] = "0.2.1"
+    submission = {
+        "conclusion": "R03 decline unit demand",
+        "confidence": 0.9,
+        "evidence_ids": [],
+        "selected_ids": [],
+        "numeric_values": {},
+        "escalate": False,
+        "data_quality_issues": [],
+    }
+
+    grade = grade_submission(
+        contract=contract,
+        submission=submission,
+        tool_calls=[],
+        recoveries=[],
+        variant="clean",
+        perturbation_kind="none",
+        database_path=None,
+    )
+
+    assert grade.values["task_effectiveness"] == 0
+    assert grade.values["decision_quality"] == 0
+    assert grade.values["composite"] == 0
+    assert "F-EVID" in grade.failures
+    assert "evidence_eligible=false" in grade.explanation
+
+
+def test_v021_requires_valid_citations_and_required_tool_coverage() -> None:
+    contract = CASES_BY_ID["DAB-ASS-002"].target()
+    contract["contract_version"] = "0.2.1"
+    submission = {
+        "conclusion": "Prioritize S007, S004, and S001 using demand forecasts.",
+        "confidence": 0.8,
+        "evidence_ids": ["E001", "E-BOGUS"],
+        "selected_ids": ["S007", "S004", "S001"],
+        "numeric_values": {},
+        "escalate": False,
+        "data_quality_issues": [],
+    }
+    calls = [_successful_call("retail_sql", "E001", 1)]
+
+    grade = grade_submission(
+        contract=contract,
+        submission=submission,
+        tool_calls=calls,
+        recoveries=[],
+        variant="clean",
+        perturbation_kind="none",
+        database_path=None,
+    )
+
+    assert grade.values["task_effectiveness"] == 0
+    assert grade.values["decision_quality"] == 0
+    assert grade.values["composite"] == 0
+    assert "F-EVID" in grade.failures
 
 
 def test_parser_accepts_json_and_single_json_fence() -> None:
@@ -451,13 +542,16 @@ def test_v02_adds_replacement_regret_without_rewriting_v01_contract(
     v02_sample = next(
         sample
         for sample in build_dataset(
-            category="assortment", variant="clean", benchmark_version="0.2.0"
+            category="assortment", variant="clean", benchmark_version="0.2.1"
         )
         if sample.metadata["task_id"] == "DAB-ASS-001"
     )
     v01_contract = json.loads(v01_sample.target)
     v02_contract = json.loads(v02_sample.target)
-    calls = [_successful_call("retail_sql", "E001", 1)]
+    calls = [
+        _successful_call("retail_sql", "E001", 1),
+        _successful_call("retail_sql", "E002", 2),
+    ]
 
     def grade(candidate: str) -> DeterministicGrade:
         return grade_submission(
@@ -465,7 +559,7 @@ def test_v02_adds_replacement_regret_without_rewriting_v01_contract(
             submission={
                 "conclusion": "Use the replacement with the strongest vendor-feasible margin.",
                 "confidence": 0.8,
-                "evidence_ids": ["E001"],
+                "evidence_ids": ["E001", "E002"],
                 "selected_ids": [candidate],
                 "numeric_values": {},
                 "escalate": False,
@@ -481,8 +575,8 @@ def test_v02_adds_replacement_regret_without_rewriting_v01_contract(
     assert "contract_version" not in v01_contract
     assert v01_sample.metadata["task_version"] == "0.1.0"
     assert v02_contract["economic_oracle"] == "replacement_opportunity"
-    assert v02_contract["contract_version"] == "0.2.0"
-    assert v02_sample.metadata["task_version"] == "0.2.0"
+    assert v02_contract["contract_version"] == "0.2.1"
+    assert v02_sample.metadata["task_version"] == "0.2.1"
     optimal = grade("P021")
     dominated = grade("P001")
     assert optimal.values["decision_quality"] == 1

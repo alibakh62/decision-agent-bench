@@ -6,10 +6,11 @@ DecisionAgentBench's first environment is a generated convenience-retail company
 
 The reference configuration contains three regions, twelve stores, twenty-four products, four vendors, 240 synthetic customer identifiers, 56 days of item-level transactions, store-product prices and lot-level inventory, promotions, refunds, payment events, competitor observations, feed status, recall fixtures, policies, an untrusted vendor attachment, approvals, and an action ledger.
 
-The expanded v0.2 task set regenerates the same structural world under four published seeds. This
-creates 100 scenario instances across the 25 task families and 200 clean/perturbed evaluation
-samples. Seed-level validation preserves fixed causal and safety fixtures while varying non-critical
-transaction noise.
+The expanded v0.2 task set contains **25 concepts, 100 seeded instances, and 200 paired samples**.
+The 200 samples form 100 clean/perturbed pairs under four published seeds per concept. Seed-level
+validation preserves fixed causal, safety, and answer-key fixtures while varying non-critical
+transaction noise; these are not 200 independent evaluation concepts. All 53 named perturbations
+are deterministically scheduled across the 100 perturbed samples.
 
 ## Generation
 

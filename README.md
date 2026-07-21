@@ -1,24 +1,34 @@
 # DecisionAgentBench
 
-![DecisionAgentBench — rigorous evaluation for long-horizon business decision agents](docs/assets/social-preview.png)
+![DecisionAgentBench — rigorous evaluation for evidence-grounded business decision agents](docs/assets/social-preview.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg)](https://www.python.org/)
 
-DecisionAgentBench is an open benchmark for measuring how reliably AI agents make consequential, long-horizon business decisions. It evaluates not only whether an agent reaches an answer, but whether the decision is economically sound, policy-compliant, robust to corrupted context and tool failures, calibrated, efficient, and supported by valid evidence.
+DecisionAgentBench is an open benchmark for measuring how reliably AI agents make consequential,
+evidence-grounded business decisions. It evaluates not only whether an agent reaches an answer,
+but whether the decision is economically sound, policy-compliant, robust to corrupted context and
+tool failures, calibrated, efficient, and supported by valid evidence.
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.2.0 public research preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.2.1 public research preview. The executable v0.1 benchmark, v0.2
 > research expansion, six architectures, two ablations, reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
 > implemented. Multi-model runs, human ratings, an external reproduction, archival DOI, and upstream
 > registration remain evidence gates; no frontier-model performance claims have been made.
 
-The research track also includes a registered v0.2 expansion with 100 seeded instances (200 paired
-samples), four advanced architectures, two prompt ablations, and a versioned assortment-regret
-oracle in addition to the frozen v0.1 pricing oracle. These are tested research infrastructure, not
-empirical performance claims.
+The research track contains **25 concepts, 100 seeded instances, and 200 paired samples**—200
+samples arranged as 100 clean/perturbed pairs. All 53 named perturbations are deterministically
+scheduled across the perturbed instances. Four advanced architectures, two prompt ablations, and a
+versioned assortment-regret oracle are tested research infrastructure, not empirical performance
+claims or 200 independent evaluation concepts.
+
+DecisionAgentBench does **not** currently claim to measure long-horizon agent ability. The v0.2.1
+catalog reports a median optimal tool count of four and an enforced dependency depth of zero; the
+legacy workflow-step estimates are design metadata. See the
+[horizon methodology](docs/horizon-methodology.md) for the claim boundary and future acceptance
+criteria.
 
 ## Why this benchmark
 
@@ -35,7 +45,7 @@ The benchmark is built around five principles:
 ## Benchmark v0.1
 
 - One synthetic convenience-retail domain
-- 25 task families spanning diagnosis, assortment, promotion, fraud, recovery, safety, and long-horizon execution
+- 25 task concepts spanning diagnosis, assortment, promotion, fraud, recovery, safety, and workflow planning
 - Single-agent and planner-executor baselines
 - Inspect AI integration
 - Deterministic graders and a public failure taxonomy
@@ -109,8 +119,8 @@ oracle fields, or public sharing tunnel.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.2.0 .
-docker run --rm decision-agent-bench:0.2.0
+docker build --tag decision-agent-bench:0.2.1 .
+docker run --rm decision-agent-bench:0.2.1
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

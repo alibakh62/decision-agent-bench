@@ -18,7 +18,7 @@ from decision_agent_bench.release import assemble_release_bundle, verify_release
 from decision_agent_bench.specs import load_task_specs
 
 
-def _write_fake_repository(root: Path, version: str = "0.2.0.dev0") -> Path:
+def _write_fake_repository(root: Path, version: str = "0.2.1.dev0") -> Path:
     files = {
         "pyproject.toml": f'[project]\nname = "decision-agent-bench"\nversion = "{version}"\n',
         "data/task_specs/v0.1.json": json.dumps([{"id": "one"}, {"id": "two"}]),
@@ -50,7 +50,7 @@ def _write_fake_repository(root: Path, version: str = "0.2.0.dev0") -> Path:
     return distribution
 
 
-def _clean_state(version: str = "0.2.0.dev0") -> dict[str, object]:
+def _clean_state(version: str = "0.2.1.dev0") -> dict[str, object]:
     return {
         "git_commit": "b" * 40,
         "working_tree_clean": True,

@@ -1,11 +1,11 @@
 cff-version: 1.2.0
 message: "If you use DecisionAgentBench, cite the software and the accompanying report."
-title: "DecisionAgentBench: Reliable Long-Horizon Business Decision Agents"
+title: "DecisionAgentBench: Reliable Evidence-Grounded Business Decision Agents"
 type: software
 authors:
   - family-names: "Contributors"
     given-names: "DecisionAgentBench"
-version: 0.2.0
+version: 0.2.1
 date-released: 2026-07-21
 license: MIT
 repository-code: "https://github.com/alibakh62/decision-agent-bench"
@@ -13,7 +13,7 @@ url: "https://github.com/alibakh62/decision-agent-bench"
 abstract: >-
   An open, deterministic benchmark and synthetic retail environment for evaluating the
   effectiveness, economic quality, safety, robustness, calibration, efficiency, recovery,
-  and evidence grounding of long-horizon AI decision agents.
+  and evidence grounding of process-aware AI decision agents.
 keywords:
   - artificial intelligence
   - agents

@@ -4,6 +4,22 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-21
+
+### Fixed
+
+- Make valid tool evidence a v0.2.1 eligibility condition: unsupported or partially grounded
+  answers receive zero task effectiveness, decision quality, and composite while safety remains
+  separately observable. Preserve frozen v0.1 and v0.2.0 scoring behavior for reproducibility.
+- Cycle all family perturbations across four seeds, activating all 53 named perturbations instead of
+  only the first perturbation in each family, with executable state or transient-failure coverage
+  tests for every perturbation.
+- Correct the evaluation-unit claim to **25 concepts, 100 seeded instances, and 200 paired
+  samples**, explicitly documenting that many answer keys repeat across seeds.
+- Remove the unsupported long-horizon claim. Publish legacy step estimates, optimal tool counts,
+  enforced dependency depth, and horizon-claim status as separate fields; rename the expanded
+  workflow category to `workflow_planning`.
+
 ## [0.2.0] - 2026-07-21
 
 - Distinguish preview bundles from package-version prereleases so an explicitly assembled stable

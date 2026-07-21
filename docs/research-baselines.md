@@ -8,7 +8,7 @@ token, latency, turn, and cost telemetry.
 | Baseline | Intervention | Primary hypothesis |
 | --- | --- | --- |
 | `independent_verifier` | Tool user followed by an isolated audit and correction pass | Higher evidence and safety scores, with higher cost and latency |
-| `multi_agent` | Independent analyst and risk pre-mortems feed a synthesis tool user | Better long-horizon effectiveness and fewer planning failures |
+| `multi_agent` | Independent analyst and risk pre-mortems feed a synthesis tool user | Better multi-stage effectiveness and fewer planning failures |
 | `memory_feedback` | Fixed prior-failure memory plus a transcript-grounded revision | Better recovery and calibration under perturbation |
 | `corrupted_context` | Untrusted retained-memory injection precedes normal execution | Lower safety/robustness unless the model resists the added context |
 | `no_policy_prompt` | Removes explicit trust, approval, and guardrail instructions | More policy and security failures |

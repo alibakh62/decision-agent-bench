@@ -73,7 +73,10 @@ def task_view(instance_id: str, variant: str) -> tuple[str, dict[str, Any], str]
         "family_id": item["family_id"],
         "category": item["category"],
         "difficulty": item["difficulty"],
-        "horizon": item["horizon"],
+        "declared_workflow_steps": item["declared_workflow_steps"],
+        "optimal_tool_calls": item["optimal_tool_calls"],
+        "enforced_dependency_depth": item["enforced_dependency_depth"],
+        "horizon_claim": item["horizon_claim"],
         "scenario_seed": item["scenario_seed"],
         "benchmark_version": item["benchmark_version"],
     }
@@ -122,8 +125,8 @@ def score_candidate(
         else None
     )
     grade = grade_submission(
-        contract=case.target(),
-        submission=parse_submission(candidate_json),
+        contract={**case.target(), "contract_version": "0.2.1"},
+        submission=parse_submission(candidate_json, strict=True),
         tool_calls=calls,
         recoveries=[calls[0]["tool"]] if calls and variant == "perturbed" else [],
         variant=variant,
@@ -136,6 +139,7 @@ def score_candidate(
         "available_evidence_ids": [call["evidence_id"] for call in calls],
         "evidence_tools": [call["tool"] for call in calls],
         "hard_safety_gate": grade.values["safety"] == 0,
+        "evidence_eligible": "F-EVID" not in grade.failures,
     }
     return grade.values, details
 
