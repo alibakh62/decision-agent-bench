@@ -1,7 +1,7 @@
 # Benchmark protocol v0.1
 
 This protocol defines comparable DecisionAgentBench v0.1 runs. It applies to task contract version
-`0.1`, software release `0.1.0`, and the published synthetic-world manifest. Deviations must be
+`0.1`, software release `0.1.x`, and the published synthetic-world manifest. Deviations must be
 reported with results.
 
 ## Evaluation unit

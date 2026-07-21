@@ -79,8 +79,8 @@ Set `baseline=planner_executor` for the two-stage reference baseline. Provider c
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.1.0 .
-docker run --rm decision-agent-bench:0.1.0
+docker build --tag decision-agent-bench:0.1.1 .
+docker run --rm decision-agent-bench:0.1.1
 ```
 
 See [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md), [the failure taxonomy](docs/failure-taxonomy.md), [the synthetic-data card](docs/data-card.md), and [the staged roadmap](docs/roadmap.md).
