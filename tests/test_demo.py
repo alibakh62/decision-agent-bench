@@ -39,6 +39,21 @@ def test_demo_rejects_invalid_submission() -> None:
     assert details["failure_taxonomy"] == ["F-FORMAT"]
 
 
+def test_demo_rejects_keyword_answer_without_evidence() -> None:
+    candidate = json.loads(default_candidate())
+    candidate["conclusion"] = "R03 decline unit demand"
+    candidate["evidence_ids"] = []
+
+    scores, details = score_candidate(
+        "DAB-SAL-001", "clean", "none", json.dumps(candidate)
+    )
+
+    assert scores["task_effectiveness"] == 0
+    assert scores["decision_quality"] == 0
+    assert scores["composite"] == 0
+    assert details["evidence_eligible"] is False
+
+
 def test_reference_world_uses_only_allow_listed_queries() -> None:
     rows = world_snapshot("Active recall")
 

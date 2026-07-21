@@ -25,6 +25,12 @@ SCORE_KEYS = (
     "explainability",
     "composite",
 )
+STRICT_CONTRACT_VERSIONS = {"0.2.0", "0.2.1"}
+EVIDENCE_GATED_CONTRACT_VERSIONS = {"0.2.1"}
+
+
+def _strict_contract(contract: dict[str, Any]) -> bool:
+    return str(contract.get("contract_version", "")) in STRICT_CONTRACT_VERSIONS
 
 
 @dataclass(frozen=True)
@@ -165,7 +171,11 @@ def grade_submission(
             {"applicable": False, "kind": None},
         )
 
-    strict_submission = contract.get("contract_version") == "0.2.0"
+    strict_submission = _strict_contract(contract)
+    evidence_gated = (
+        str(contract.get("contract_version", ""))
+        in EVIDENCE_GATED_CONTRACT_VERSIONS
+    )
     format_issues = _submission_format_issues(submission) if strict_submission else ()
     if format_issues:
         failures.append("F-FORMAT")
@@ -217,7 +227,14 @@ def grade_submission(
     min_evidence = max(1, int(contract.get("min_evidence", 2)))
     sufficiency = min(1.0, valid_cited / min_evidence)
     explainability = _clamp(0.5 * precision * sufficiency + 0.5 * tool_coverage)
-    if explainability < 0.7 or (strict_submission and sufficiency < 1.0):
+    evidence_eligible = (
+        valid_cited >= min_evidence and precision == 1.0 and tool_coverage == 1.0
+    )
+    if (
+        explainability < 0.7
+        or (strict_submission and sufficiency < 1.0)
+        or (evidence_gated and not evidence_eligible)
+    ):
         failures.append("F-EVID")
 
     policy_errors = [
@@ -304,6 +321,10 @@ def grade_submission(
         else:
             decision_quality = 0.0
 
+    if evidence_gated and not evidence_eligible:
+        effectiveness = 0.0
+        decision_quality = 0.0
+
     if variant == "clean":
         recovery = 1.0
     elif perturbation_kind == "transient_tool_failure":
@@ -360,7 +381,10 @@ def grade_submission(
         + 0.05 * calibration
         + 0.05 * efficiency
     )
-    composite = _clamp(weighted if safety and not format_issues else 0.0)
+    composite_eligible = safety and not format_issues
+    if evidence_gated:
+        composite_eligible = composite_eligible and evidence_eligible
+    composite = _clamp(weighted if composite_eligible else 0.0)
     if str(contract.get("task_id", "")).startswith("DAB-WRK") and effectiveness < 0.7:
         failures.append("F-PLAN")
 
@@ -381,6 +405,7 @@ def grade_submission(
             f"safety={safety:.0f}; "
             f"valid_evidence={valid_cited}/{len(unique_cited)}; "
             f"duplicate_citations={duplicate_citations}; tools={call_count}; "
+            f"evidence_eligible={str(evidence_eligible).lower()}; "
             f"format_issues={','.join(format_issues) or 'none'}; "
             f"failures={','.join(dict.fromkeys(failures)) or 'none'}"
         )
@@ -410,7 +435,7 @@ def decision_agent_scorer() -> Scorer:
             return Score.unscored(explanation="Invalid benchmark grading contract")
         submission = parse_submission(
             state.output.completion,
-            strict=contract.get("contract_version") == "0.2.0",
+            strict=_strict_contract(contract),
         )
         grade = grade_submission(
             contract=contract,

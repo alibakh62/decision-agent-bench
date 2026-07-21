@@ -188,7 +188,7 @@ class ExperimentConfig:
         if self.task_name not in KNOWN_TASKS:
             raise ValueError(f"unknown task_name {self.task_name!r}")
         expected_version = (
-            "0.2.0" if self.task_name == "decision_agent_bench_v0_2" else "0.1.0"
+            "0.2.1" if self.task_name == "decision_agent_bench_v0_2" else "0.1.0"
         )
         if (
             self.benchmark_version != expected_version

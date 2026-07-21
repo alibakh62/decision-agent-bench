@@ -69,7 +69,7 @@ def _record(
     }
     return SampleRecord(
         run_id="run-1",
-        benchmark_version="0.2.0",
+        benchmark_version="0.2.1",
         task_version=task_version,
         model="provider/model",
         model_family="provider",
@@ -277,7 +277,7 @@ def test_config_rejects_task_and_scoring_version_mismatch() -> None:
     payload = {
         "name": "mismatched-v02",
         "task_name": "decision_agent_bench_v0_2",
-        "benchmark_version": "0.2.0",
+        "benchmark_version": "0.2.1",
         "task_version": "0.1.0",
         "models": [
             {
@@ -289,7 +289,7 @@ def test_config_rejects_task_and_scoring_version_mismatch() -> None:
         ],
     }
 
-    with pytest.raises(ValueError, match=r"requires benchmark_version and task_version 0\.2\.0"):
+    with pytest.raises(ValueError, match=r"requires benchmark_version and task_version 0\.2\.1"):
         ExperimentConfig.from_dict(payload)
 
 
