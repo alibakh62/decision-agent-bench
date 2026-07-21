@@ -49,7 +49,7 @@ command-line default.
 `pip-audit` exits with status 1 when it writes known findings. Review every finding against
 `security/openvex.json`; never hide an unreviewed advisory merely to continue packaging.
 
-After committing the exact source being packaged, assemble the current development release:
+After committing the exact source being packaged, assemble a research-preview release:
 
 ```bash
 decision-agent-bench prepare-release \
@@ -62,8 +62,9 @@ decision-agent-bench verify-release \
   build/release/decision-agent-bench-0.2.0
 ```
 
-Prerelease mode permits a development version and absence of empirical results, but still requires
-a clean Git tree and verifies every supplied artifact. It cannot be used by the tag workflow.
+Preview mode records `release_mode: preview` independently of whether the package version itself is
+a development version. It permits the absence of empirical results, but still requires a clean Git
+tree and verifies every supplied artifact. It cannot be used by the tag workflow.
 
 ## Final release gate
 

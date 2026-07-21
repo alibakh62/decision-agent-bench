@@ -6,6 +6,9 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [0.2.0] - 2026-07-21
 
+- Distinguish preview bundles from package-version prereleases so an explicitly assembled stable
+  research preview can pass independent verification without being mistaken for a final release.
+
 ### Added
 
 - Tamper-evident experiment manifests and matched-budget Inspect command grids.

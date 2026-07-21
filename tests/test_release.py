@@ -355,6 +355,29 @@ def test_release_assembly_requires_clean_source_and_final_evidence(
         assemble_release_bundle(repository, distribution, tmp_path / "missing-evidence")
 
 
+def test_stable_version_preview_bundle_verifies_without_final_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repository"
+    distribution = _write_fake_repository(repository, version="1.0.0")
+    monkeypatch.setattr(
+        "decision_agent_bench.release._git_release_state",
+        lambda _repository: {**_clean_state("1.0.0"), "tags": []},
+    )
+
+    manifest = assemble_release_bundle(
+        repository,
+        distribution,
+        tmp_path / "bundle",
+        allow_prerelease=True,
+    )
+    verified = verify_release_bundle(tmp_path / "bundle")
+
+    assert manifest["prerelease"] is False
+    assert manifest["release_mode"] == "preview"
+    assert verified["verified"] is True
+
+
 def test_final_release_accepts_complete_tagged_evidence(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -409,6 +432,7 @@ def test_final_release_accepts_complete_tagged_evidence(
     verified = verify_release_bundle(tmp_path / "bundle")
 
     assert manifest["contains_publishable_results"] is True
+    assert manifest["release_mode"] == "final"
     assert verified["verified"] is True
     assert verified["artifact_count"] == 29
 

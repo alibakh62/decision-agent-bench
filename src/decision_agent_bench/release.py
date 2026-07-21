@@ -287,6 +287,7 @@ def assemble_release_bundle(
     output_directory = output_directory.resolve()
     version = _project_version(repository)
     prerelease = bool(re.search(r"(?:\.dev|a|b|rc)\d*", version))
+    release_mode = "preview" if allow_prerelease else "final"
     if container_runtime not in {"docker", "podman"}:
         raise ValueError("container runtime must be docker or podman")
     state = _git_release_state(repository)
@@ -370,6 +371,7 @@ def assemble_release_bundle(
         "project": "decision-agent-bench",
         "version": version,
         "prerelease": prerelease,
+        "release_mode": release_mode,
         "source": state,
         "benchmark": {
             "task_families": len(v01),
@@ -428,6 +430,11 @@ def _verify_release_semantics(
     expected_prerelease = bool(re.search(r"(?:\.dev|a|b|rc)\d*", version))
     if payload.get("prerelease") is not expected_prerelease:
         issues.append("prerelease flag does not match the project version")
+    release_mode = payload.get("release_mode")
+    if release_mode not in {"preview", "final"}:
+        issues.append("release mode must be preview or final")
+    if expected_prerelease and release_mode == "final":
+        issues.append("prerelease project version cannot be a final release")
 
     source = payload.get("source")
     if not isinstance(source, dict):
@@ -578,7 +585,7 @@ def _verify_release_semantics(
     if container is not None and container.get("status") not in {"pass", "not_supplied"}:
         issues.append("container provenance has a failed or unknown status")
 
-    if payload.get("prerelease") is False:
+    if release_mode == "final":
         for required in (sbom_path, audit_path):
             if not required.is_file():
                 issues.append(f"final release is missing {required.name}")
