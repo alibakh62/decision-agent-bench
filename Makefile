@@ -18,7 +18,7 @@ verify-reference:
 	PYTHONPATH=src python -m decision_agent_bench verify-reference
 
 docker-build:
-	docker build --tag decision-agent-bench:0.1.0 .
+	docker build --tag decision-agent-bench:0.1.1 .
 
 docker-verify:
-	docker run --rm decision-agent-bench:0.1.0
+	docker run --rm decision-agent-bench:0.1.1
