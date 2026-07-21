@@ -158,7 +158,7 @@ class EconomicOracle:
         change_floor = math.ceil(float(current["unit_price"]) * 0.8 * 100) / 100
         lower = max(floor_price, change_floor)
         upper = math.floor(float(current["unit_price"]) * 1.2 * 100) / 100
-        number_of_prices = int(round((upper - lower) * 100)) + 1
+        number_of_prices = round((upper - lower) * 100) + 1
         prices = [round(lower + index * 0.01, 2) for index in range(number_of_prices)]
         outcomes = [
             self.price_outcome(store_id, product_id, price, horizon_days=horizon_days)

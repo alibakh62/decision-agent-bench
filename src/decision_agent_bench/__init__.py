@@ -1,3 +1,3 @@
 """DecisionAgentBench: evaluation of reliable long-horizon decision agents."""
 
-__version__ = "0.2.0.dev0"
+__version__ = "0.2.0"

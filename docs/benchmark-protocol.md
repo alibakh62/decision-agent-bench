@@ -1,10 +1,10 @@
 # Benchmark protocol v0.1 and v0.2
 
-This protocol defines comparable DecisionAgentBench v0.1 runs. It applies to task contract version
-`0.1`, software release `0.1.0`, and the published synthetic-world manifest. Deviations must be
-reported with results. The v0.2 registration expands the benchmark to 100 seeded instances and 200
-paired samples, adds a versioned assortment oracle, and uses the strict submission rules explicitly
-identified below. Historical v0.1 scoring remains frozen.
+This protocol defines comparable DecisionAgentBench v0.1 and v0.2 runs. It applies to v0.1 and
+v0.2 task contracts, software releases `0.1.x` and `0.2.x`, and the published synthetic-world
+manifest. Deviations must be reported with results. The v0.2 registration expands the benchmark to
+100 seeded instances and 200 paired samples, adds a versioned assortment oracle, and uses the
+strict submission rules explicitly identified below. Historical v0.1 scoring remains frozen.
 
 ## Evaluation unit
 

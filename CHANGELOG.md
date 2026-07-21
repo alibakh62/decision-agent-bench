@@ -57,6 +57,14 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   field types, and out-of-range confidence; repeated citations no longer inflate evidence
   sufficiency, and missing distinct evidence receives `F-EVID`. Frozen v0.1 behavior is preserved.
 
+## [0.1.1] - 2026-07-21
+
+### Fixed
+
+- Restored clean-runner CI compatibility without changing generated worlds or oracle outcomes,
+  pinned the verified Ruff version so release checks do not drift as new lint rules are published,
+  and upgraded the workflow to the supported Node 24-based GitHub actions.
+
 ## [0.1.0] - 2026-07-17
 
 ### Added

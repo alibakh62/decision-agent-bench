@@ -109,8 +109,8 @@ oracle fields, or public sharing tunnel.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.1.0 .
-docker run --rm decision-agent-bench:0.1.0
+docker build --tag decision-agent-bench:0.1.1 .
+docker run --rm decision-agent-bench:0.1.1
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

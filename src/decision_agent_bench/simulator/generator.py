@@ -265,7 +265,7 @@ def _populate(connection: sqlite3.Connection, config: GenerationConfig) -> None:
                     * seasonality
                     * decline
                 )
-                units = max(0, int(round(expected)) + rng.choice((-1, 0, 0, 0, 1)))
+                units = max(0, round(expected) + rng.choice((-1, 0, 0, 0, 1)))
                 if units == 0:
                     continue
                 product_id = product[0]
