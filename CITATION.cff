@@ -5,11 +5,11 @@ type: software
 authors:
   - family-names: "Contributors"
     given-names: "DecisionAgentBench"
-version: 0.1.0
-date-released: 2026-07-17
+version: 0.2.0
+date-released: 2026-07-21
 license: MIT
-repository-code: "https://github.com/OWNER/decision-agent-bench"
-url: "https://github.com/OWNER/decision-agent-bench"
+repository-code: "https://github.com/alibakh62/decision-agent-bench"
+url: "https://github.com/alibakh62/decision-agent-bench"
 abstract: >-
   An open, deterministic benchmark and synthetic retail environment for evaluating the
   effectiveness, economic quality, safety, robustness, calibration, efficiency, recovery,

@@ -4,6 +4,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-21
+
 ### Added
 
 - Tamper-evident experiment manifests and matched-budget Inspect command grids.

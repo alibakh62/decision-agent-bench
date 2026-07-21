@@ -2,7 +2,7 @@
 
 ## Identity and metadata
 
-- [ ] Replace `OWNER` placeholders in `CITATION.cff` and documentation.
+- [x] Replace `OWNER` placeholders in `CITATION.cff` and documentation.
 - [ ] Replace the collective creator with the maintainer's publication name and ORCID if desired.
 - [ ] Confirm repository description, topics, support contact, and security contact; upload the
       audited `docs/assets/social-preview.png` through repository settings.

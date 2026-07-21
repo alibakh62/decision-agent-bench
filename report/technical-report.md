@@ -1,7 +1,7 @@
 # DecisionAgentBench: Process-Aware Evaluation of Reliable Long-Horizon Business Decision Agents
 
-**Status:** prerelease methods report, 17 July 2026  
-**Benchmark software:** `0.2.0.dev0`  
+**Status:** v0.2.0 research-preview methods report, 21 July 2026
+**Benchmark software:** `0.2.0`
 **Task protocols:** `0.1` confirmatory suite; `0.2` research expansion
 
 ## Abstract

@@ -27,7 +27,10 @@ def test_registration_audit_verifies_local_upstream_requirements() -> None:
     assert checks["inspect_dependency"]["status"] == "pass"
     assert checks["decorated_task"]["status"] == "pass"
     assert checks["asset_pinning"]["status"] == "pass"
-    assert checks["repository_url"]["status"] == "pending"
+    assert checks["repository_url"]["status"] == "pass"
+    assert checks["repository_url"]["evidence"] == {
+        "repository_url": "https://github.com/alibakh62/decision-agent-bench"
+    }
     assert checks["versioned_arxiv"]["status"] == "pending"
     assert report["source_url"] is None
 

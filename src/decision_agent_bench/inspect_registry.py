@@ -140,6 +140,20 @@ def _project_checks(repository: Path) -> list[RegistrationCheck]:
     ]
 
 
+def _project_repository_url(repository: Path) -> str | None:
+    try:
+        pyproject = tomllib.loads(
+            (repository / "pyproject.toml").read_text(encoding="utf-8")
+        )
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    urls = pyproject.get("project", {}).get("urls", {})
+    if not isinstance(urls, dict):
+        return None
+    value = urls.get("Repository")
+    return str(value) if isinstance(value, str) and value else None
+
+
 def _asset_check(repository: Path) -> RegistrationCheck:
     try:
         pyproject = tomllib.loads(
@@ -309,6 +323,7 @@ def audit_inspect_registration(
 
     repository = repository.resolve()
     local_commit, working_tree_clean = _git_state(repository)
+    selected_repository_url = repository_url or _project_repository_url(repository)
     selected_commit = commit or local_commit
     task_source = repository / TASK_PATH
     try:
@@ -338,7 +353,7 @@ def audit_inspect_registration(
         ),
         _asset_check(repository),
         *_publication_checks(
-            repository_url=repository_url,
+            repository_url=selected_repository_url,
             commit=selected_commit,
             local_commit=local_commit,
             arxiv_url=arxiv_url,
@@ -350,9 +365,9 @@ def audit_inspect_registration(
     overall = "fail" if "fail" in statuses else "pending" if "pending" in statuses else "pass"
     source_url = None
     if (
-        repository_url
-        and "OWNER" not in repository_url
-        and GITHUB_REPOSITORY_PATTERN.fullmatch(repository_url)
+        selected_repository_url
+        and "OWNER" not in selected_repository_url
+        and GITHUB_REPOSITORY_PATTERN.fullmatch(selected_repository_url)
         and selected_commit
         and COMMIT_PATTERN.fullmatch(selected_commit)
         and selected_commit == local_commit
@@ -360,7 +375,7 @@ def audit_inspect_registration(
         and task_name in tasks
     ):
         source_url = (
-            f"{repository_url.removesuffix('.git')}/blob/{selected_commit}/{TASK_PATH}"
+            f"{selected_repository_url.removesuffix('.git')}/blob/{selected_commit}/{TASK_PATH}"
             f"#L{tasks[task_name]}"
         )
     return {

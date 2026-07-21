@@ -439,7 +439,7 @@ def test_final_release_rejects_unbound_sbom_and_dependency_report(
     dependency_report = tmp_path / "pip-audit.json"
     dependency_report.write_text(json.dumps({"dependencies": []}), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="SBOM does not cover requirements.lock"):
+    with pytest.raises(ValueError, match=r"SBOM does not cover requirements\.lock"):
         assemble_release_bundle(
             repository,
             distribution,
@@ -458,7 +458,7 @@ def test_final_release_rejects_unbound_sbom_and_dependency_report(
         ),
         encoding="utf-8",
     )
-    with pytest.raises(ValueError, match="dependency audit does not cover requirements.lock"):
+    with pytest.raises(ValueError, match=r"dependency audit does not cover requirements\.lock"):
         assemble_release_bundle(
             repository,
             distribution,

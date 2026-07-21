@@ -289,7 +289,7 @@ def test_config_rejects_task_and_scoring_version_mismatch() -> None:
         ],
     }
 
-    with pytest.raises(ValueError, match="requires benchmark_version and task_version 0.2.0"):
+    with pytest.raises(ValueError, match=r"requires benchmark_version and task_version 0\.2\.0"):
         ExperimentConfig.from_dict(payload)
 
 
@@ -373,7 +373,7 @@ def test_publishable_plan_enforces_aggregate_cost_and_amount_acknowledgement(
     manifest = load_manifest(manifest_path)
 
     assert manifest["estimate"]["configured_cost_exposure_usd"] == 900.0
-    with pytest.raises(ValueError, match="--acknowledge-max-cost-usd 900.00"):
+    with pytest.raises(ValueError, match=r"--acknowledge-max-cost-usd 900\.00"):
         execute_manifest(manifest_path, execute=True, acknowledge_costs=True)
     monkeypatch.setattr(
         "decision_agent_bench.experiments.runner.subprocess.run",

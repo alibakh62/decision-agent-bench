@@ -1,6 +1,6 @@
 {
   "@context": "https://openvex.dev/ns/v0.2.0",
-  "@id": "https://github.com/OWNER/decision-agent-bench/security/openvex-2026-07-17",
+  "@id": "https://github.com/alibakh62/decision-agent-bench/security/openvex-2026-07-17",
   "author": "DecisionAgentBench maintainers",
   "role": "Project maintainer",
   "timestamp": "2026-07-17T17:00:00Z",

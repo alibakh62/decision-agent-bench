@@ -53,13 +53,13 @@ After committing the exact source being packaged, assemble the current developme
 
 ```bash
 decision-agent-bench prepare-release \
-  build/release/decision-agent-bench-0.2.0.dev0 \
+  build/release/decision-agent-bench-0.2.0 \
   --sbom build/sbom.cdx.json \
   --dependency-report build/pip-audit.json \
   --container-image decision-agent-bench:release \
   --allow-prerelease
 decision-agent-bench verify-release \
-  build/release/decision-agent-bench-0.2.0.dev0
+  build/release/decision-agent-bench-0.2.0
 ```
 
 Prerelease mode permits a development version and absence of empirical results, but still requires

@@ -26,9 +26,9 @@ classifiers = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/OWNER/decision-agent-bench/tree/main/docs"
-Issues = "https://github.com/OWNER/decision-agent-bench/issues"
-Repository = "https://github.com/OWNER/decision-agent-bench"
+Documentation = "https://github.com/alibakh62/decision-agent-bench/tree/main/docs"
+Issues = "https://github.com/alibakh62/decision-agent-bench/issues"
+Repository = "https://github.com/alibakh62/decision-agent-bench"
 
 [project.optional-dependencies]
 dev = [

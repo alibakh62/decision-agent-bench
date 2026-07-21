@@ -9,7 +9,7 @@ DecisionAgentBench is an open benchmark for measuring how reliably AI agents mak
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** public research release candidate. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.2.0 public research preview. The executable v0.1 benchmark, v0.2
 > research expansion, six architectures, two ablations, reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
 > implemented. Multi-model runs, human ratings, an external reproduction, archival DOI, and upstream
@@ -109,8 +109,8 @@ oracle fields, or public sharing tunnel.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.1.1 .
-docker run --rm decision-agent-bench:0.1.1
+docker build --tag decision-agent-bench:0.2.0 .
+docker run --rm decision-agent-bench:0.2.0
 ```
 
 Plan a matched-budget experiment without contacting a model provider:
