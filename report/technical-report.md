@@ -1,7 +1,7 @@
-# DecisionAgentBench: Process-Aware Evaluation of Reliable Long-Horizon Business Decision Agents
+# DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.2.0 research-preview methods report, 21 July 2026
-**Benchmark software:** `0.2.0`
+**Status:** v0.2.1 research-preview methods report, 21 July 2026
+**Benchmark software:** `0.2.1`
 **Task protocols:** `0.1` confirmatory suite; `0.2` research expansion
 
 ## Abstract
@@ -9,15 +9,15 @@
 AI-agent benchmarks often reduce a trajectory to whether a final task was completed. That endpoint
 can conceal economically dominated decisions, unsupported evidence, policy violations, failure to
 recover from broken tools, and high variance across repeated attempts. DecisionAgentBench is an
-open evaluation environment for consequential, long-horizon business decisions. Its first domain
+open evaluation environment for consequential, evidence-grounded business decisions. Its first domain
 is a fully synthetic convenience-retail company with versioned stores, products, customers,
 inventory, vendors, transactions, documents, approvals, and auditable business actions. Agents use
 bounded SQL, retrieval, forecasting, recommendation, approval, and state-changing tools within the
 Inspect AI framework.
 
 The frozen v0.1 protocol defines 25 task families with matched clean and controlled-perturbation
-conditions, yielding 50 evaluation samples per repetition. A registered v0.2 expansion generates
-four seeded instances per family and 200 paired samples. The benchmark reports task effectiveness,
+conditions, yielding 50 evaluation samples per repetition. A registered v0.2 expansion contains
+25 concepts, 100 seeded instances, and 200 paired samples (100 clean/perturbed pairs). The benchmark reports task effectiveness,
 oracle-relative decision quality, safety, robustness, calibration, efficiency, recovery,
 explainability, and a safety-gated composite. Six agent architectures and two prompt ablations are
 implemented. Deterministic state, economic, evidence-lineage, and policy graders are preferred over
@@ -59,6 +59,17 @@ uses carefully designed real-world questions requiring reasoning, browsing, mult
 tools while retaining objectively checkable answers. [WebArena](https://arxiv.org/abs/2307.13854)
 emphasizes reproducible, functional web environments and execution-based task completion.
 [ToolLLM/ToolBench](https://arxiv.org/abs/2307.16789) studies broad API retrieval and use.
+
+Recent long-duration work sets a materially different bar from a declared step count.
+[RetailBench](https://arxiv.org/abs/2603.16453) uses a partially observable, evolving 180-day retail
+environment; [YC-Bench](https://arxiv.org/abs/2604.01212) spans a simulated year and hundreds of
+turns with delayed and compounding consequences; and
+[LongDS-Bench](https://arxiv.org/abs/2605.30434) reports evolving-state tasks averaging 33 turns and
+an 11.3-turn dependency span. [METR](https://metr.org/time-horizons/) instead defines task horizon
+from skilled-human completion time at a predicted agent-success level. v0.2.1 therefore makes no
+long-horizon claim: its historical median declared-step estimate is 12, median optimal tool count is
+four, and enforced dependency depth is zero. The full claim boundary appears in
+`docs/horizon-methodology.md`.
 
 DecisionAgentBench is closest in spirit to
 [τ-bench](https://arxiv.org/abs/2406.12045), which evaluates tool-agent-user interaction against
@@ -118,9 +129,11 @@ failure, missing partitions, delayed feeds, stale data, contradictions, poisoned
 authority, limited budgets, and approval pressure.
 
 The v0.2 research registration applies four frozen scenario seeds to each family. Instance IDs,
-sample IDs, prompts, seeds, categories, difficulty, horizon, and perturbation assignments are
-materialized in a machine-readable catalog. This creates 100 scenario instances and 200 matched
-samples without pretending that surface replication creates 200 independent task concepts.
+sample IDs, prompts, seeds, categories, difficulty, declared workflow steps, optimal tool counts,
+dependency-depth status, and perturbation assignments are materialized in a machine-readable
+catalog. This creates 100 seeded instances and 200 matched samples without pretending that surface
+replication creates 200 independent task concepts. The schedule activates all 53 named
+perturbations at least once.
 
 ### 3.3 Agent output and evidence lineage
 
@@ -177,7 +190,11 @@ and authorization failures. **Robustness** scores performance in the assigned pe
 **Recovery** requires an observable failure opportunity, detection, and downstream repair.
 **Calibration** uses a Brier-style score between declared confidence and deterministic correctness.
 **Efficiency** penalizes excess tool calls within a declared maximum and is conditioned on useful
-work. **Explainability** combines evidence validity, sufficiency, and required-tool coverage.
+work. **Explainability** combines evidence validity, sufficiency, and required-tool coverage. Under
+the v0.2.1 contract, a submission is eligible for task effectiveness and decision quality only when
+it cites the minimum distinct valid evidence, has no invalid citations, and covers every required
+tool. An evidence-ineligible submission receives zero effectiveness, decision quality, and
+composite; safety remains separately observable.
 
 The preregistered composite is
 
@@ -186,8 +203,8 @@ The preregistered composite is
 + 0.10 recovery + 0.10 explainability + 0.05 calibration + 0.05 efficiency
 ```
 
-A hard safety failure sets the composite to zero. The complete scorecard remains primary; the
-composite cannot show why a system failed.
+A hard safety failure sets the composite to zero. v0.2.1 also gates the composite on evidence
+eligibility. The complete scorecard remains primary; the composite cannot show why a system failed.
 
 ## 6. Experimental design and analysis
 

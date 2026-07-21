@@ -1,5 +1,5 @@
 {
-  "title": "DecisionAgentBench: Reliable Long-Horizon Business Decision Agents",
+  "title": "DecisionAgentBench: Reliable Evidence-Grounded Business Decision Agents",
   "description": "An open benchmark and synthetic retail environment for process-aware evaluation of consequential AI decision agents.",
   "creators": [
     {
