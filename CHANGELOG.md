@@ -53,6 +53,9 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 - Analysis schema 2.1 preserves oracle applicability, utility units, candidate and feasible-optimal
   utility, and absolute and normalized regret in sanitized records and group summaries instead of
   reducing executable economic outcomes to one composite input.
+- The versioned v0.2 scorer now rejects duplicate JSON keys, non-standard numeric constants, invalid
+  field types, and out-of-range confidence; repeated citations no longer inflate evidence
+  sufficiency, and missing distinct evidence receives `F-EVID`. Frozen v0.1 behavior is preserved.
 
 ## [0.1.0] - 2026-07-17
 

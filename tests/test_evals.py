@@ -205,6 +205,90 @@ def test_parser_accepts_json_and_single_json_fence() -> None:
     assert parse_submission("analysis but no object") is None
 
 
+def test_parser_rejects_duplicate_keys_and_nonstandard_numeric_constants() -> None:
+    assert parse_submission('{"confidence": 0.1, "confidence": 0.9}') == {
+        "confidence": 0.9
+    }
+    assert parse_submission('{"confidence": 0.1, "confidence": 0.9}', strict=True) is None
+    assert parse_submission('{"confidence": NaN}', strict=True) is None
+    assert parse_submission('{"confidence": Infinity}', strict=True) is None
+
+
+def test_duplicate_citations_cannot_satisfy_minimum_evidence() -> None:
+    legacy_contract = CASES_BY_ID["DAB-SAL-001"].target()
+    strict_contract = {**legacy_contract, "contract_version": "0.2.0"}
+    calls = [_successful_call("retail_sql", "E001", 1)]
+    submission = {
+        "conclusion": "R03 has a demand and unit-sales decline in the final period.",
+        "confidence": 0.9,
+        "evidence_ids": ["E001", "E001"],
+        "selected_ids": ["R03"],
+        "numeric_values": {},
+        "escalate": False,
+        "data_quality_issues": [],
+    }
+
+    legacy_grade = grade_submission(
+        contract=legacy_contract,
+        submission=submission,
+        tool_calls=calls,
+        recoveries=[],
+        variant="clean",
+        perturbation_kind="none",
+        database_path=None,
+    )
+    strict_grade = grade_submission(
+        contract=strict_contract,
+        submission=submission,
+        tool_calls=calls,
+        recoveries=[],
+        variant="clean",
+        perturbation_kind="none",
+        database_path=None,
+    )
+
+    assert legacy_grade.values["explainability"] == 1
+    assert "F-EVID" not in legacy_grade.failures
+    assert strict_grade.values["explainability"] == 0.75
+    assert "F-EVID" in strict_grade.failures
+    assert "valid_evidence=1/1" in strict_grade.explanation
+    assert "duplicate_citations=1" in strict_grade.explanation
+
+
+def test_invalid_confidence_and_field_types_cannot_receive_format_credit() -> None:
+    contract = CASES_BY_ID["DAB-SAL-001"].target()
+    contract["contract_version"] = "0.2.0"
+    calls = [
+        _successful_call("retail_sql", "E001", 1),
+        _successful_call("retail_sql", "E002", 2),
+    ]
+    submission = {
+        "conclusion": "R03 has a demand and unit-sales decline in the final period.",
+        "confidence": True,
+        "evidence_ids": ["E001", 2],
+        "selected_ids": ["R03"],
+        "numeric_values": {},
+        "escalate": False,
+        "data_quality_issues": [],
+    }
+
+    grade = grade_submission(
+        contract=contract,
+        submission=submission,
+        tool_calls=calls,
+        recoveries=[],
+        variant="clean",
+        perturbation_kind="none",
+        database_path=None,
+    )
+
+    assert grade.values["calibration"] == 0
+    assert grade.values["explainability"] == 0.75
+    assert grade.values["composite"] == 0
+    assert "F-FORMAT" in grade.failures
+    assert "F-EVID" in grade.failures
+
+
 def test_deterministic_grade_rewards_correct_grounded_submission() -> None:
     contract = CASES_BY_ID["DAB-SAL-001"].target()
     calls = [
@@ -392,8 +476,10 @@ def test_v02_adds_replacement_regret_without_rewriting_v01_contract(
             database_path=database,
         )
     assert v01_contract["economic_oracle"] is None
+    assert "contract_version" not in v01_contract
     assert v01_sample.metadata["task_version"] == "0.1.0"
     assert v02_contract["economic_oracle"] == "replacement_opportunity"
+    assert v02_contract["contract_version"] == "0.2.0"
     assert v02_sample.metadata["task_version"] == "0.2.0"
     optimal = grade("P021")
     dominated = grade("P001")

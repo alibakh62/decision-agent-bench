@@ -54,8 +54,10 @@ def build_dataset(
                     str(spec["perturbations"][0]) if selected_variant == "perturbed" else None
                 )
                 target = case.target()
-                if benchmark_version == "0.2.0" and case.task_id == "DAB-ASS-001":
-                    target["economic_oracle"] = "replacement_opportunity"
+                if benchmark_version == "0.2.0":
+                    target["contract_version"] = "0.2.0"
+                    if case.task_id == "DAB-ASS-001":
+                        target["economic_oracle"] = "replacement_opportunity"
                 instance_id = f"{case.task_id}-i{instance_index + 1}"
                 instance_suffix = (
                     f"-i{instance_index + 1}" if instances_per_family > 1 else ""

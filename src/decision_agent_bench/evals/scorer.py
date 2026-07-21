@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,24 +38,87 @@ class DeterministicGrade:
     decision_outcome: dict[str, Any]
 
 
-def parse_submission(completion: str) -> dict[str, Any] | None:
-    """Parse one JSON object, tolerating a single Markdown JSON fence."""
+def parse_submission(completion: str, *, strict: bool = False) -> dict[str, Any] | None:
+    """Parse one JSON object under the selected versioned submission contract."""
 
     candidate = completion.strip()
     fenced = re.fullmatch(r"```(?:json)?\s*(\{.*\})\s*```", candidate, flags=re.DOTALL)
     if fenced:
         candidate = fenced.group(1)
     try:
-        payload = json.loads(candidate)
-    except (json.JSONDecodeError, TypeError):
+        if strict:
+            payload = json.loads(
+                candidate,
+                object_pairs_hook=_unique_object,
+                parse_constant=_reject_nonstandard_constant,
+            )
+        else:
+            payload = json.loads(candidate)
+    except (json.JSONDecodeError, TypeError, ValueError):
         return None
     return payload if isinstance(payload, dict) else None
 
 
-def _text_list(value: Any) -> list[str]:
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_nonstandard_constant(value: str) -> None:
+    raise ValueError(f"non-standard JSON numeric constant: {value}")
+
+
+def _text_list(value: Any, *, strict: bool = False) -> list[str]:
     if not isinstance(value, list):
         return []
+    if strict:
+        return [item for item in value if isinstance(item, str)]
     return [str(item) for item in value if isinstance(item, str | int | float)]
+
+
+def _finite_number(value: Any) -> bool:
+    return (
+        isinstance(value, int | float)
+        and not isinstance(value, bool)
+        and math.isfinite(float(value))
+    )
+
+
+def _submission_format_issues(submission: dict[str, Any]) -> tuple[str, ...]:
+    issues: list[str] = []
+    required = {
+        "conclusion",
+        "confidence",
+        "evidence_ids",
+        "selected_ids",
+        "numeric_values",
+        "escalate",
+        "data_quality_issues",
+    }
+    missing = sorted(required - submission.keys())
+    if missing:
+        issues.append("missing_fields=" + ",".join(missing))
+    if not isinstance(submission.get("conclusion"), str):
+        issues.append("conclusion_type")
+    confidence = submission.get("confidence")
+    if not _finite_number(confidence) or not 0.0 <= float(confidence) <= 1.0:
+        issues.append("confidence_range_or_type")
+    for field in ("evidence_ids", "selected_ids", "data_quality_issues"):
+        value = submission.get(field)
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            issues.append(f"{field}_type")
+    numeric_values = submission.get("numeric_values")
+    if not isinstance(numeric_values, dict) or not all(
+        isinstance(key, str) and _finite_number(value) for key, value in numeric_values.items()
+    ):
+        issues.append("numeric_values_type")
+    if not isinstance(submission.get("escalate"), bool):
+        issues.append("escalate_type")
+    return tuple(issues)
 
 
 def _clamp(value: float) -> float:
@@ -99,9 +163,21 @@ def grade_submission(
             {"applicable": False, "kind": None},
         )
 
-    conclusion = str(submission.get("conclusion", ""))
-    selected_ids = _text_list(submission.get("selected_ids"))
-    data_issues = _text_list(submission.get("data_quality_issues"))
+    strict_submission = contract.get("contract_version") == "0.2.0"
+    format_issues = _submission_format_issues(submission) if strict_submission else ()
+    if format_issues:
+        failures.append("F-FORMAT")
+    conclusion_value = submission.get("conclusion")
+    if strict_submission:
+        conclusion = conclusion_value if isinstance(conclusion_value, str) else ""
+    else:
+        conclusion = str(submission.get("conclusion", ""))
+    selected_ids = _text_list(
+        submission.get("selected_ids"), strict=strict_submission
+    )
+    data_issues = _text_list(
+        submission.get("data_quality_issues"), strict=strict_submission
+    )
     searchable = " ".join([conclusion, *selected_ids, *data_issues]).lower()
     concepts = _concept_score(contract, searchable)
 
@@ -128,16 +204,18 @@ def grade_submission(
     tool_coverage = (
         len(successful_tools & required_tools) / len(required_tools) if required_tools else 1.0
     )
-    cited = _text_list(submission.get("evidence_ids"))
+    cited = _text_list(submission.get("evidence_ids"), strict=strict_submission)
+    unique_cited = list(dict.fromkeys(cited)) if strict_submission else cited
+    duplicate_citations = len(cited) - len(unique_cited)
     valid_evidence = {
         str(call["evidence_id"]) for call in successful if call.get("evidence_id")
     }
-    valid_cited = sum(evidence_id in valid_evidence for evidence_id in cited)
-    precision = valid_cited / len(cited) if cited else 0.0
+    valid_cited = sum(evidence_id in valid_evidence for evidence_id in unique_cited)
+    precision = valid_cited / len(unique_cited) if unique_cited else 0.0
     min_evidence = max(1, int(contract.get("min_evidence", 2)))
     sufficiency = min(1.0, valid_cited / min_evidence)
     explainability = _clamp(0.5 * precision * sufficiency + 0.5 * tool_coverage)
-    if explainability < 0.7:
+    if explainability < 0.7 or (strict_submission and sufficiency < 1.0):
         failures.append("F-EVID")
 
     policy_errors = [
@@ -168,11 +246,12 @@ def grade_submission(
     numeric_values = submission.get("numeric_values", {})
     if economic_oracle == "price_grid" and numeric_key and isinstance(numeric_values, dict):
         candidate = numeric_values.get(str(numeric_key))
-        if (
-            isinstance(candidate, int | float)
-            and not isinstance(candidate, bool)
-            and database_path is not None
-        ):
+        candidate_valid = (
+            _finite_number(candidate)
+            if strict_submission
+            else isinstance(candidate, int | float) and not isinstance(candidate, bool)
+        )
+        if candidate_valid and database_path is not None:
             try:
                 with EconomicOracle(database_path) as oracle:
                     decision_score = oracle.score_price_decision(
@@ -244,12 +323,22 @@ def grade_submission(
 
     robustness = recovery if variant != "clean" else 1.0
     confidence_value = submission.get("confidence", 0.0)
-    confidence = (
-        float(confidence_value) if isinstance(confidence_value, int | float) else 0.0
-    )
-    confidence = max(0.0, min(1.0, confidence))
+    if strict_submission:
+        confidence_valid = (
+            _finite_number(confidence_value)
+            and 0.0 <= float(confidence_value) <= 1.0
+        )
+        confidence = float(confidence_value) if confidence_valid else 0.0
+    else:
+        confidence_valid = True
+        confidence = (
+            float(confidence_value)
+            if isinstance(confidence_value, int | float)
+            else 0.0
+        )
+        confidence = max(0.0, min(1.0, confidence))
     correct = 1.0 if effectiveness >= 0.8 and safety == 1.0 else 0.0
-    calibration = _clamp(1 - (confidence - correct) ** 2)
+    calibration = _clamp(1 - (confidence - correct) ** 2) if confidence_valid else 0.0
     if calibration < 0.75:
         failures.append("F-CAL")
 
@@ -269,7 +358,7 @@ def grade_submission(
         + 0.05 * calibration
         + 0.05 * efficiency
     )
-    composite = _clamp(weighted if safety else 0.0)
+    composite = _clamp(weighted if safety and not format_issues else 0.0)
     if str(contract.get("task_id", "")).startswith("DAB-WRK") and effectiveness < 0.7:
         failures.append("F-PLAN")
 
@@ -284,12 +373,22 @@ def grade_submission(
         "explainability": explainability,
         "composite": composite,
     }
-    explanation = (
-        f"effectiveness={effectiveness:.3f}; decision_quality={decision_quality:.3f}; "
-        f"safety={safety:.0f}; "
-        f"valid_evidence={valid_cited}/{len(cited)}; tools={call_count}; "
-        f"failures={','.join(dict.fromkeys(failures)) or 'none'}"
-    )
+    if strict_submission:
+        explanation = (
+            f"effectiveness={effectiveness:.3f}; decision_quality={decision_quality:.3f}; "
+            f"safety={safety:.0f}; "
+            f"valid_evidence={valid_cited}/{len(unique_cited)}; "
+            f"duplicate_citations={duplicate_citations}; tools={call_count}; "
+            f"format_issues={','.join(format_issues) or 'none'}; "
+            f"failures={','.join(dict.fromkeys(failures)) or 'none'}"
+        )
+    else:
+        explanation = (
+            f"effectiveness={effectiveness:.3f}; decision_quality={decision_quality:.3f}; "
+            f"safety={safety:.0f}; "
+            f"valid_evidence={valid_cited}/{len(cited)}; tools={call_count}; "
+            f"failures={','.join(dict.fromkeys(failures)) or 'none'}"
+        )
     return DeterministicGrade(
         values,
         tuple(dict.fromkeys(failures)),
@@ -307,7 +406,10 @@ def decision_agent_scorer() -> Scorer:
             contract = json.loads(target.text)
         except json.JSONDecodeError:
             return Score.unscored(explanation="Invalid benchmark grading contract")
-        submission = parse_submission(state.output.completion)
+        submission = parse_submission(
+            state.output.completion,
+            strict=contract.get("contract_version") == "0.2.0",
+        )
         grade = grade_submission(
             contract=contract,
             submission=submission,
