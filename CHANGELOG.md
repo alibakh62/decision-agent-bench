@@ -8,8 +8,9 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ### Fixed
 
-- Restored clean-runner CI compatibility without changing generated worlds or oracle outcomes, and
-  pinned the verified Ruff version so release checks do not drift as new lint rules are published.
+- Restored clean-runner CI compatibility without changing generated worlds or oracle outcomes,
+  pinned the verified Ruff version so release checks do not drift as new lint rules are published,
+  and upgraded the workflow to the supported Node 24-based GitHub actions.
 
 ## [0.1.0] - 2026-07-17
 
