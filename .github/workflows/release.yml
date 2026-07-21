@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev,demo]" build==1.3.0 cyclonedx-bom==7.3.0 pip-audit==2.10.0
+      - run: make check
+      - run: python -m build
+      - run: docker build --tag decision-agent-bench:release .
+      - run: docker run --rm decision-agent-bench:release
+      - name: Build reproducible CycloneDX SBOM
+        run: >-
+          cyclonedx-py requirements requirements.lock --pyproject pyproject.toml
+          --mc-type application --spec-version 1.6 --output-reproducible
+          --output-format JSON --output-file build/sbom.cdx.json --validate
+      - name: Capture dependency audit evidence
+        run: >-
+          pip-audit --require-hashes --disable-pip -r requirements.lock --format json
+          --output build/pip-audit.json || test "$?" -eq 1
+      - name: Enforce final release audit
+        run: >-
+          decision-agent-bench audit-release --dependency-report build/pip-audit.json
+          --container-image decision-agent-bench:release --output build/release-audit.json
+          --strict
+      - name: Read package version
+        run: echo "VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')" >> "$GITHUB_ENV"
+      - name: Assemble and verify archival bundle
+        run: |
+          decision-agent-bench prepare-release "build/release/decision-agent-bench-${VERSION}" \
+            --sbom build/sbom.cdx.json \
+            --dependency-report build/pip-audit.json \
+            --container-image decision-agent-bench:release \
+            --analysis results/published/primary
+          decision-agent-bench verify-release "build/release/decision-agent-bench-${VERSION}"
+      - name: Create deterministic release archive
+        run: |
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=0 --group=0 --numeric-owner \
+            -C build/release -cf - "decision-agent-bench-${VERSION}" \
+            | gzip -n > "build/decision-agent-bench-${VERSION}-bundle.tar.gz"
+          sha256sum "build/decision-agent-bench-${VERSION}-bundle.tar.gz" \
+            > "build/decision-agent-bench-${VERSION}-bundle.tar.gz.sha256"
+      - name: Publish immutable GitHub release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" dist/*
+          "build/decision-agent-bench-${VERSION}-bundle.tar.gz"
+          "build/decision-agent-bench-${VERSION}-bundle.tar.gz.sha256"
+          build/sbom.cdx.json build/release-audit.json
+          --verify-tag --generate-notes --title "DecisionAgentBench $GITHUB_REF_NAME"

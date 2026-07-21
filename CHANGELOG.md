@@ -4,6 +4,66 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-21
+
+- Distinguish preview bundles from package-version prereleases so an explicitly assembled stable
+  research preview can pass independent verification without being mistaken for a final release.
+- Remove a polynomial fenced-JSON regular expression, normalize namespaced Inspect tool identities,
+  and make the GitHub dependency-audit artifact path explicit.
+
+### Added
+
+- Tamper-evident experiment manifests and matched-budget Inspect command grids.
+- Double-confirmed, cost-capped provider execution with isolated runtime state and redacted logs.
+- Sanitized sample telemetry, deterministic bootstrap intervals, within-task reliability, paired
+  robustness deltas, failure summaries, and publishable-only leaderboard generation.
+- Independent-verifier, multi-agent, memory-and-feedback, and corrupted-context research baselines,
+  plus no-policy and no-evidence prompt ablations.
+- A v0.2 task registration with 100 seeded scenario instances, 200 paired evaluation samples, and a
+  generated machine-readable instance catalog.
+- A provider-free Gradio research lab for task exploration, deterministic decision scoring, and
+  allow-listed reference-world inspection.
+- Blinded annotation export, private re-identification keys, strict rating validation, Fleiss'
+  kappa, and human/LLM-judge/deterministic agreement reports.
+- A methods-complete technical report draft, three preregistered research article drafts, and an
+  editable, speaker-noted research-talk deck.
+- Citation and archive metadata, leaderboard governance, external reproduction, current Inspect
+  Evals registration guidance, and an evidence-gated release checklist.
+- Analysis schema 2.0: seeded-instance identity, correct 100-pair v0.2 matching,
+  within-instance reliability, task-family cluster bootstrap intervals, Wilson safety intervals,
+  calibration tables, paired resource effects, and manifest-completeness leaderboard gating.
+- Resumable execution schema 2.0 preserves failed cell attempts, skips completed paid cells, and
+  prevents a completed immutable plan from being executed twice.
+- Release audit CLI, oracle-boundary and provenance checks, OpenVEX policy, CodeQL, Gitleaks,
+  hash-locked dependency audit, and Dependabot coverage for Python, Actions, and Docker.
+- Content-addressed analysis bundles bind every sanitized result artifact to exact source-log and
+  experiment-manifest hashes, with an independent verifier and strict source-provenance mode.
+- Whole-grid preflight reports sample, token, and dollar exposure; publishable execution requires
+  clean-source planning, a whole-study ceiling, and acknowledgement of the exact planned amount.
+- Deterministic archival release assembly binds packages, datasets, research artifacts, SBOM,
+  vulnerability evidence, container identity, and admitted results under exact checksums.
+- A provenance-documented, audit-checked 1280×640 project banner is ready for GitHub social preview
+  and is preserved in archival release bundles.
+- Release assembly now binds CycloneDX and `pip-audit` dependency inventories to the exact universal
+  requirements lock and rejects empty, incomplete, duplicate, unexpected, or mismatched evidence.
+- Independent release verification now recomputes benchmark claims, security inventories, current
+  OpenVEX coverage, embedded analysis integrity, publishable-result state, and final-release gates;
+  a self-consistently rehashed but semantically altered bundle fails verification.
+- Publishable studies now require three distinct model families, and portable analysis bundles carry
+  a sanitized study plan so independent verification can parse records and recompute coverage and
+  release eligibility instead of trusting a self-declared publication flag.
+- Release audits and provenance checks support allow-listed Docker or Podman runtimes and record the
+  selected engine, preserving identical image verification in CI and local OCI environments.
+- The v0.2 scoring contract adds an exhaustive information-matched replacement-product oracle while
+  retaining frozen v0.1 semantics; manifests now reject benchmark/scoring version mismatches and
+  the instance catalog records both v0.2 contract and inherited family-spec versions.
+- Analysis schema 2.1 preserves oracle applicability, utility units, candidate and feasible-optimal
+  utility, and absolute and normalized regret in sanitized records and group summaries instead of
+  reducing executable economic outcomes to one composite input.
+- The versioned v0.2 scorer now rejects duplicate JSON keys, non-standard numeric constants, invalid
+  field types, and out-of-range confidence; repeated citations no longer inflate evidence
+  sufficiency, and missing distinct evidence receives `F-EVID`. Frozen v0.1 behavior is preserved.
+
 ## [0.1.1] - 2026-07-21
 
 ### Fixed

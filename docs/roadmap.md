@@ -26,7 +26,9 @@ Implement the 25 task families as Inspect AI tasks. Add SQL, analytics, forecast
 
 ## Milestone 3 — Reproducible experiments
 
-**Status:** next.
+**Status:** in progress. The immutable planning, cost-gated launcher, sanitized analysis,
+uncertainty, paired-robustness, and leaderboard pipeline are implemented; paid multi-model runs are
+pending current model selection and explicit cost authorization.
 
 Run at least three model families with matched budgets and repeated trials. Analyze task success, regret, safety, robustness, calibration, efficiency, recovery, evidence quality, and variability.
 
@@ -34,11 +36,21 @@ Run at least three model families with matched budgets and repeated trials. Anal
 
 ## Milestone 4 — Research expansion
 
+**Status:** in progress. Four advanced architectures, two prompt ablations, a 100-instance/200-
+sample registered expansion, seed-level contract checks, and preregistered comparisons are
+implemented. Full ablation runs, human agreement, and error-matrix analysis await model execution.
+
 Add independent-verifier, multi-agent, memory-and-feedback, and corrupted-context baselines. Expand to 100–200 calibrated instances or task families based on empirical coverage gaps. Conduct ablations and human agreement studies.
 
 **Exit evidence:** preregistered hypotheses, robustness matrices, error taxonomy analysis, judge-versus-deterministic comparison, and draft technical report.
 
 ## Milestone 5 — Public research release
+
+**Status:** in progress. The interactive demo, technical report draft, three article drafts,
+presentation deck, citation/archive metadata, blinded annotation workflow, leaderboard governance,
+external reproduction protocol, and current Inspect Evals registration package are implemented.
+Public repository identity, paid empirical runs, human ratings, independent reproduction, arXiv,
+DOI, release tag, and accepted register entry remain external evidence gates.
 
 Ship the interactive demo, archival dataset release, reproducible Docker images, technical report or preprint, three research-oriented articles, presentation materials, contributor onboarding, and upstream contribution packages.
 

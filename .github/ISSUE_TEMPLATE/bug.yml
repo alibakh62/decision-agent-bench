@@ -1,0 +1,32 @@
+name: Reproducible bug
+description: Report an implementation, task, grader, or documentation defect
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Include release/commit, task ID, command, and sanitized output.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Benchmark impact
+      description: Could this change prompts, scores, simulator state, or published results?
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Data safety
+      options:
+        - label: I removed credentials, personal data, proprietary data, and hidden oracle values.
+          required: true

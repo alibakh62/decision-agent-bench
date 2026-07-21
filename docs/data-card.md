@@ -6,6 +6,11 @@ DecisionAgentBench's first environment is a generated convenience-retail company
 
 The reference configuration contains three regions, twelve stores, twenty-four products, four vendors, 240 synthetic customer identifiers, 56 days of item-level transactions, store-product prices and lot-level inventory, promotions, refunds, payment events, competitor observations, feed status, recall fixtures, policies, an untrusted vendor attachment, approvals, and an action ledger.
 
+The expanded v0.2 task set regenerates the same structural world under four published seeds. This
+creates 100 scenario instances across the 25 task families and 200 clean/perturbed evaluation
+samples. Seed-level validation preserves fixed causal and safety fixtures while varying non-critical
+transaction noise.
+
 ## Generation
 
 `decision-agent-bench generate-world OUTPUT --seed SEED` creates a SQLite database and manifest. The Python pseudorandom generator is isolated to a local seeded instance. Dates, iteration order, identifiers, and generated timestamps are fixed by the configuration. A logical SHA-256 digest hashes canonical table contents instead of SQLite file bytes.

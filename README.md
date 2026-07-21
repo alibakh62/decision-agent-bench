@@ -1,5 +1,7 @@
 # DecisionAgentBench
 
+![DecisionAgentBench — rigorous evaluation for long-horizon business decision agents](docs/assets/social-preview.png)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg)](https://www.python.org/)
 
@@ -7,7 +9,16 @@ DecisionAgentBench is an open benchmark for measuring how reliably AI agents mak
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** executable benchmark v0.1. The first 25 task families, paired clean and perturbed variants, deterministic synthetic company, Inspect integration, two reference baselines, and multidimensional graders are implemented. Multi-model empirical results are the next milestone; no model-performance claims have been made.
+> **Project status:** v0.2.0 public research preview. The executable v0.1 benchmark, v0.2
+> research expansion, six architectures, two ablations, reproducible experiment and analysis
+> pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
+> implemented. Multi-model runs, human ratings, an external reproduction, archival DOI, and upstream
+> registration remain evidence gates; no frontier-model performance claims have been made.
+
+The research track also includes a registered v0.2 expansion with 100 seeded instances (200 paired
+samples), four advanced architectures, two prompt ablations, and a versioned assortment-regret
+oracle in addition to the frozen v0.1 pricing oracle. These are tested research infrastructure, not
+empirical performance claims.
 
 ## Why this benchmark
 
@@ -36,9 +47,12 @@ The benchmark is built around five principles:
 
 ```text
 decision-agent-bench/
+├── articles/                 # Three research-oriented article drafts
 ├── data/task_specs/          # Versioned benchmark task contracts
-├── docs/                     # Protocol, taxonomy, research design, and task catalog
+├── docs/                     # Protocol, taxonomy, governance, and task catalog
+├── report/                   # Technical report source
 ├── src/decision_agent_bench/ # Python package
+├── talk/                     # Editable research-talk deck
 └── tests/                    # Fast deterministic checks
 ```
 
@@ -49,7 +63,7 @@ Create an isolated Python 3.11+ environment before installing the benchmark:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,demo]"
 python -m pytest
 python -m decision_agent_bench validate-specs
 python -m decision_agent_bench verify-reference
@@ -76,14 +90,89 @@ inspect eval src/decision_agent_bench/evals/task.py@decision_agent_bench \
 
 Set `baseline=planner_executor` for the two-stage reference baseline. Provider credentials are read by Inspect; never commit them. The [benchmark protocol](docs/benchmark-protocol.md) defines variants, budgets, output fields, scoring, and reporting requirements.
 
+For the expanded research task, select
+`src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_2`. See the
+[v0.2 expansion](docs/v0.2-expansion.md) and [research baseline](docs/research-baselines.md)
+protocols before comparing architectures.
+
+Launch the local, provider-free research lab:
+
+```bash
+decision-agent-bench demo --host 127.0.0.1 --port 7860
+```
+
+The task explorer shows all registered paired instances. The decision scorer uses the real
+deterministic grader with simulated evidence lineage, and the reference-world tab exposes only
+allow-listed read-only views. The demo has no provider calls, arbitrary SQL, state-changing actions,
+oracle fields, or public sharing tunnel.
+
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.1.1 .
-docker run --rm decision-agent-bench:0.1.1
+docker build --tag decision-agent-bench:0.2.0 .
+docker run --rm decision-agent-bench:0.2.0
 ```
 
-See [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md), [the failure taxonomy](docs/failure-taxonomy.md), [the synthetic-data card](docs/data-card.md), and [the staged roadmap](docs/roadmap.md).
+Plan a matched-budget experiment without contacting a model provider:
+
+```bash
+decision-agent-bench estimate-experiment configs/experiments/v0.1.template.json
+decision-agent-bench plan-experiment configs/experiments/smoke.json --output runs
+decision-agent-bench run-experiment runs/<run-id>/manifest.json
+```
+
+Execution requires both `--execute` and `--acknowledge-costs`. A publishable run additionally
+requires the exact `--acknowledge-max-cost-usd` amount printed by preflight. Publishable
+configurations are rejected unless they cover all tasks, both variants, both reference baselines,
+at least three repetitions, at least three distinct publishable model families, and explicit
+per-sample and whole-study cost limits. See the
+[experiment guide](docs/experiment-guide.md).
+
+After analysis, verify the shareable result bundle on its own or bind it back to the exact raw logs
+and immutable experiment manifest:
+
+```bash
+decision-agent-bench verify-analysis results/generated/<run-id>
+decision-agent-bench verify-analysis results/generated/<run-id> \
+  --logs runs/<run-id>/logs --manifest runs/<run-id>/manifest.json --require-sources
+```
+
+Export a blinded human/LLM-judge study after a successful run:
+
+```bash
+decision-agent-bench export-annotations runs/<run-id>/logs studies/<study-id>
+decision-agent-bench agreement-report \
+  studies/<study-id>/ratings-complete.csv \
+  studies/<study-id>/annotation-key.private.jsonl \
+  studies/<study-id>/agreement.json
+```
+
+The [annotation protocol](docs/annotation-protocol.md) defines blinding, rating anchors, Fleiss'
+kappa, majority labels, and three-way confusion comparisons.
+
+## Research artifacts
+
+- [Technical report draft](report/technical-report.md)
+- [Why task success hides catastrophic failures](articles/01-task-success-hides-catastrophic-failures.md)
+- [Measuring recovery after tool errors](articles/02-measuring-recovery-after-tool-errors.md)
+- [Business regret and judge disagreement](articles/03-business-regret-and-judge-disagreement.md)
+- [Editable research-talk deck](talk/decision-agent-bench-research-talk.pptx)
+- [Leaderboard governance](docs/leaderboard-governance.md) and [external reproduction](docs/external-reproduction.md)
+- [Current Inspect Evals registration package](docs/inspect-evals-registration.md)
+
+The registration package includes an offline preflight that verifies the current upstream
+requirements without publishing anything: `make audit-inspect`.
+
+See also [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md),
+[the failure taxonomy](docs/failure-taxonomy.md), [the synthetic-data card](docs/data-card.md),
+[the statistical analysis protocol](docs/statistical-analysis.md), [the staged roadmap](docs/roadmap.md),
+and the [public-release checklist](docs/release-checklist.md).
+
+Before a release, run `make audit` and review the [security model](docs/security-model.md). The audit
+distinguishes failed controls from external evidence that is still pending.
+The [archival release protocol](docs/release-artifacts.md) builds and independently verifies the
+packages, datasets, research materials, SBOM, vulnerability evidence, container identity, and
+publishable result bundle attached to a tagged release.
 
 ## Contributing
 

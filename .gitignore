@@ -8,9 +8,13 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.playwright-cli/
+output/playwright/
 build/
 dist/
 htmlcov/
 logs/
+runs/
+results/generated/
 results/private/
 data/generated/

@@ -103,4 +103,15 @@ def baseline_solver(name: str) -> Solver:
         return single_agent()
     if name == "planner_executor":
         return planner_executor()
+    if name in {
+        "independent_verifier",
+        "multi_agent",
+        "memory_feedback",
+        "corrupted_context",
+        "no_policy_prompt",
+        "no_evidence_prompt",
+    }:
+        from decision_agent_bench.evals.advanced_baselines import advanced_baseline_solver
+
+        return advanced_baseline_solver(name)
     raise ValueError(f"unknown baseline {name!r}")

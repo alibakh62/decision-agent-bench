@@ -1,0 +1,52 @@
+{
+  "name": "decision-agent-bench-v0.1-matched-models",
+  "benchmark_version": "0.1.0",
+  "task_version": "0.1.0",
+  "models": [
+    {
+      "model": "openai/<replace-with-current-model-id>",
+      "family": "openai",
+      "display_name": "OpenAI model",
+      "enabled": false,
+      "publishable": true
+    },
+    {
+      "model": "anthropic/<replace-with-current-model-id>",
+      "family": "anthropic",
+      "display_name": "Anthropic model",
+      "enabled": false,
+      "publishable": true
+    },
+    {
+      "model": "google/<replace-with-current-model-id>",
+      "family": "google",
+      "display_name": "Google model",
+      "enabled": false,
+      "publishable": true
+    },
+    {
+      "model": "mockllm/model",
+      "family": "mock",
+      "display_name": "Inspect mock model",
+      "enabled": true,
+      "publishable": false
+    }
+  ],
+  "baselines": ["single_agent", "planner_executor"],
+  "variants": ["clean", "perturbed"],
+  "repetitions": 3,
+  "categories": [],
+  "sample_limit": null,
+  "budget": {
+    "token_limit": 120000,
+    "max_output_tokens": 2048,
+    "time_limit_seconds": 300,
+    "cost_limit_usd": null,
+    "study_cost_limit_usd": null,
+    "max_connections": 4,
+    "max_samples": 4,
+    "temperature": 0.2,
+    "seed": 20260717
+  },
+  "notes": "Replace current model IDs, verify provider pricing, enable intended models, and set both per-sample and whole-study cost limits before paid execution. Credentials belong only in provider environment variables."
+}
