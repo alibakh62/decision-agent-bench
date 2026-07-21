@@ -24,7 +24,11 @@ jobs:
       - run: python -m pip install -e ".[dev,demo]"
       - run: python -m pip install pip-audit==2.10.0
       - name: Capture dependency findings for VEX review
-        run: pip-audit --require-hashes --disable-pip -r requirements.lock --format json --output build/pip-audit.json || test "$?" -eq 1
+        run: |
+          mkdir -p build
+          pip-audit --require-hashes --disable-pip -r requirements.lock \
+            --format json --output build/pip-audit.json || test "$?" -eq 1
+          test -s build/pip-audit.json
       - run: decision-agent-bench audit-release --dependency-report build/pip-audit.json --output build/release-audit.json
 
   dependency-audit:

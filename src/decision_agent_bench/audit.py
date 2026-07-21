@@ -103,10 +103,7 @@ def _oracle_boundary_check(repository: Path) -> AuditCheck:
     )
     if "simulator.oracle" in tools_source or "EconomicOracle" in tools_source:
         errors.append("agent-facing tool adapters import the economic oracle")
-    tool_names = sorted(
-        str(getattr(getattr(tool, "__registry_info__", None), "name", tool.__name__))
-        for tool in benchmark_tools()
-    )
+    tool_names = sorted(_normalized_tool_name(tool) for tool in benchmark_tools())
     with tempfile.TemporaryDirectory(prefix="dab-audit-") as directory:
         database = generate_world(Path(directory) / "world", GenerationConfig())
         with RetailEnvironment(database) as environment:
@@ -126,6 +123,13 @@ def _oracle_boundary_check(repository: Path) -> AuditCheck:
             "agent_tools": tool_names,
         },
     )
+
+
+def _normalized_tool_name(tool: Any) -> str:
+    """Return a stable local tool name across Inspect registry namespaces."""
+
+    registered = getattr(getattr(tool, "__registry_info__", None), "name", tool.__name__)
+    return str(registered).rsplit("/", maxsplit=1)[-1]
 
 
 def _provenance_check(repository: Path) -> AuditCheck:

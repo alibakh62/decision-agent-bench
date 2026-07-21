@@ -8,6 +8,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 - Distinguish preview bundles from package-version prereleases so an explicitly assembled stable
   research preview can pass independent verification without being mistaken for a final release.
+- Remove a polynomial fenced-JSON regular expression, normalize namespaced Inspect tool identities,
+  and make the GitHub dependency-audit artifact path explicit.
 
 ### Added
 

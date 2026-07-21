@@ -202,6 +202,8 @@ def test_parser_accepts_json_and_single_json_fence() -> None:
 
     assert parse_submission(json.dumps(expected)) == expected
     assert parse_submission(f"```json\n{json.dumps(expected)}\n```") == expected
+    assert parse_submission(f"```\n{json.dumps(expected)}\n```") == expected
+    assert parse_submission("```json\n{\"decision\": \"x\"}\n``` trailing") is None
     assert parse_submission("analysis but no object") is None
 
 

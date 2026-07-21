@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import math
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -42,9 +41,12 @@ def parse_submission(completion: str, *, strict: bool = False) -> dict[str, Any]
     """Parse one JSON object under the selected versioned submission contract."""
 
     candidate = completion.strip()
-    fenced = re.fullmatch(r"```(?:json)?\s*(\{.*\})\s*```", candidate, flags=re.DOTALL)
-    if fenced:
-        candidate = fenced.group(1)
+    if candidate.startswith("```") and candidate.endswith("```"):
+        fenced = candidate[3:-3].strip()
+        if fenced.startswith("json"):
+            fenced = fenced[4:].lstrip()
+        if fenced.startswith("{") and fenced.endswith("}"):
+            candidate = fenced
     try:
         if strict:
             payload = json.loads(

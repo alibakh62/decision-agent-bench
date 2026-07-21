@@ -9,10 +9,23 @@ import pytest
 from decision_agent_bench.audit import (
     _container_check,
     _dependency_check,
+    _normalized_tool_name,
     _vex_ids,
     audit_repository,
     secret_findings,
 )
+
+
+def test_tool_names_are_stable_across_inspect_registry_namespaces() -> None:
+    class RegistryInfo:
+        name = "decision_agent_bench/retail_sql"
+
+    def retail_sql() -> None:
+        return None
+
+    retail_sql.__registry_info__ = RegistryInfo()  # type: ignore[attr-defined]
+
+    assert _normalized_tool_name(retail_sql) == "retail_sql"
 
 
 def test_secret_scanner_detects_high_confidence_key_without_echoing_value(tmp_path: Path) -> None:
