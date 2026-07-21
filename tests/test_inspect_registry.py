@@ -16,8 +16,18 @@ def _checks(report: dict[str, object]) -> dict[str, dict[str, object]]:
     return {item["check_id"]: item for item in report["checks"]}  # type: ignore[index]
 
 
-def test_registration_audit_verifies_local_upstream_requirements() -> None:
+def test_registration_audit_verifies_local_upstream_requirements(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     repository = Path(__file__).parents[1]
+    commit = "a" * 40
+    monkeypatch.setattr(
+        "decision_agent_bench.inspect_registry._git_state",
+        lambda _repository: (commit, True),
+    )
+    task_line = discover_tasks(
+        repository / "src/decision_agent_bench/evals/task.py"
+    )["decision_agent_bench_v0_2"]
 
     report = audit_inspect_registration(repository)
     checks = _checks(report)
@@ -32,7 +42,10 @@ def test_registration_audit_verifies_local_upstream_requirements() -> None:
         "repository_url": "https://github.com/alibakh62/decision-agent-bench"
     }
     assert checks["versioned_arxiv"]["status"] == "pending"
-    assert report["source_url"] is None
+    assert report["source_url"] == (
+        "https://github.com/alibakh62/decision-agent-bench/blob/"
+        f"{commit}/src/decision_agent_bench/evals/task.py#L{task_line}"
+    )
 
 
 def test_task_discovery_returns_decorator_lines() -> None:
