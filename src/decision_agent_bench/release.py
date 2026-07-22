@@ -175,6 +175,12 @@ def _base_assets(
             "application/json",
         ),
         ReleaseAsset(
+            repository / "data/task_specs/v0.3-workflows.json",
+            "data/stateful-workflows-v0.3.json",
+            "benchmark-dataset",
+            "application/json",
+        ),
+        ReleaseAsset(
             repository / "data/reference-world-manifest.json",
             "data/reference-world-manifest.json",
             "dataset-provenance",
@@ -366,6 +372,9 @@ def assemble_release_bundle(
     v02 = json.loads(
         (repository / "data/task_specs/v0.2-instances.json").read_text(encoding="utf-8")
     )
+    v03 = json.loads(
+        (repository / "data/task_specs/v0.3-workflows.json").read_text(encoding="utf-8")
+    )
     manifest: dict[str, Any] = {
         "schema_version": "1.0.0",
         "project": "decision-agent-bench",
@@ -377,6 +386,9 @@ def assemble_release_bundle(
             "task_families": len(v01),
             "v0_2_instances": len(v02),
             "v0_2_paired_samples": len(v02) * 2,
+            "v0_3_workflow_concepts": len({item["workflow_id"] for item in v03}),
+            "v0_3_instances": len(v03),
+            "v0_3_paired_samples": len(v03) * 2,
             "reference_world_sha256": reference["logical_sha256"],
         },
         "contains_publishable_results": contains_publishable,
@@ -456,6 +468,7 @@ def _verify_release_semantics(
     required_paths = {
         "data/reference-world-manifest.json",
         "data/task-instances-v0.2.json",
+        "data/stateful-workflows-v0.3.json",
         "data/task-specs-v0.1.json",
         "media/social-preview.png",
         "metadata/CITATION.cff",
@@ -488,10 +501,19 @@ def _verify_release_semantics(
         task_instances = json.loads(
             (directory / "data/task-instances-v0.2.json").read_text(encoding="utf-8")
         )
+        workflow_instances = json.loads(
+            (directory / "data/stateful-workflows-v0.3.json").read_text(
+                encoding="utf-8"
+            )
+        )
         reference = json.loads(
             (directory / "data/reference-world-manifest.json").read_text(encoding="utf-8")
         )
-        if not isinstance(task_families, list) or not isinstance(task_instances, list):
+        if (
+            not isinstance(task_families, list)
+            or not isinstance(task_instances, list)
+            or not isinstance(workflow_instances, list)
+        ):
             raise ValueError("task catalogs must be JSON arrays")
         if not isinstance(reference, dict) or not isinstance(
             reference.get("logical_sha256"), str
@@ -504,6 +526,11 @@ def _verify_release_semantics(
             "task_families": len(task_families),
             "v0_2_instances": len(task_instances),
             "v0_2_paired_samples": len(task_instances) * 2,
+            "v0_3_workflow_concepts": len(
+                {item["workflow_id"] for item in workflow_instances}
+            ),
+            "v0_3_instances": len(workflow_instances),
+            "v0_3_paired_samples": len(workflow_instances) * 2,
             "reference_world_sha256": reference["logical_sha256"],
         }
         if payload.get("benchmark") != recomputed_benchmark:

@@ -25,6 +25,12 @@ def _write_fake_repository(root: Path, version: str = "0.2.1.dev0") -> Path:
         "data/task_specs/v0.2-instances.json": json.dumps(
             [{"instance_id": str(index)} for index in range(3)]
         ),
+        "data/task_specs/v0.3-workflows.json": json.dumps(
+            [
+                {"workflow_id": "one", "instance_id": str(index)}
+                for index in range(2)
+            ]
+        ),
         "data/reference-world-manifest.json": json.dumps({"logical_sha256": "a" * 64}),
         "report/technical-report.md": "# Report\n",
         "talk/decision-agent-bench-research-talk.pptx": "presentation",
@@ -175,7 +181,7 @@ def _write_publishable_analysis(directory: Path) -> None:
         for cell in cells
     ]
     payload: dict[str, object] = {
-        "schema_version": "2.1.0",
+        "schema_version": "3.0.0",
         "source_log_count": len(source_logs),
         "source_logs": source_logs,
         "source_log_status_counts": {"success": len(source_logs)},
@@ -283,10 +289,13 @@ def test_release_bundle_is_exact_and_detects_tampering(
         "task_families": 2,
         "v0_2_instances": 3,
         "v0_2_paired_samples": 6,
+        "v0_3_workflow_concepts": 1,
+        "v0_3_instances": 2,
+        "v0_3_paired_samples": 4,
         "reference_world_sha256": "a" * 64,
     }
     assert verified["verified"] is True
-    assert verified["artifact_count"] == 17
+    assert verified["artifact_count"] == 18
     assert tampered["verified"] is False
     assert "sha256 mismatch: research/technical-report.md" in tampered["issues"]
     assert "SHA256SUMS does not match release contents" in tampered["issues"]
@@ -434,7 +443,7 @@ def test_final_release_accepts_complete_tagged_evidence(
     assert manifest["contains_publishable_results"] is True
     assert manifest["release_mode"] == "final"
     assert verified["verified"] is True
-    assert verified["artifact_count"] == 29
+    assert verified["artifact_count"] == 30
 
     result_path = tmp_path / "bundle/results/primary" / ANALYSIS_ARTIFACTS[0]
     result_path.write_text("outer manifest was recomputed\n", encoding="utf-8")

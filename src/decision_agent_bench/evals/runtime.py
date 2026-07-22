@@ -12,6 +12,7 @@ from pathlib import Path
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 
 from decision_agent_bench.simulator import GenerationConfig, generate_world
+from decision_agent_bench.simulator.workflow import initialize_workflow
 
 STORE_PREFIX = "dab."
 
@@ -38,8 +39,7 @@ def perturbation_kind(name: str | None) -> str:
     ):
         return "data_quality"
     if any(
-        token in name
-        for token in ("injection", "poison", "fake_policy", "encoded_instruction")
+        token in name for token in ("injection", "poison", "fake_policy", "encoded_instruction")
     ):
         return "adversarial_context"
     if any(token in name for token in ("conflict", "contradict", "ambigu")):
@@ -202,9 +202,7 @@ def apply_perturbation(database_path: Path, perturbation: str | None) -> str:
                 "('forecast_inputs', 'S001/P001', '2026-06-30T06:00:00+00:00', 'partial', 1440)"
             )
         elif perturbation == "shelf_life_field_error":
-            connection.execute(
-                "UPDATE products SET shelf_life_days=NULL WHERE product_id='P003'"
-            )
+            connection.execute("UPDATE products SET shelf_life_days=NULL WHERE product_id='P003'")
         elif perturbation == "unverified_competitor_scrape":
             connection.execute(
                 """
@@ -321,18 +319,29 @@ def setup_environment() -> Solver:
         task_id = str(state.metadata["task_id"])
         scenario_seed = int(state.metadata["scenario_seed"])
         perturbation = state.metadata.get("perturbation")
+        workflow_id = state.metadata.get("workflow_id")
         temp_dir = Path(tempfile.mkdtemp(prefix=f"dab-{task_id.lower()}-"))
         database_path = generate_world(temp_dir, GenerationConfig(seed=scenario_seed))
-        kind = apply_perturbation(database_path, str(perturbation) if perturbation else None)
+        if workflow_id:
+            initialize_workflow(
+                database_path,
+                str(workflow_id),
+                variant=str(state.metadata["variant"]),
+                scenario_seed=scenario_seed,
+            )
+            kind = "workflow_event" if state.metadata["variant"] == "perturbed" else "none"
+        else:
+            kind = apply_perturbation(database_path, str(perturbation) if perturbation else None)
         state.store.set(f"{STORE_PREFIX}task_id", task_id)
         state.store.set(f"{STORE_PREFIX}temp_dir", str(temp_dir))
         state.store.set(f"{STORE_PREFIX}database_path", str(database_path))
         state.store.set(f"{STORE_PREFIX}variant", str(state.metadata["variant"]))
         state.store.set(f"{STORE_PREFIX}perturbation", perturbation)
+        state.store.set(f"{STORE_PREFIX}workflow_id", workflow_id)
         state.store.set(f"{STORE_PREFIX}perturbation_kind", kind)
         state.store.set(
             f"{STORE_PREFIX}failure_tool",
-            failure_tool_for_perturbation(str(perturbation)),
+            (None if workflow_id else failure_tool_for_perturbation(str(perturbation))),
         )
         state.store.set(f"{STORE_PREFIX}perturbation_triggered", kind != "none")
         state.store.set(f"{STORE_PREFIX}tool_calls", [])

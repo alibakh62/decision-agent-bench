@@ -32,6 +32,7 @@ from decision_agent_bench.integrity import (
 from decision_agent_bench.integrity import (
     verify_evidence_files as _verify_evidence_files,
 )
+from decision_agent_bench.simulator.workflow import workflow_instance_catalog
 from decision_agent_bench.specs import load_task_specs
 
 ANALYSIS_ARTIFACTS = (
@@ -95,15 +96,21 @@ class SampleRecord:
     candidate_utility: float | None = None
     oracle_utility: float | None = None
     utility_unit: str | None = None
+    workflow_id: str | None = None
+    workflow_completed: bool | None = None
+    workflow_steps_completed: int | None = None
+    workflow_steps_required: int | None = None
+    dependency_span: int | None = None
+    simulated_days: int | None = None
+    rollback_count: int | None = None
+    invalid_transition_count: int | None = None
 
 
 def _model_lookup(manifest: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     if not manifest:
         return {}
     return {
-        str(model["model"]): model
-        for model in manifest["config"]["models"]
-        if model.get("enabled")
+        str(model["model"]): model for model in manifest["config"]["models"] if model.get("enabled")
     }
 
 
@@ -133,10 +140,7 @@ def records_from_eval_log(
         score = (sample.scores or {}).get("decision_agent_scorer")
         if score is None or not isinstance(score.value, dict):
             continue
-        values = {
-            key: float(score.value.get(key, 0.0))
-            for key in SCORE_KEYS
-        }
+        values = {key: float(score.value.get(key, 0.0)) for key in SCORE_KEYS}
         usage = sample.model_usage or {}
         input_tokens = sum(int(item.input_tokens or 0) for item in usage.values())
         output_tokens = sum(int(item.output_tokens or 0) for item in usage.values())
@@ -228,6 +232,46 @@ def records_from_eval_log(
                     if decision_outcome.get("utility_unit") is not None
                     else None
                 ),
+                workflow_id=(
+                    str(decision_outcome["workflow_id"])
+                    if decision_outcome.get("workflow_id") is not None
+                    else None
+                ),
+                workflow_completed=(
+                    bool(decision_outcome["workflow_completed"])
+                    if decision_outcome.get("workflow_completed") is not None
+                    else None
+                ),
+                workflow_steps_completed=(
+                    int(decision_outcome["steps_completed"])
+                    if decision_outcome.get("steps_completed") is not None
+                    else None
+                ),
+                workflow_steps_required=(
+                    int(decision_outcome["steps_required"])
+                    if decision_outcome.get("steps_required") is not None
+                    else None
+                ),
+                dependency_span=(
+                    int(decision_outcome["dependency_span"])
+                    if decision_outcome.get("dependency_span") is not None
+                    else None
+                ),
+                simulated_days=(
+                    int(decision_outcome["simulated_days"])
+                    if decision_outcome.get("simulated_days") is not None
+                    else None
+                ),
+                rollback_count=(
+                    int(decision_outcome["rollback_count"])
+                    if decision_outcome.get("rollback_count") is not None
+                    else None
+                ),
+                invalid_transition_count=(
+                    int(decision_outcome["invalid_transition_count"])
+                    if decision_outcome.get("invalid_transition_count") is not None
+                    else None
+                ),
             )
         )
     return records
@@ -280,9 +324,7 @@ def _cluster_bootstrap_ci(
     return (round(lower, 6), round(upper, 6))
 
 
-def _metric_summary(
-    values: list[float], clusters: list[str], *, seed: int
-) -> dict[str, float]:
+def _metric_summary(values: list[float], clusters: list[str], *, seed: int) -> dict[str, float]:
     lower, upper = _cluster_bootstrap_ci(values, clusters, seed=seed)
     return {
         "mean": round(statistics.fmean(values), 6) if values else 0.0,
@@ -314,9 +356,7 @@ def _wilson_interval(successes: int, total: int) -> tuple[float, float]:
     denominator = 1 + z**2 / total
     centre = (proportion + z**2 / (2 * total)) / denominator
     half_width = (
-        z
-        * math.sqrt(proportion * (1 - proportion) / total + z**2 / (4 * total**2))
-        / denominator
+        z * math.sqrt(proportion * (1 - proportion) / total + z**2 / (4 * total**2)) / denominator
     )
     return (round(max(0.0, centre - half_width), 6), round(min(1.0, centre + half_width), 6))
 
@@ -367,15 +407,11 @@ def _calibration_summary(items: list[SampleRecord]) -> dict[str, Any]:
     }
 
 
-def _decision_outcome_summary(
-    items: list[SampleRecord], *, seed: int
-) -> dict[str, Any]:
+def _decision_outcome_summary(items: list[SampleRecord], *, seed: int) -> dict[str, Any]:
     applicable = [item for item in items if item.oracle_kind is not None]
     valid = [item for item in applicable if item.normalized_regret is not None]
     by_oracle = []
-    for offset, kind in enumerate(
-        sorted({str(item.oracle_kind) for item in applicable})
-    ):
+    for offset, kind in enumerate(sorted({str(item.oracle_kind) for item in applicable})):
         kind_items = [item for item in applicable if item.oracle_kind == kind]
         kind_valid = [item for item in kind_items if item.normalized_regret is not None]
         units = sorted(
@@ -415,9 +451,7 @@ def _decision_outcome_summary(
         "valid_n": len(valid),
         "invalid_candidate_n": len(applicable) - len(valid),
         "normalized_regret_mean": (
-            round(
-                statistics.fmean(float(item.normalized_regret) for item in valid), 6
-            )
+            round(statistics.fmean(float(item.normalized_regret) for item in valid), 6)
             if valid
             else None
         ),
@@ -461,9 +495,7 @@ def summarize_records(records: list[SampleRecord], *, seed: int = 20260717) -> d
                     statistics.fmean(item.latency_seconds for item in items), 6
                 ),
                 "mean_within_instance_composite_std": _mean_within_instance_std(items),
-                "cost_usd_total": round(
-                    sum(item.cost_usd or 0.0 for item in items), 6
-                ),
+                "cost_usd_total": round(sum(item.cost_usd or 0.0 for item in items), 6),
                 "safety_violations": {
                     "count": sum(item.scores["safety"] < 1.0 for item in items),
                     "rate": round(
@@ -502,9 +534,7 @@ def summarize_records(records: list[SampleRecord], *, seed: int = 20260717) -> d
         run_id, model, baseline, instance_id, epoch, variant = key
         if variant != "clean":
             continue
-        perturbed = indexed.get(
-            (run_id, model, baseline, instance_id, epoch, "perturbed")
-        )
+        perturbed = indexed.get((run_id, model, baseline, instance_id, epoch, "perturbed"))
         if perturbed:
             paired[(model, baseline)].append((clean, perturbed))
     robustness: list[dict[str, Any]] = []
@@ -560,7 +590,7 @@ def summarize_records(records: list[SampleRecord], *, seed: int = 20260717) -> d
             }
         )
     return {
-        "analysis_schema_version": "2.1.0",
+        "analysis_schema_version": "3.0.0",
         "uncertainty_method": "task-family cluster bootstrap (2,000 draws)",
         "groups": summaries,
         "paired_robustness": robustness,
@@ -666,6 +696,16 @@ def _read_sanitized_records(path: Path) -> tuple[list[SampleRecord], list[str]]:
     records: list[SampleRecord] = []
     issues: list[str] = []
     expected_fields = {field.name for field in fields(SampleRecord)}
+    workflow_fields = {
+        "workflow_id",
+        "workflow_completed",
+        "workflow_steps_completed",
+        "workflow_steps_required",
+        "dependency_span",
+        "simulated_days",
+        "rollback_count",
+        "invalid_transition_count",
+    }
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError as error:
@@ -680,7 +720,12 @@ def _read_sanitized_records(path: Path) -> tuple[list[SampleRecord], list[str]]:
         except json.JSONDecodeError as error:
             issues.append(f"sanitized sample line {line_number} is invalid JSON: {error}")
             continue
-        if not isinstance(item, dict) or set(item) != expected_fields:
+        if not isinstance(item, dict):
+            issues.append(f"sanitized sample line {line_number} has an invalid field set")
+            continue
+        if set(item) == expected_fields - workflow_fields:
+            item.update(dict.fromkeys(workflow_fields))
+        elif set(item) != expected_fields:
             issues.append(f"sanitized sample line {line_number} has an invalid field set")
             continue
         string_fields = {
@@ -711,30 +756,29 @@ def _read_sanitized_records(path: Path) -> tuple[list[SampleRecord], list[str]]:
             "turn_count",
         }
         if any(
-            not isinstance(item[key], int) or isinstance(item[key], bool)
-            for key in integer_fields
+            not isinstance(item[key], int) or isinstance(item[key], bool) for key in integer_fields
         ):
             issues.append(f"sanitized sample line {line_number} has invalid integer fields")
             continue
-        if item["epoch"] < 1 or any(
-            item[key] < 0 for key in integer_fields if key != "epoch"
-        ):
+        if item["epoch"] < 1 or any(item[key] < 0 for key in integer_fields if key != "epoch"):
             issues.append(f"sanitized sample line {line_number} has negative count fields")
             continue
         scores = item.get("scores")
-        if not isinstance(scores, dict) or set(scores) != set(SCORE_KEYS) or not all(
-            isinstance(value, int | float)
-            and not isinstance(value, bool)
-            and math.isfinite(float(value))
-            and 0.0 <= float(value) <= 1.0
-            for value in scores.values()
+        if (
+            not isinstance(scores, dict)
+            or set(scores) != set(SCORE_KEYS)
+            or not all(
+                isinstance(value, int | float)
+                and not isinstance(value, bool)
+                and math.isfinite(float(value))
+                and 0.0 <= float(value) <= 1.0
+                for value in scores.values()
+            )
         ):
             issues.append(f"sanitized sample line {line_number} has invalid scores")
             continue
         failures = item.get("failures")
-        if not isinstance(failures, list) or not all(
-            isinstance(value, str) for value in failures
-        ):
+        if not isinstance(failures, list) or not all(isinstance(value, str) for value in failures):
             issues.append(f"sanitized sample line {line_number} has invalid failures")
             continue
         confidence = item.get("confidence")
@@ -770,10 +814,40 @@ def _read_sanitized_records(path: Path) -> tuple[list[SampleRecord], list[str]]:
         ):
             issues.append(f"sanitized sample line {line_number} has invalid booleans")
             continue
-        if item.get("perturbation") is not None and not isinstance(
-            item["perturbation"], str
-        ):
+        if item.get("perturbation") is not None and not isinstance(item["perturbation"], str):
             issues.append(f"sanitized sample line {line_number} has invalid perturbation")
+            continue
+        workflow_id = item.get("workflow_id")
+        workflow_completed = item.get("workflow_completed")
+        workflow_counts = {
+            key: item.get(key)
+            for key in (
+                "workflow_steps_completed",
+                "workflow_steps_required",
+                "dependency_span",
+                "simulated_days",
+                "rollback_count",
+                "invalid_transition_count",
+            )
+        }
+        if workflow_id is None:
+            if workflow_completed is not None or any(
+                value is not None for value in workflow_counts.values()
+            ):
+                issues.append(
+                    f"sanitized sample line {line_number} has orphaned workflow telemetry"
+                )
+                continue
+        elif (
+            not isinstance(workflow_id, str)
+            or not workflow_id
+            or not isinstance(workflow_completed, bool)
+            or any(
+                not isinstance(value, int) or isinstance(value, bool) or value < 0
+                for value in workflow_counts.values()
+            )
+        ):
+            issues.append(f"sanitized sample line {line_number} has invalid workflow telemetry")
             continue
         oracle_kind = item.get("oracle_kind")
         utility_unit = item.get("utility_unit")
@@ -790,16 +864,12 @@ def _read_sanitized_records(path: Path) -> tuple[list[SampleRecord], list[str]]:
             if utility_unit is not None or any(
                 value is not None for value in oracle_numbers.values()
             ):
-                issues.append(
-                    f"sanitized sample line {line_number} has orphaned oracle telemetry"
-                )
+                issues.append(f"sanitized sample line {line_number} has orphaned oracle telemetry")
                 continue
         else:
-            values_present = [
-                value is not None for value in oracle_numbers.values()
-            ]
+            values_present = [value is not None for value in oracle_numbers.values()]
             if (
-                oracle_kind not in {"price_grid", "replacement_opportunity"}
+                oracle_kind not in {"price_grid", "replacement_opportunity", "stateful_workflow"}
                 or (any(values_present) and not all(values_present))
                 or (not any(values_present) and utility_unit is not None)
                 or (
@@ -819,15 +889,11 @@ def _read_sanitized_records(path: Path) -> tuple[list[SampleRecord], list[str]]:
                     all(values_present)
                     and (
                         float(oracle_numbers["absolute_regret"]) < 0
-                        or not 0
-                        <= float(oracle_numbers["normalized_regret"])
-                        <= 1
+                        or not 0 <= float(oracle_numbers["normalized_regret"]) <= 1
                     )
                 )
             ):
-                issues.append(
-                    f"sanitized sample line {line_number} has invalid oracle telemetry"
-                )
+                issues.append(f"sanitized sample line {line_number} has invalid oracle telemetry")
                 continue
         item["failures"] = tuple(failures)
         try:
@@ -890,9 +956,7 @@ def _manifest_from_publication_plan(
         issues.append("publication plan source commit must be a full Git SHA")
     if source.get("working_tree_clean") is not True:
         issues.append("publication plan source is not clean")
-    if re.fullmatch(
-        r"[0-9a-f]{64}", str(source.get("reference_world_sha256", ""))
-    ) is None:
+    if re.fullmatch(r"[0-9a-f]{64}", str(source.get("reference_world_sha256", ""))) is None:
         issues.append("publication plan reference-world digest is invalid")
 
     cells = plan.get("cells")
@@ -995,26 +1059,18 @@ def _write_group_csv(summary: dict[str, Any], path: Path) -> None:
         writer.writeheader()
         for group in summary["groups"]:
             row = {key: group[key] for key in fieldnames if key in group}
-            row.update(
-                {f"{key}_mean": group["metrics"][key]["mean"] for key in SCORE_KEYS}
-            )
+            row.update({f"{key}_mean": group["metrics"][key]["mean"] for key in SCORE_KEYS})
             row.update(
                 {
                     "safety_violation_count": group["safety_violations"]["count"],
                     "safety_violation_rate": group["safety_violations"]["rate"],
-                    "safety_violation_wilson95_low": group["safety_violations"][
-                        "wilson95_low"
-                    ],
-                    "safety_violation_wilson95_high": group["safety_violations"][
-                        "wilson95_high"
-                    ],
+                    "safety_violation_wilson95_low": group["safety_violations"]["wilson95_low"],
+                    "safety_violation_wilson95_high": group["safety_violations"]["wilson95_high"],
                     "calibration_eligible_n": group["calibration"]["eligible_n"],
                     "brier_score": group["calibration"]["brier_score"],
                     "oracle_applicable_n": group["decision_outcomes"]["applicable_n"],
                     "oracle_valid_n": group["decision_outcomes"]["valid_n"],
-                    "normalized_regret_mean": group["decision_outcomes"][
-                        "normalized_regret_mean"
-                    ],
+                    "normalized_regret_mean": group["decision_outcomes"]["normalized_regret_mean"],
                 }
             )
             writer.writerow(row)
@@ -1072,8 +1128,7 @@ def _write_paired_effects_csv(summary: dict[str, Any], path: Path) -> None:
             measures = {
                 **comparison["metric_deltas"],
                 **{
-                    f"resource:{key}": value
-                    for key, value in comparison["resource_deltas"].items()
+                    f"resource:{key}": value for key, value in comparison["resource_deltas"].items()
                 },
             }
             for measure, values in measures.items():
@@ -1113,7 +1168,24 @@ def _coverage_report(
         category = cell.get("category")
         task_name = str(config["task_name"])
         selected_category = str(category) if category is not None else None
-        if task_name == "decision_agent_bench_v0_2":
+        if task_name == "decision_agent_bench_v0_3":
+            catalog = [
+                {
+                    "sample_id": item[f"{cell['variant']}_sample_id"],
+                    "instance_id": item["instance_id"],
+                    "task_id": item["workflow_id"],
+                    "task_version": item["contract_version"],
+                    "scenario_seed": item["scenario_seed"],
+                    "category": item["category"],
+                    "difficulty": item["difficulty"],
+                    "perturbation": (
+                        item["perturbation"] if cell["variant"] == "perturbed" else None
+                    ),
+                }
+                for item in workflow_instance_catalog()
+                if selected_category is None or item["category"] == selected_category
+            ]
+        elif task_name == "decision_agent_bench_v0_2":
             catalog = [
                 {
                     "sample_id": item[f"{cell['variant']}_sample_id"],
@@ -1141,9 +1213,7 @@ def _coverage_report(
                     "category": spec["category"],
                     "difficulty": spec["difficulty"],
                     "perturbation": (
-                        spec["perturbations"][0]
-                        if cell["variant"] == "perturbed"
-                        else None
+                        spec["perturbations"][0] if cell["variant"] == "perturbed" else None
                     ),
                 }
                 for spec in load_task_specs()
@@ -1333,13 +1403,11 @@ def analyze_logs(
             "manifest_sha256": manifest["manifest_sha256"],
             "run_id": manifest["run_id"],
             "source_git_commit": manifest["source"]["git_commit"],
-            "source_working_tree_clean": bool(
-                manifest["source"].get("working_tree_clean", False)
-            ),
+            "source_working_tree_clean": bool(manifest["source"].get("working_tree_clean", False)),
             "publication_plan": _portable_publication_plan(manifest),
         }
     analysis_manifest = {
-        "schema_version": "2.1.0",
+        "schema_version": "3.0.0",
         "source_log_count": len(paths),
         "source_logs": source_log_evidence,
         "source_log_status_counts": dict(sorted(log_status_counts.items())),
@@ -1429,7 +1497,7 @@ def verify_analysis_bundle(
         issues.append("analysis sanitization statement is missing")
     expected_manifest_sha256 = payload.get("manifest_sha256")
     unsigned_payload = {key: value for key, value in payload.items() if key != "manifest_sha256"}
-    if payload.get("schema_version") != "2.1.0":
+    if payload.get("schema_version") not in {"2.1.0", "3.0.0"}:
         issues.append("unsupported analysis manifest schema")
     if expected_manifest_sha256 != _digest_payload(unsigned_payload):
         issues.append("analysis manifest hash mismatch")
@@ -1455,9 +1523,7 @@ def verify_analysis_bundle(
         if unexpected:
             issues.append(f"artifact set has unexpected entries: {unexpected}")
 
-    records, record_issues = _read_sanitized_records(
-        analysis_directory / "samples.sanitized.jsonl"
-    )
+    records, record_issues = _read_sanitized_records(analysis_directory / "samples.sanitized.jsonl")
     issues.extend(record_issues)
     if payload.get("scored_samples") != len(records):
         issues.append("scored-sample count does not match sanitized records")
@@ -1564,29 +1630,32 @@ def verify_analysis_bundle(
         ):
             issues.append("experiment manifest evidence has an invalid field set")
         else:
-            if re.fullmatch(
-                r"[0-9a-f]{64}", str(expected_experiment_manifest["sha256"])
-            ) is None or re.fullmatch(
-                r"[0-9a-f]{64}", str(expected_experiment_manifest["manifest_sha256"])
-            ) is None:
+            if (
+                re.fullmatch(r"[0-9a-f]{64}", str(expected_experiment_manifest["sha256"])) is None
+                or re.fullmatch(
+                    r"[0-9a-f]{64}", str(expected_experiment_manifest["manifest_sha256"])
+                )
+                is None
+            ):
                 issues.append("experiment manifest evidence has invalid digests")
             if not isinstance(expected_experiment_manifest["run_id"], str) or not isinstance(
                 expected_experiment_manifest["source_working_tree_clean"], bool
             ):
                 issues.append("experiment manifest evidence has invalid control fields")
-            if re.fullmatch(
-                r"[0-9a-f]{40}",
-                str(expected_experiment_manifest["source_git_commit"]),
-            ) is None:
+            if (
+                re.fullmatch(
+                    r"[0-9a-f]{40}",
+                    str(expected_experiment_manifest["source_git_commit"]),
+                )
+                is None
+            ):
                 issues.append("experiment manifest evidence has an invalid source commit")
     publication_plan = (
         expected_experiment_manifest.get("publication_plan")
         if isinstance(expected_experiment_manifest, dict)
         else None
     )
-    portable_manifest, plan_issues = _manifest_from_publication_plan(
-        publication_plan, records
-    )
+    portable_manifest, plan_issues = _manifest_from_publication_plan(publication_plan, records)
     issues.extend(plan_issues)
     if isinstance(expected_experiment_manifest, dict) and isinstance(publication_plan, dict):
         plan_source = publication_plan.get("source")
@@ -1620,9 +1689,7 @@ def verify_analysis_bundle(
             experiment_manifest_issues.append(f"invalid experiment manifest: {error}")
         else:
             if expected_experiment_manifest is None:
-                experiment_manifest_issues.append(
-                    "analysis did not declare an experiment manifest"
-                )
+                experiment_manifest_issues.append("analysis did not declare an experiment manifest")
             else:
                 comparisons = {
                     "sha256": _sha256_file(manifest_path),

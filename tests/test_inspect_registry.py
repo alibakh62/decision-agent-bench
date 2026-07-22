@@ -27,7 +27,7 @@ def test_registration_audit_verifies_local_upstream_requirements(
     )
     task_line = discover_tasks(
         repository / "src/decision_agent_bench/evals/task.py"
-    )["decision_agent_bench_v0_2"]
+    )["decision_agent_bench_v0_3"]
 
     report = audit_inspect_registration(repository)
     checks = _checks(report)
@@ -53,7 +53,11 @@ def test_task_discovery_returns_decorator_lines() -> None:
 
     tasks = discover_tasks(repository / "src/decision_agent_bench/evals/task.py")
 
-    assert set(tasks) == {"decision_agent_bench", "decision_agent_bench_v0_2"}
+    assert set(tasks) == {
+        "decision_agent_bench",
+        "decision_agent_bench_v0_2",
+        "decision_agent_bench_v0_3",
+    }
     assert all(line > 0 for line in tasks.values())
 
 

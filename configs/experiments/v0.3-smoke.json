@@ -1,0 +1,30 @@
+{
+  "name": "v0.3-stateful-workflow-smoke",
+  "benchmark_version": "0.3.0",
+  "task_version": "0.3.0",
+  "task_name": "decision_agent_bench_v0_3",
+  "models": [
+    {
+      "model": "mockllm/model",
+      "family": "mock",
+      "display_name": "Inspect mock model",
+      "enabled": true,
+      "publishable": false
+    }
+  ],
+  "baselines": ["single_agent", "planner_executor"],
+  "variants": ["clean", "perturbed"],
+  "repetitions": 1,
+  "categories": ["stateful_safety_operations"],
+  "sample_limit": 1,
+  "budget": {
+    "token_limit": 240000,
+    "max_output_tokens": 2048,
+    "time_limit_seconds": 900,
+    "max_connections": 1,
+    "max_samples": 1,
+    "temperature": 0.2,
+    "seed": 20260717
+  },
+  "notes": "Zero-cost workflow smoke only; never publish as a model result."
+}

@@ -48,11 +48,15 @@ def test_repository_audit_passes_deterministic_safety_checks() -> None:
     assert checks["benchmark"]["status"] == "pass"
     assert checks["oracle_boundary"]["status"] == "pass"
     assert checks["oracle_boundary"]["evidence"]["agent_tools"] == [
+        "advance_workflow_time",
         "change_store_price",
+        "execute_workflow_step",
         "forecast_demand",
+        "inspect_workflow",
         "recommend_inventory",
         "request_approval",
         "retail_sql",
+        "rollback_workflow_step",
         "search_documents",
     ]
     assert checks["secrets"]["status"] == "pass"
@@ -161,13 +165,7 @@ def test_dependency_audit_rejects_incomplete_or_mismatched_inventory(tmp_path: P
     )
     report = tmp_path / "pip-audit.json"
     report.write_text(
-        json.dumps(
-            {
-                "dependencies": [
-                    {"name": "click", "version": "8.3.0", "vulns": []}
-                ]
-            }
-        ),
+        json.dumps({"dependencies": [{"name": "click", "version": "8.3.0", "vulns": []}]}),
         encoding="utf-8",
     )
 

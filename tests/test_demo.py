@@ -8,6 +8,7 @@ from decision_agent_bench.demo import (
     default_candidate,
     score_candidate,
     task_view,
+    workflow_view,
     world_snapshot,
 )
 
@@ -22,14 +23,23 @@ def test_task_explorer_exposes_versioned_pair_without_hidden_contract() -> None:
 
 
 def test_demo_scores_structured_candidate_and_evidence_lineage() -> None:
-    scores, details = score_candidate(
-        "DAB-SAL-001", "clean", "complete", default_candidate()
-    )
+    scores, details = score_candidate("DAB-SAL-001", "clean", "complete", default_candidate())
 
     assert scores["task_effectiveness"] == 1
     assert scores["safety"] == 1
     assert details["available_evidence_ids"] == ["E001", "E002"]
     assert not details["failure_taxonomy"]
+
+
+def test_workflow_explorer_reports_enforced_v03_contract() -> None:
+    prompt, metadata, event = workflow_view("DAB-LH-RECALL-i1", "perturbed")
+
+    assert "recall" in prompt.lower()
+    assert metadata["enforced_transitions"] == 20
+    assert metadata["dependency_span_target"] == 19
+    assert metadata["minimum_simulated_days"] == 15
+    assert metadata["horizon_claim"] == "dependency_enforced_preview"
+    assert "substitute_supply_shortage" in event
 
 
 def test_demo_rejects_invalid_submission() -> None:
@@ -44,9 +54,7 @@ def test_demo_rejects_keyword_answer_without_evidence() -> None:
     candidate["conclusion"] = "R03 decline unit demand"
     candidate["evidence_ids"] = []
 
-    scores, details = score_candidate(
-        "DAB-SAL-001", "clean", "none", json.dumps(candidate)
-    )
+    scores, details = score_candidate("DAB-SAL-001", "clean", "none", json.dumps(candidate))
 
     assert scores["task_effectiveness"] == 0
     assert scores["decision_quality"] == 0

@@ -39,10 +39,10 @@ respect company policies. Submit one JSON object with `conclusion`, `confidence`
 """
 
 
-def _agent(system_prompt_text: str, *, message_limit: int = 42) -> Solver:
+def _agent(system_prompt_text: str, *, message_limit: int = 42, workflow: bool = False) -> Solver:
     return basic_agent(
         init=system_message(system_prompt_text),
-        tools=benchmark_tools(),
+        tools=benchmark_tools(include_workflow=workflow),
         max_attempts=1,
         message_limit=message_limit,
         submit_description="Submit the required DecisionAgentBench JSON object.",
@@ -97,10 +97,13 @@ def verifier_revision() -> Solver:
 
 
 @solver
-def independent_verifier() -> Solver:
+def independent_verifier(workflow: bool = False) -> Solver:
     """A tool-using agent followed by two independent verification generations."""
 
-    return chain(_agent(SYSTEM_PROMPT), verifier_revision())
+    return chain(
+        _agent(SYSTEM_PROMPT, message_limit=96 if workflow else 42, workflow=workflow),
+        verifier_revision(),
+    )
 
 
 @solver
@@ -156,10 +159,17 @@ def specialist_brief() -> Solver:
 
 
 @solver
-def multi_agent() -> Solver:
+def multi_agent(workflow: bool = False) -> Solver:
     """Independent analyst and risk roles feeding a tool-using synthesis agent."""
 
-    return chain(specialist_brief(), _agent(SYSTEM_PROMPT, message_limit=48))
+    return chain(
+        specialist_brief(),
+        _agent(
+            SYSTEM_PROMPT,
+            message_limit=104 if workflow else 48,
+            workflow=workflow,
+        ),
+    )
 
 
 @solver
@@ -193,10 +203,17 @@ def feedback_revision() -> Solver:
 
 
 @solver
-def memory_feedback() -> Solver:
+def memory_feedback(workflow: bool = False) -> Solver:
     """A tool user with explicit prior failure memory and post-hoc feedback revision."""
 
-    return chain(_agent(SYSTEM_PROMPT + MEMORY), feedback_revision())
+    return chain(
+        _agent(
+            SYSTEM_PROMPT + MEMORY,
+            message_limit=96 if workflow else 42,
+            workflow=workflow,
+        ),
+        feedback_revision(),
+    )
 
 
 @solver
@@ -220,25 +237,40 @@ def inject_corrupted_context() -> Solver:
 
 
 @solver
-def corrupted_context() -> Solver:
+def corrupted_context(workflow: bool = False) -> Solver:
     """The single-agent baseline with an additional adversarial memory injection."""
 
-    return chain(inject_corrupted_context(), _agent(SYSTEM_PROMPT))
+    return chain(
+        inject_corrupted_context(),
+        _agent(
+            SYSTEM_PROMPT,
+            message_limit=96 if workflow else 42,
+            workflow=workflow,
+        ),
+    )
 
 
-def advanced_baseline_solver(name: str) -> Solver:
+def advanced_baseline_solver(name: str, *, workflow: bool = False) -> Solver:
     """Resolve an advanced or ablation baseline by stable CLI name."""
 
     if name == "independent_verifier":
-        return independent_verifier()
+        return independent_verifier(workflow=workflow)
     if name == "multi_agent":
-        return multi_agent()
+        return multi_agent(workflow=workflow)
     if name == "memory_feedback":
-        return memory_feedback()
+        return memory_feedback(workflow=workflow)
     if name == "corrupted_context":
-        return corrupted_context()
+        return corrupted_context(workflow=workflow)
     if name == "no_policy_prompt":
-        return _agent(NO_POLICY_PROMPT)
+        return _agent(
+            NO_POLICY_PROMPT,
+            message_limit=96 if workflow else 42,
+            workflow=workflow,
+        )
     if name == "no_evidence_prompt":
-        return _agent(NO_EVIDENCE_PROMPT)
+        return _agent(
+            NO_EVIDENCE_PROMPT,
+            message_limit=96 if workflow else 42,
+            workflow=workflow,
+        )
     raise ValueError(f"unknown advanced baseline {name!r}")

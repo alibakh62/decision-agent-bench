@@ -12,6 +12,11 @@ validation preserves fixed causal, safety, and answer-key fixtures while varying
 transaction noise; these are not 200 independent evaluation concepts. All 53 named perturbations
 are deterministically scheduled across the 100 perturbed samples.
 
+The additional v0.3 workflow preview contains **3 workflow concepts, 12 seeded instances, and 24
+paired samples**. Each sample uses the generated retail world plus private workflow state. Twenty
+transitions persist across at least 15 simulated days; stressed pairs introduce a delayed event
+that requires rollback. These samples are not additional independent v0.2 concepts.
+
 ## Generation
 
 `decision-agent-bench generate-world OUTPUT --seed SEED` creates a SQLite database and manifest. The Python pseudorandom generator is isolated to a local seeded instance. Dates, iteration order, identifiers, and generated timestamps are fixed by the configuration. A logical SHA-256 digest hashes canonical table contents instead of SQLite file bytes.
@@ -32,8 +37,11 @@ The demand process combines store format, product category, weekday, smooth seas
 | `documents` | Policies, procedures, and adversarial fixtures | Through retrieval with provenance |
 | `approvals`, `action_ledger` | Authorization and action audit | Yes |
 | `oracle_parameters` | Counterfactual price-response grading | No |
+| `dab_workflow_*` | v0.3 state, events, mutations, and execution trace | No |
 
-The SQL tool is read-only, single-statement, and row-bounded. State changes use typed policy-gated methods and are recorded even when denied.
+The SQL tool is read-only, single-statement, and row-bounded. State changes use typed policy-gated
+methods and are recorded even when denied. v0.3 workflow tools expose only typed transition state;
+their private tables cannot be queried through retail SQL.
 
 ## Privacy and provenance
 

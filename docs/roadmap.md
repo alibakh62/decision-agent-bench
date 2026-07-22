@@ -44,6 +44,18 @@ Add independent-verifier, multi-agent, memory-and-feedback, and corrupted-contex
 
 **Exit evidence:** preregistered hypotheses, robustness matrices, error taxonomy analysis, judge-versus-deterministic comparison, and draft technical report.
 
+## Milestone 4.5 — Dependency-enforced workflow preview
+
+**Status:** complete in `v0.3.0`.
+
+Add a separate stateful suite without rewriting the frozen v0.1/v0.2 contracts. Enforce persistent
+transitions, delayed effects, dependency ordering, and rollback, then derive workflow outcomes from
+the execution trace.
+
+**Exit evidence:** 3 workflow concepts, 12 seeded instances, 24 paired samples, 20 enforced
+transitions per sample, measured dependency span, 15 simulated days, adversarial transition tests,
+and an explicit claim boundary that withholds a general long-horizon label.
+
 ## Milestone 5 — Public research release
 
 **Status:** in progress. The interactive demo, technical report draft, three article drafts,

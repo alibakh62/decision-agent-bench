@@ -1,0 +1,62 @@
+{
+  "name": "decision-agent-bench-v0.3-stateful-workflow-study",
+  "benchmark_version": "0.3.0",
+  "task_version": "0.3.0",
+  "task_name": "decision_agent_bench_v0_3",
+  "models": [
+    {
+      "model": "openai/<replace-with-current-model-id>",
+      "family": "openai",
+      "display_name": "OpenAI model",
+      "enabled": false,
+      "publishable": true
+    },
+    {
+      "model": "anthropic/<replace-with-current-model-id>",
+      "family": "anthropic",
+      "display_name": "Anthropic model",
+      "enabled": false,
+      "publishable": true
+    },
+    {
+      "model": "google/<replace-with-current-model-id>",
+      "family": "google",
+      "display_name": "Google model",
+      "enabled": false,
+      "publishable": true
+    },
+    {
+      "model": "mockllm/model",
+      "family": "mock",
+      "display_name": "Inspect mock model",
+      "enabled": true,
+      "publishable": false
+    }
+  ],
+  "baselines": [
+    "single_agent",
+    "planner_executor",
+    "independent_verifier",
+    "multi_agent",
+    "memory_feedback",
+    "corrupted_context",
+    "no_policy_prompt",
+    "no_evidence_prompt"
+  ],
+  "variants": ["clean", "perturbed"],
+  "repetitions": 3,
+  "categories": [],
+  "sample_limit": null,
+  "budget": {
+    "token_limit": 240000,
+    "max_output_tokens": 2048,
+    "time_limit_seconds": 900,
+    "cost_limit_usd": null,
+    "study_cost_limit_usd": null,
+    "max_connections": 4,
+    "max_samples": 4,
+    "temperature": 0.2,
+    "seed": 20260717
+  },
+  "notes": "Dependency-enforced workflow preview. Replace model IDs, enable approved providers, and set both cost limits before planning. Report this separately from human-time horizon benchmarks."
+}

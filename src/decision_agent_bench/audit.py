@@ -23,6 +23,7 @@ from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, 
 from decision_agent_bench.simulator.environment import ToolError
 from decision_agent_bench.simulator.reference import verify_reference_world
 from decision_agent_bench.simulator.schema import INTERNAL_TABLES, PUBLIC_TABLES
+from decision_agent_bench.simulator.workflow import WORKFLOW_INTERNAL_TABLES
 from decision_agent_bench.specs import validate_task_specs
 
 SECRET_PATTERNS = {
@@ -103,11 +104,16 @@ def _oracle_boundary_check(repository: Path) -> AuditCheck:
     )
     if "simulator.oracle" in tools_source or "EconomicOracle" in tools_source:
         errors.append("agent-facing tool adapters import the economic oracle")
-    tool_names = sorted(_normalized_tool_name(tool) for tool in benchmark_tools())
+    tool_names = sorted(
+        _normalized_tool_name(tool)
+        for tool in benchmark_tools(include_workflow=True)
+    )
     with tempfile.TemporaryDirectory(prefix="dab-audit-") as directory:
         database = generate_world(Path(directory) / "world", GenerationConfig())
         with RetailEnvironment(database) as environment:
-            for table in sorted({*INTERNAL_TABLES, "sqlite_master"}):
+            for table in sorted(
+                {*INTERNAL_TABLES, *WORKFLOW_INTERNAL_TABLES, "sqlite_master"}
+            ):
                 try:
                     environment.query_sql(f'SELECT * FROM "{table}" LIMIT 1')
                 except ToolError:
@@ -119,7 +125,7 @@ def _oracle_boundary_check(repository: Path) -> AuditCheck:
         "oracle boundary failed" if errors else "oracle-only state is denied to agent interfaces",
         {
             "errors": errors,
-            "internal_tables": sorted(INTERNAL_TABLES),
+            "internal_tables": sorted(INTERNAL_TABLES | WORKFLOW_INTERNAL_TABLES),
             "agent_tools": tool_names,
         },
     )

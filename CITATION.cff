@@ -5,8 +5,8 @@ type: software
 authors:
   - family-names: "Contributors"
     given-names: "DecisionAgentBench"
-version: 0.2.1
-date-released: 2026-07-21
+version: 0.3.0
+date-released: 2026-07-22
 license: MIT
 repository-code: "https://github.com/alibakh62/decision-agent-bench"
 url: "https://github.com/alibakh62/decision-agent-bench"

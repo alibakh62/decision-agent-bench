@@ -4,6 +4,31 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-22
+
+### Added
+
+- A separate dependency-enforced workflow preview with 3 concepts, 12 seeded instances, and 24
+  paired samples; the frozen v0.1 and v0.2 suites remain unchanged.
+- Twenty persisted, prerequisite-gated transitions per workflow, a target dependency span of 19,
+  and delayed checkpoints across at least 15 simulated days.
+- Typed workflow inspection, execution, time-advance, and rollback tools backed by private SQLite
+  state, mutation, event, and trace tables.
+- Clean/stressed pairs for regional turnaround, vendor-product pilot, and recall recovery. Stressed
+  samples block downstream progress until a revealed mutable action is rolled back.
+- Trace-derived effectiveness and decision quality plus sanitized workflow telemetry for
+  completion, span, time, invalid attempts, delayed events, rollback, and terminal-state digest.
+- A machine-readable workflow catalog, experiment templates, archival release coverage, and an
+  explicit “dependency-enforced horizon preview” claim boundary.
+- Analysis schema 3.0 adds nullable workflow completion, transition, dependency-span, simulated-
+  time, rollback, and invalid-attempt telemetry while preserving nulls for v0.1/v0.2 samples.
+
+### Changed
+
+- v0.3 uses the strict, evidence-gated submission contract. A narrative-only answer or incomplete
+  execution receives zero effectiveness and decision quality and cannot earn a composite score.
+- The Inspect registration audit now targets the v0.3 task entry by default.
+
 ## [0.2.1] - 2026-07-21
 
 ### Fixed

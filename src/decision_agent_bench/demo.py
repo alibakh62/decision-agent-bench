@@ -12,8 +12,10 @@ from decision_agent_bench.evals.instances import expanded_instance_catalog
 from decision_agent_bench.evals.runtime import perturbation_kind
 from decision_agent_bench.evals.scorer import grade_submission, parse_submission
 from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, generate_world
+from decision_agent_bench.simulator.workflow import workflow_instance_catalog
 
 _CATALOG = {item["instance_id"]: item for item in expanded_instance_catalog()}
+_WORKFLOW_CATALOG = {item["instance_id"]: item for item in workflow_instance_catalog()}
 _WORLD_TEMPORARY_DIRECTORY: tempfile.TemporaryDirectory[str] | None = None
 _WORLD_PATH: Path | None = None
 
@@ -57,9 +59,7 @@ def _world_path() -> Path:
     global _WORLD_PATH, _WORLD_TEMPORARY_DIRECTORY
     if _WORLD_PATH is None:
         _WORLD_TEMPORARY_DIRECTORY = tempfile.TemporaryDirectory(prefix="dab-demo-")
-        _WORLD_PATH = generate_world(
-            Path(_WORLD_TEMPORARY_DIRECTORY.name), GenerationConfig()
-        )
+        _WORLD_PATH = generate_world(Path(_WORLD_TEMPORARY_DIRECTORY.name), GenerationConfig())
     return _WORLD_PATH
 
 
@@ -86,6 +86,29 @@ def task_view(instance_id: str, variant: str) -> tuple[str, dict[str, Any], str]
         else f"Controlled perturbation: `{item['perturbation']}`"
     )
     return str(item["prompt"]), metadata, perturbation
+
+
+def workflow_view(instance_id: str, variant: str) -> tuple[str, dict[str, Any], str]:
+    """Return the public v0.3 prompt, measured contract, and paired stress event."""
+
+    item = _WORKFLOW_CATALOG[instance_id]
+    metadata = {
+        "sample_id": item[f"{variant}_sample_id"],
+        "workflow_id": item["workflow_id"],
+        "category": item["category"],
+        "scenario_seed": item["scenario_seed"],
+        "enforced_transitions": item["enforced_transitions"],
+        "dependency_span_target": item["dependency_span_target"],
+        "minimum_simulated_days": item["minimum_simulated_days"],
+        "horizon_claim": item["horizon_claim"],
+        "benchmark_version": item["benchmark_version"],
+    }
+    event = (
+        "No disruption. Delayed checkpoints still apply."
+        if variant == "clean"
+        else f"Delayed recovery event: `{item['perturbation']}`"
+    )
+    return str(item["prompt"]), metadata, event
 
 
 def _evidence_calls(family_id: str, evidence_pack: str) -> list[dict[str, Any]]:
@@ -177,10 +200,9 @@ def build_demo() -> Any:
         raise RuntimeError('install the demo extra with `pip install -e ".[demo]"`') from error
 
     instance_choices = sorted(_CATALOG)
+    workflow_choices = sorted(_WORKFLOW_CATALOG)
     family_choices = sorted(CASES_BY_ID)
-    initial_prompt, initial_metadata, initial_perturbation = task_view(
-        instance_choices[0], "clean"
-    )
+    initial_prompt, initial_metadata, initial_perturbation = task_view(instance_choices[0], "clean")
 
     with gr.Blocks(title="DecisionAgentBench Lab") as demo:
         gr.Markdown(
@@ -214,6 +236,45 @@ def build_demo() -> Any:
                 outputs=[prompt, task_metadata, perturbation_note],
             )
 
+        with gr.Tab("Stateful workflows v0.3"):
+            gr.Markdown(
+                "Explore the dependency-enforced preview contract. Actual transitions run in "
+                "Inspect; this provider-free tab exposes scope and pairing without hidden state."
+            )
+            with gr.Row():
+                workflow_instance = gr.Dropdown(
+                    workflow_choices,
+                    value=workflow_choices[0],
+                    label="Workflow instance",
+                )
+                workflow_variant = gr.Radio(
+                    ["clean", "perturbed"], value="clean", label="Paired variant"
+                )
+            workflow_prompt, workflow_metadata, workflow_event = workflow_view(
+                workflow_choices[0], "clean"
+            )
+            workflow_prompt_box = gr.Textbox(workflow_prompt, label="Stateful objective", lines=5)
+            workflow_metadata_box = gr.JSON(workflow_metadata, label="Enforced contract")
+            workflow_event_note = gr.Markdown(workflow_event)
+            workflow_instance.change(
+                workflow_view,
+                inputs=[workflow_instance, workflow_variant],
+                outputs=[
+                    workflow_prompt_box,
+                    workflow_metadata_box,
+                    workflow_event_note,
+                ],
+            )
+            workflow_variant.change(
+                workflow_view,
+                inputs=[workflow_instance, workflow_variant],
+                outputs=[
+                    workflow_prompt_box,
+                    workflow_metadata_box,
+                    workflow_event_note,
+                ],
+            )
+
         with gr.Tab("Decision scorer"):
             gr.Markdown(
                 "The demo evidence pack exposes only IDs and tool lineage. It never reveals hidden "
@@ -221,20 +282,14 @@ def build_demo() -> Any:
                 "decision to see the score and failure taxonomy change."
             )
             with gr.Row():
-                family = gr.Dropdown(
-                    family_choices, value="DAB-SAL-001", label="Task family"
-                )
-                score_variant = gr.Radio(
-                    ["clean", "perturbed"], value="clean", label="Variant"
-                )
+                family = gr.Dropdown(family_choices, value="DAB-SAL-001", label="Task family")
+                score_variant = gr.Radio(["clean", "perturbed"], value="clean", label="Variant")
                 evidence_pack = gr.Radio(
                     ["none", "minimal", "complete"],
                     value="complete",
                     label="Simulated evidence pack",
                 )
-            candidate = gr.Textbox(
-                default_candidate(), label="Candidate final JSON", lines=14
-            )
+            candidate = gr.Textbox(default_candidate(), label="Candidate final JSON", lines=14)
             score_button = gr.Button("Score decision", variant="primary")
             with gr.Row():
                 scores = gr.JSON(label="Deterministic scores")

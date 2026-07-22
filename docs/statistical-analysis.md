@@ -1,12 +1,20 @@
 # Statistical analysis protocol
 
 This document defines the implemented DecisionAgentBench estimands and uncertainty calculations.
-It is normative for analysis schema `2.1.0`. Any change to these definitions is result-affecting and
+It is normative for analysis schema `3.0.0`. Any change to these definitions is result-affecting and
 requires a changelog entry and a new analysis-schema version.
+
+Schema 3.0 adds nullable workflow telemetry for v0.3: workflow identity and completion, completed
+and required transitions, dependency span, simulated days, rollback count, and invalid transition
+count. These fields are null for frozen v0.1/v0.2 samples. Workflow outcome utility remains in
+`[0,1]` and is reported separately from economic utility units. The independent verifier accepts
+legacy 2.1 bundles by filling the new fields with nulls; newly generated bundles use schema 3.0.
 
 ## Analysis grains
 
 - A **task family** is one of the 25 stable decision concepts, such as `DAB-SAL-001`.
+- A **workflow concept** is one of the three separate v0.3 state machines, such as
+  `DAB-LH-RECALL`; it is not counted as a v0.2 task family.
 - A **task instance** combines a family with one scenario seed, such as `DAB-SAL-001-i3`.
 - A **sample** combines an instance with `clean` or `perturbed` evidence.
 - An **epoch** is one repeated model trajectory through the same sample.

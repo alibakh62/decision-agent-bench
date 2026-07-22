@@ -1,8 +1,8 @@
 # DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.2.1 research-preview methods report, 21 July 2026
-**Benchmark software:** `0.2.1`
-**Task protocols:** `0.1` confirmatory suite; `0.2` research expansion
+**Status:** v0.3.0 research-preview methods report, 22 July 2026
+**Benchmark software:** `0.3.0`
+**Task protocols:** `0.1` confirmatory suite; `0.2` research expansion; `0.3` stateful preview
 
 ## Abstract
 
@@ -22,6 +22,12 @@ oracle-relative decision quality, safety, robustness, calibration, efficiency, r
 explainability, and a safety-gated composite. Six agent architectures and two prompt ablations are
 implemented. Deterministic state, economic, evidence-lineage, and policy graders are preferred over
 model judgments; a blinded study protocol measures human, LLM-judge, and deterministic agreement.
+
+A separate v0.3 preview adds three stateful workflow concepts, twelve seeded instances, and 24
+clean/stressed samples. Each requires 20 persisted transitions over at least 15 simulated days,
+with delayed events, a dependency-span target of 19, real simulator mutations, and mandatory
+rollback in stressed conditions. We call this a dependency-enforced horizon preview rather than a
+general or human-time long-horizon benchmark.
 
 This prerelease report documents the design, implementation, and statistical plan. It deliberately
 contains no frontier-model performance claims: confirmatory provider runs, human ratings, and an
@@ -135,6 +141,13 @@ catalog. This creates 100 seeded instances and 200 matched samples without prete
 replication creates 200 independent task concepts. The schedule activates all 53 named
 perturbations at least once.
 
+The v0.3 registration is separate. It materializes four seeds for each of three stateful workflow
+concepts, producing 12 seeded instances and 24 paired samples. Each graph contains 20 transitions.
+Prerequisite, evidence, minimum-day, and delayed-event gates are enforced by the simulator; the
+terminal step also depends directly on the first, yielding a measured span target of 19. Stressed
+samples reveal a disruption at simulated day 10 and cannot continue until the designated mutable
+step is rolled back. Price, inventory, substitute, and recall changes persist in the retail world.
+
 ### 3.3 Agent output and evidence lineage
 
 Agents submit one JSON decision with a conclusion, confidence, cited evidence IDs, selected entity
@@ -191,7 +204,7 @@ and authorization failures. **Robustness** scores performance in the assigned pe
 **Calibration** uses a Brier-style score between declared confidence and deterministic correctness.
 **Efficiency** penalizes excess tool calls within a declared maximum and is conditioned on useful
 work. **Explainability** combines evidence validity, sufficiency, and required-tool coverage. Under
-the v0.2.1 contract, a submission is eligible for task effectiveness and decision quality only when
+the v0.2.1 and v0.3.0 contracts, a submission is eligible for task effectiveness and decision quality only when
 it cites the minimum distinct valid evidence, has no invalid citations, and covers every required
 tool. An evidence-ineligible submission receives zero effectiveness, decision quality, and
 composite; safety remains separately observable.
@@ -203,8 +216,13 @@ The preregistered composite is
 + 0.10 recovery + 0.10 explainability + 0.05 calibration + 0.05 efficiency
 ```
 
-A hard safety failure sets the composite to zero. v0.2.1 also gates the composite on evidence
+A hard safety failure sets the composite to zero. v0.2.1 and v0.3.0 also gate the composite on evidence
 eligibility. The complete scorecard remains primary; the composite cannot show why a system failed.
+
+For v0.3, task effectiveness is transition completion and decision quality is a deterministic
+function of completion, dependency integrity, temporal integrity, and required recovery. The
+scorer reads those measurements from the persisted trace. Answer keywords do not satisfy a
+transition, and an incomplete or invalid chain receives `F-PLAN`.
 
 ## 6. Experimental design and analysis
 
@@ -304,6 +322,12 @@ four seeded instances per family create clustered—not independent—evidence. 
 change even under stable model names. Architecture prompts may interact with models differently.
 Tool-call and token parity do not guarantee equal effective computation. Public tasks invite
 contamination over time.
+
+The v0.3 workflow suite is intentionally small. Its simulated 15-day clock, 20 transitions, and
+dependency span of 19 demonstrate enforced temporal structure but do not estimate skilled-human
+completion time or reproduce the breadth, duration, or partial observability of year-scale
+benchmarks. The four seeds vary deterministic event payloads; they do not create independent
+workflow concepts. A general long-horizon claim remains out of scope.
 
 Deterministic grading is not automatically correct. Contract mistakes, overly narrow accepted
 concepts, and simulator misspecification can create false certainty. Human agreement and ablations

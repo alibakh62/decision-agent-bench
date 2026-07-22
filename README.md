@@ -12,8 +12,9 @@ tool failures, calibrated, efficient, and supported by valid evidence.
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.2.1 public research preview. The executable v0.1 benchmark, v0.2
-> research expansion, six architectures, two ablations, reproducible experiment and analysis
+> **Project status:** v0.3.0 public research preview. The executable v0.1 benchmark, v0.2
+> research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
+> reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
 > implemented. Multi-model runs, human ratings, an external reproduction, archival DOI, and upstream
 > registration remain evidence gates; no frontier-model performance claims have been made.
@@ -24,9 +25,10 @@ scheduled across the perturbed instances. Four advanced architectures, two promp
 versioned assortment-regret oracle are tested research infrastructure, not empirical performance
 claims or 200 independent evaluation concepts.
 
-DecisionAgentBench does **not** currently claim to measure long-horizon agent ability. The v0.2.1
-catalog reports a median optimal tool count of four and an enforced dependency depth of zero; the
-legacy workflow-step estimates are design metadata. See the
+v0.3.0 adds **3 workflow concepts, 12 seeded instances, and 24 paired samples** with 20 persisted
+transitions, a dependency-span target of 19, at least 15 simulated days, delayed consequences, and
+required rollback in stressed variants. This is a dependency-enforced horizon preview—not a claim
+of parity with year-scale or human-time benchmarks. See the
 [horizon methodology](docs/horizon-methodology.md) for the claim boundary and future acceptance
 criteria.
 
@@ -52,6 +54,18 @@ The benchmark is built around five principles:
 - 25 clean and 25 controlled-perturbation samples
 - Nine deterministic score outputs plus a public failure taxonomy
 - Repeated multi-model runs and the benchmark report are planned for the next milestone
+
+## Stateful workflow preview v0.3
+
+- Three separate stateful concepts: regional turnaround, vendor pilot, and recall recovery
+- Four seeds per concept and clean/stressed pairing: 12 seeded instances, 24 samples
+- Twenty dependency-gated transitions and a measured dependency span of 19 per completed run
+- Simulated-time checkpoints at days 5, 10, and 15
+- Real price, inventory, and recall-state mutations with audited rollback
+- Trace-derived effectiveness and decision quality; answer keywords cannot complete a workflow
+- Explicitly scoped as a preview pending human-time measurement and non-mock empirical runs
+
+See the [v0.3 workflow specification](docs/v0.3-stateful-workflows.md).
 
 ## Repository map
 
@@ -105,13 +119,27 @@ For the expanded research task, select
 [v0.2 expansion](docs/v0.2-expansion.md) and [research baseline](docs/research-baselines.md)
 protocols before comparing architectures.
 
+For the stateful workflow preview, select
+`src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_3`. For example:
+
+```bash
+inspect eval src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_3 \
+  --model openai/<model-name> \
+  -T variant=both \
+  -T baseline=planner_executor
+```
+
+Review the [v0.3 workflow specification](docs/v0.3-stateful-workflows.md) and
+[claim boundary](docs/horizon-methodology.md) before reporting results.
+
 Launch the local, provider-free research lab:
 
 ```bash
 decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
-The task explorer shows all registered paired instances. The decision scorer uses the real
+The task explorer shows the v0.2 registered pairs, and the stateful-workflow tab exposes the exact
+v0.3 transition, span, time, and stress-event contracts. The decision scorer uses the real
 deterministic grader with simulated evidence lineage, and the reference-world tab exposes only
 allow-listed read-only views. The demo has no provider calls, arbitrary SQL, state-changing actions,
 oracle fields, or public sharing tunnel.
@@ -119,8 +147,8 @@ oracle fields, or public sharing tunnel.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.2.1 .
-docker run --rm decision-agent-bench:0.2.1
+docker build --tag decision-agent-bench:0.3.0 .
+docker run --rm decision-agent-bench:0.3.0
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

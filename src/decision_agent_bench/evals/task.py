@@ -1,4 +1,4 @@
-"""Inspect AI task registration for DecisionAgentBench v0.1."""
+"""Inspect AI task registrations for DecisionAgentBench v0.1 through v0.3."""
 
 from __future__ import annotations
 
@@ -16,6 +16,13 @@ from decision_agent_bench.evals.instances import (
 )
 from decision_agent_bench.evals.runtime import cleanup_environment, setup_environment
 from decision_agent_bench.evals.scorer import decision_agent_scorer
+from decision_agent_bench.simulator.workflow import (
+    WORKFLOW_DEPENDENCY_SPAN,
+    WORKFLOW_MINIMUM_DAYS,
+    WORKFLOW_STEP_COUNT,
+    WORKFLOW_VERSION,
+    WORKFLOWS,
+)
 from decision_agent_bench.specs import load_task_specs
 
 SUBMISSION_INSTRUCTIONS = """
@@ -94,9 +101,7 @@ def build_dataset(
                     if case.task_id == "DAB-ASS-001":
                         target["economic_oracle"] = "replacement_opportunity"
                 instance_id = f"{case.task_id}-i{instance_index + 1}"
-                instance_suffix = (
-                    f"-i{instance_index + 1}" if instances_per_family > 1 else ""
-                )
+                instance_suffix = f"-i{instance_index + 1}" if instances_per_family > 1 else ""
                 samples.append(
                     Sample(
                         id=f"{case.task_id}{instance_suffix}-{selected_variant}",
@@ -104,11 +109,7 @@ def build_dataset(
                         target=json.dumps(target, sort_keys=True),
                         metadata={
                             "task_id": case.task_id,
-                            "task_version": (
-                                benchmark_version
-                                if expanded
-                                else spec["version"]
-                            ),
+                            "task_version": (benchmark_version if expanded else spec["version"]),
                             "family_spec_version": spec["version"],
                             "category": sample_category,
                             "difficulty": spec["difficulty"],
@@ -163,6 +164,78 @@ def _benchmark_task(
     )
 
 
+def build_workflow_dataset(
+    *,
+    category: str | None = None,
+    variant: str = "both",
+    instances_per_workflow: int = 4,
+) -> MemoryDataset:
+    """Build the v0.3 dependency-enforced workflow preview dataset."""
+
+    if variant not in {"clean", "perturbed", "both"}:
+        raise ValueError("variant must be 'clean', 'perturbed', or 'both'")
+    if not 1 <= instances_per_workflow <= 4:
+        raise ValueError("instances_per_workflow must be between 1 and 4")
+    categories = {workflow.category for workflow in WORKFLOWS}
+    if category is not None and category not in categories:
+        raise ValueError(f"unknown category {category!r}; expected one of {sorted(categories)}")
+    variants = ("clean", "perturbed") if variant == "both" else (variant,)
+    samples: list[Sample] = []
+    for workflow in WORKFLOWS:
+        if category is not None and workflow.category != category:
+            continue
+        for instance_index in range(instances_per_workflow):
+            for selected_variant in variants:
+                target = {
+                    "task_id": workflow.workflow_id,
+                    "contract_version": WORKFLOW_VERSION,
+                    "workflow_id": workflow.workflow_id,
+                    "workflow_required_steps": WORKFLOW_STEP_COUNT,
+                    "required_tools": [
+                        "inspect_workflow",
+                        "execute_workflow_step",
+                        "advance_workflow_time",
+                        *(["rollback_workflow_step"] if selected_variant == "perturbed" else []),
+                    ],
+                    "min_evidence": 4 if selected_variant == "perturbed" else 3,
+                    "optimal_tool_calls": 32 if selected_variant == "perturbed" else 31,
+                    "max_tool_calls": 64,
+                    "expects_escalation": False,
+                }
+                samples.append(
+                    Sample(
+                        id=(f"{workflow.workflow_id}-i{instance_index + 1}-" f"{selected_variant}"),
+                        input=workflow.prompt + SUBMISSION_INSTRUCTIONS,
+                        target=json.dumps(target, sort_keys=True),
+                        metadata={
+                            "task_id": workflow.workflow_id,
+                            "task_version": WORKFLOW_VERSION,
+                            "workflow_id": workflow.workflow_id,
+                            "workflow_version": WORKFLOW_VERSION,
+                            "category": workflow.category,
+                            "difficulty": "expert",
+                            "instance_id": (f"{workflow.workflow_id}-i{instance_index + 1}"),
+                            "instance_index": instance_index + 1,
+                            "scenario_seed": 20260717 + instance_index,
+                            "variant": selected_variant,
+                            "perturbation": (
+                                workflow.stress_event if selected_variant == "perturbed" else None
+                            ),
+                            "enforced_transitions": WORKFLOW_STEP_COUNT,
+                            "dependency_span_target": WORKFLOW_DEPENDENCY_SPAN,
+                            "minimum_simulated_days": WORKFLOW_MINIMUM_DAYS,
+                            "horizon_claim": "dependency_enforced_preview",
+                        },
+                    )
+                )
+    return MemoryDataset(
+        samples=samples,
+        name=(
+            f"decision_agent_bench_v0_3_{category or 'all'}_{variant}_" f"{instances_per_workflow}x"
+        ),
+    )
+
+
 @task
 def decision_agent_bench(
     category: str | None = None,
@@ -201,4 +274,37 @@ def decision_agent_bench_v0_2(
         baseline=baseline,
         instances_per_family=instances_per_family,
         version=EXPANDED_VERSION,
+    )
+
+
+@task
+def decision_agent_bench_v0_3(
+    category: str | None = None,
+    variant: str = "both",
+    baseline: str = "single_agent",
+    instances_per_workflow: int = 4,
+) -> Task:
+    """Stateful preview with 3 workflows, 12 seeded instances, and 24 paired samples."""
+
+    return Task(
+        dataset=build_workflow_dataset(
+            category=category,
+            variant=variant,
+            instances_per_workflow=instances_per_workflow,
+        ),
+        setup=setup_environment(),
+        solver=baseline_solver(baseline, workflow=True),
+        cleanup=cleanup_environment,
+        scorer=decision_agent_scorer(),
+        version=WORKFLOW_VERSION,
+        time_limit=900,
+        fail_on_error=0.2,
+        metadata={
+            "benchmark": "DecisionAgentBench",
+            "domain": "synthetic_convenience_retail",
+            "deterministic_grading": True,
+            "instances_per_workflow": instances_per_workflow,
+            "horizon_claim": "dependency_enforced_preview",
+        },
+        tags=["agentic", "business-decision", "stateful", "tool-use"],
     )

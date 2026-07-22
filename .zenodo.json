@@ -1,6 +1,6 @@
 {
   "title": "DecisionAgentBench: Reliable Evidence-Grounded Business Decision Agents",
-  "description": "An open benchmark and synthetic retail environment for process-aware evaluation of consequential AI decision agents.",
+  "description": "An open benchmark and synthetic retail environment for process-aware and dependency-enforced evaluation of consequential AI decision agents.",
   "creators": [
     {
       "name": "DecisionAgentBench Contributors"
@@ -12,6 +12,7 @@
     "agent evaluation",
     "benchmark",
     "reliability",
+    "stateful workflows",
     "Inspect AI"
   ],
   "upload_type": "software",

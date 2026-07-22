@@ -18,7 +18,7 @@ SUBMISSION_FORM_URL = (
     "https://github.com/UKGovernmentBEIS/inspect_evals/issues/new"
     "?template=register-submission.yml"
 )
-DEFAULT_TASK = "decision_agent_bench_v0_2"
+DEFAULT_TASK = "decision_agent_bench_v0_3"
 TASK_PATH = Path("src/decision_agent_bench/evals/task.py")
 ARXIV_PATTERN = re.compile(r"https://arxiv\.org/abs/\d{4}\.\d{4,5}v\d+\Z")
 COMMIT_PATTERN = re.compile(r"[0-9a-f]{40}\Z")

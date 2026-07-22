@@ -19,6 +19,13 @@ from decision_agent_bench.simulator.environment import (
 from decision_agent_bench.simulator.environment import (
     ToolError as SimulatorToolError,
 )
+from decision_agent_bench.simulator.workflow import (
+    WorkflowError,
+    advance_time,
+    execute_step,
+    inspect_workflow_state,
+    rollback_step,
+)
 
 
 def _database_path() -> Path:
@@ -53,24 +60,18 @@ def _record_error(tool_name: str, arguments: dict[str, Any], message: str) -> No
 def _maybe_inject_failure(tool_name: str, arguments: dict[str, Any]) -> None:
     failure_tool = store().get(f"{STORE_PREFIX}failure_tool")
     calls = _calls()
-    already_failed = any(
-        call["tool"] == tool_name and call["status"] == "error" for call in calls
-    )
+    already_failed = any(call["tool"] == tool_name and call["status"] == "error" for call in calls)
     if failure_tool == tool_name and not already_failed:
         message = "simulated transient tool failure; retry or use a defensible fallback"
         _record_error(tool_name, arguments, message)
         raise ToolError(message)
 
 
-def _record_success(
-    tool_name: str, arguments: dict[str, Any], result: Any
-) -> dict[str, Any]:
+def _record_success(tool_name: str, arguments: dict[str, Any], result: Any) -> dict[str, Any]:
     calls = _calls()
     evidence_id = f"E{len(calls) + 1:03d}"
     serialized = json.dumps(result, sort_keys=True, separators=(",", ":"), default=str)
-    prior_error = any(
-        call["tool"] == tool_name and call["status"] == "error" for call in calls
-    )
+    prior_error = any(call["tool"] == tool_name and call["status"] == "error" for call in calls)
     calls.append(
         {
             "index": len(calls) + 1,
@@ -92,6 +93,18 @@ def _record_success(
 
 def _json_result(payload: dict[str, Any]) -> str:
     return json.dumps(payload, sort_keys=True, default=str)
+
+
+def _evidence_tools(evidence_ids: list[str]) -> set[str]:
+    successful = {
+        str(call.get("evidence_id")): str(call.get("tool"))
+        for call in _calls()
+        if call.get("status") == "success" and call.get("evidence_id")
+    }
+    invalid = sorted(set(evidence_ids) - successful.keys())
+    if invalid:
+        raise WorkflowError("unknown or unsuccessful evidence IDs: " + ", ".join(invalid))
+    return {successful[evidence_id] for evidence_id in evidence_ids}
 
 
 @tool
@@ -175,9 +188,7 @@ def forecast_demand() -> Tool:
         try:
             with RetailEnvironment(_database_path()) as environment:
                 result = asdict(
-                    environment.forecast_demand(
-                        store_id, product_id, horizon_days=horizon_days
-                    )
+                    environment.forecast_demand(store_id, product_id, horizon_days=horizon_days)
                 )
         except SimulatorToolError as error:
             _record_error("forecast_demand", arguments, str(error))
@@ -208,9 +219,7 @@ def recommend_inventory() -> Tool:
         try:
             with RetailEnvironment(_database_path()) as environment:
                 result = asdict(
-                    environment.recommend_inventory(
-                        store_id, product_id, cover_days=cover_days
-                    )
+                    environment.recommend_inventory(store_id, product_id, cover_days=cover_days)
                 )
         except SimulatorToolError as error:
             _record_error("recommend_inventory", arguments, str(error))
@@ -250,9 +259,7 @@ def request_approval() -> Tool:
         }
         _maybe_inject_failure("request_approval", arguments)
         valid_evidence = {
-            call.get("evidence_id")
-            for call in _calls()
-            if call["status"] == "success"
+            call.get("evidence_id") for call in _calls() if call["status"] == "success"
         }
         evidence_valid = bool(evidence_ids) and set(evidence_ids) <= valid_evidence
         try:
@@ -326,10 +333,120 @@ def change_store_price() -> Tool:
     return execute
 
 
-def benchmark_tools() -> list[Tool]:
+@tool
+def inspect_workflow() -> Tool:
+    """Inspect the persisted v0.3 workflow, gates, delayed events, and recovery state."""
+
+    async def execute() -> str:
+        """Return the current state and requirements for all workflow transitions."""
+
+        arguments: dict[str, Any] = {}
+        try:
+            result = inspect_workflow_state(_database_path())
+        except WorkflowError as error:
+            _record_error("inspect_workflow", arguments, str(error))
+            raise ToolError(str(error)) from error
+        return _json_result(_record_success("inspect_workflow", arguments, result))
+
+    return execute
+
+
+@tool
+def execute_workflow_step() -> Tool:
+    """Execute one dependency-, evidence-, event-, and time-gated v0.3 transition."""
+
+    async def execute(
+        step_id: str,
+        evidence_ids: list[str],
+        notes: str = "",
+    ) -> str:
+        """Attempt one workflow transition.
+
+        Args:
+            step_id: Stable transition identifier shown by `inspect_workflow`, such as `S01`.
+            evidence_ids: Prior successful evidence IDs satisfying the step's required tools.
+            notes: Concise rationale for the transition.
+
+        Returns:
+            JSON containing an evidence ID and the persisted transition result.
+        """
+
+        arguments = {"step_id": step_id, "evidence_ids": evidence_ids, "notes": notes}
+        try:
+            result = execute_step(
+                _database_path(),
+                step_id,
+                evidence_tools=_evidence_tools(evidence_ids),
+            )
+        except WorkflowError as error:
+            _record_error("execute_workflow_step", arguments, str(error))
+            raise ToolError(str(error)) from error
+        return _json_result(_record_success("execute_workflow_step", arguments, result))
+
+    return execute
+
+
+@tool
+def advance_workflow_time() -> Tool:
+    """Advance simulated time and apply deterministic delayed workflow events."""
+
+    async def execute(days: int) -> str:
+        """Advance the workflow clock.
+
+        Args:
+            days: Number of simulated days to advance, from 1 through 30.
+
+        Returns:
+            JSON containing an evidence ID, the new day, and newly applied events.
+        """
+
+        arguments = {"days": days}
+        try:
+            result = advance_time(_database_path(), days)
+        except WorkflowError as error:
+            _record_error("advance_workflow_time", arguments, str(error))
+            raise ToolError(str(error)) from error
+        return _json_result(_record_success("advance_workflow_time", arguments, result))
+
+    return execute
+
+
+@tool
+def rollback_workflow_step() -> Tool:
+    """Reverse the transition required by a revealed v0.3 disruption."""
+
+    async def execute(step_id: str, evidence_ids: list[str], reason: str) -> str:
+        """Roll back one reversible workflow transition.
+
+        Args:
+            step_id: The step named in `required_rollback_step`.
+            evidence_ids: Prior `inspect_workflow` evidence confirming the disruption.
+            reason: Concise recovery rationale.
+
+        Returns:
+            JSON containing an evidence ID and the persisted rollback result.
+        """
+
+        arguments = {"step_id": step_id, "evidence_ids": evidence_ids, "reason": reason}
+        try:
+            result = rollback_step(
+                _database_path(),
+                step_id,
+                evidence_tools=_evidence_tools(evidence_ids),
+                reason=reason,
+            )
+        except WorkflowError as error:
+            _record_error("rollback_workflow_step", arguments, str(error))
+            raise ToolError(str(error)) from error
+        return _json_result(_record_success("rollback_workflow_step", arguments, result))
+
+    return execute
+
+
+def benchmark_tools(*, include_workflow: bool = False) -> list[Tool]:
     """Return a fresh, serial stateful tool set for one agent baseline."""
 
-    return [
+    tools = [
         retail_sql(),
         search_documents(),
         forecast_demand(),
@@ -337,3 +454,13 @@ def benchmark_tools() -> list[Tool]:
         request_approval(),
         change_store_price(),
     ]
+    if include_workflow:
+        tools.extend(
+            [
+                inspect_workflow(),
+                execute_workflow_step(),
+                advance_workflow_time(),
+                rollback_workflow_step(),
+            ]
+        )
+    return tools
