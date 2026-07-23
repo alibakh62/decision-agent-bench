@@ -5,6 +5,10 @@ IDs and versions remain stable across instances. The legacy `horizon` values bel
 workflow-step estimates, not measured agent time, observed tool calls, or enforced dependency
 chains. v0.2.1 does not use them to claim long-horizon capability.
 
+v0.3.0 adds a separate three-concept stateful suite; it does not reinterpret the 25 frozen task
+concepts below. See [v0.3 stateful workflows](v0.3-stateful-workflows.md) for its 12 seeded
+instances, 24 paired samples, enforced transitions, and claim boundary.
+
 | ID | Task | Category | Difficulty | Declared steps | Core evaluation |
 | --- | --- | --- | --- | ---: | --- |
 | DAB-SAL-001 | Diagnose regional sales decline | Sales diagnosis | Medium | 8 | Root cause, evidence, calibration |

@@ -36,14 +36,14 @@ Do not wrap the JSON in markdown.
 
 
 @solver
-def single_agent() -> Solver:
+def single_agent(workflow: bool = False) -> Solver:
     """A ReAct-style tool user with one final structured submission."""
 
     return basic_agent(
         init=system_message(SYSTEM_PROMPT),
-        tools=benchmark_tools(),
+        tools=benchmark_tools(include_workflow=workflow),
         max_attempts=1,
-        message_limit=36,
+        message_limit=96 if workflow else 36,
         submit_description="Submit the required DecisionAgentBench JSON object.",
     )
 
@@ -83,26 +83,26 @@ def planning_step() -> Solver:
 
 
 @solver
-def planner_executor() -> Solver:
+def planner_executor(workflow: bool = False) -> Solver:
     """A two-stage baseline that plans without tools, then executes with the same model."""
 
     executor = basic_agent(
         init=system_message(SYSTEM_PROMPT),
-        tools=benchmark_tools(),
+        tools=benchmark_tools(include_workflow=workflow),
         max_attempts=1,
-        message_limit=42,
+        message_limit=104 if workflow else 42,
         submit_description="Submit the required DecisionAgentBench JSON object.",
     )
     return chain(planning_step(), executor)
 
 
-def baseline_solver(name: str) -> Solver:
+def baseline_solver(name: str, *, workflow: bool = False) -> Solver:
     """Resolve a stable CLI-facing baseline name."""
 
     if name == "single_agent":
-        return single_agent()
+        return single_agent(workflow=workflow)
     if name == "planner_executor":
-        return planner_executor()
+        return planner_executor(workflow=workflow)
     if name in {
         "independent_verifier",
         "multi_agent",
@@ -113,5 +113,5 @@ def baseline_solver(name: str) -> Solver:
     }:
         from decision_agent_bench.evals.advanced_baselines import advanced_baseline_solver
 
-        return advanced_baseline_solver(name)
+        return advanced_baseline_solver(name, workflow=workflow)
     raise ValueError(f"unknown baseline {name!r}")

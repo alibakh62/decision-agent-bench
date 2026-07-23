@@ -154,6 +154,27 @@ def test_full_research_template_exposes_complete_grid_size() -> None:
     ) == 12
 
 
+def test_v03_planning_counts_workflow_instances() -> None:
+    assert sample_count_for_cell(
+        "decision_agent_bench_v0_3",
+        category="stateful_safety_operations",
+        sample_limit=None,
+    ) == 4
+    assert sample_count_for_cell(
+        "decision_agent_bench_v0_3", category=None, sample_limit=None
+    ) == 12
+    config = load_experiment_config(_config_path("v0.3.template.json"))
+    estimate = estimate_experiment(config)
+    assert estimate["unique_samples_per_variant"] == 12
+    assert estimate["sample_executions"] == 576
+
+
+def test_v03_smoke_config_uses_stateful_registration() -> None:
+    config = load_experiment_config(_config_path("v0.3-smoke.json"))
+    assert config.task_name == "decision_agent_bench_v0_3"
+    assert config.benchmark_version == config.task_version == "0.3.0"
+
+
 def test_v01_three_family_preflight_calculates_full_exposure() -> None:
     payload = json.loads(_config_path("v0.1.template.json").read_text(encoding="utf-8"))
     for model in payload["models"]:
@@ -566,7 +587,7 @@ def _write_test_analysis_bundle(directory: Path) -> dict[str, object]:
         content = "" if name == "samples.sanitized.jsonl" else f"test artifact: {name}\n"
         (directory / name).write_text(content, encoding="utf-8")
     payload: dict[str, object] = {
-        "schema_version": "2.1.0",
+        "schema_version": "3.0.0",
         "source_log_count": 0,
         "source_logs": [],
         "source_log_status_counts": {},

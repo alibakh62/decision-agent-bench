@@ -65,6 +65,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     export.add_argument("output", type=Path)
     export.add_argument("--instances-per-family", type=int, default=4)
+    export_workflows = subparsers.add_parser(
+        "export-workflows", help="write the v0.3 stateful workflow-instance catalog"
+    )
+    export_workflows.add_argument("output", type=Path)
     demo = subparsers.add_parser("demo", help="launch the local interactive benchmark lab")
     demo.add_argument("--host", default="127.0.0.1")
     demo.add_argument("--port", type=int, default=7860)
@@ -98,9 +102,7 @@ def _parser() -> argparse.ArgumentParser:
     release.add_argument("--sbom", type=Path)
     release.add_argument("--dependency-report", type=Path)
     release.add_argument("--container-image")
-    release.add_argument(
-        "--container-runtime", choices=("docker", "podman"), default="docker"
-    )
+    release.add_argument("--container-runtime", choices=("docker", "podman"), default="docker")
     release.add_argument("--analysis", type=Path, action="append", default=[])
     release.add_argument("--allow-prerelease", action="store_true")
     verify_release = subparsers.add_parser(
@@ -116,7 +118,7 @@ def _parser() -> argparse.ArgumentParser:
     inspect_audit.add_argument("--commit")
     inspect_audit.add_argument("--arxiv-url")
     inspect_audit.add_argument("--maintainer", action="append", default=[])
-    inspect_audit.add_argument("--task", default="decision_agent_bench_v0_2")
+    inspect_audit.add_argument("--task", default="decision_agent_bench_v0_3")
     inspect_audit.add_argument("--output", type=Path)
     inspect_audit.add_argument("--strict", action="store_true")
     inspect_prepare = subparsers.add_parser(
@@ -129,7 +131,7 @@ def _parser() -> argparse.ArgumentParser:
     inspect_prepare.add_argument("--commit")
     inspect_prepare.add_argument("--arxiv-url", required=True)
     inspect_prepare.add_argument("--maintainer", action="append", default=[])
-    inspect_prepare.add_argument("--task", default="decision_agent_bench_v0_2")
+    inspect_prepare.add_argument("--task", default="decision_agent_bench_v0_3")
     return parser
 
 
@@ -209,6 +211,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         output = write_expanded_instance_catalog(args.output, args.instances_per_family)
         print(f"exported expanded instance catalog {output}")
+    elif args.command == "export-workflows":
+        from decision_agent_bench.simulator.workflow import (
+            write_workflow_instance_catalog,
+        )
+
+        output = write_workflow_instance_catalog(args.output)
+        print(f"exported stateful workflow catalog {output}")
     elif args.command == "demo":
         from decision_agent_bench.demo import launch_demo
 

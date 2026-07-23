@@ -17,7 +17,11 @@ KNOWN_BASELINES = REFERENCE_BASELINES | {
     "no_evidence_prompt",
 }
 KNOWN_VARIANTS = {"clean", "perturbed"}
-KNOWN_TASKS = {"decision_agent_bench", "decision_agent_bench_v0_2"}
+KNOWN_TASKS = {
+    "decision_agent_bench",
+    "decision_agent_bench_v0_2",
+    "decision_agent_bench_v0_3",
+}
 SENSITIVE_ARGUMENT_FRAGMENTS = {
     "api_key",
     "apikey",
@@ -187,9 +191,11 @@ class ExperimentConfig:
             raise ValueError("baselines and variants cannot be empty")
         if self.task_name not in KNOWN_TASKS:
             raise ValueError(f"unknown task_name {self.task_name!r}")
-        expected_version = (
-            "0.2.1" if self.task_name == "decision_agent_bench_v0_2" else "0.1.0"
-        )
+        expected_version = {
+            "decision_agent_bench": "0.1.0",
+            "decision_agent_bench_v0_2": "0.2.1",
+            "decision_agent_bench_v0_3": "0.3.0",
+        }[self.task_name]
         if (
             self.benchmark_version != expected_version
             or self.task_version != expected_version

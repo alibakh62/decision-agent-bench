@@ -21,7 +21,7 @@ commit SHA.
 The standard submission path does not require this repository to author `eval.yaml`. The official
 issue form collects one versioned arXiv URL, one pinned source blob URL, and optional additional
 maintainers. Its bot derives the register metadata and opens a pull request. Each task requires a
-separate issue; the planned primary entry is `decision_agent_bench_v0_2`.
+separate issue; the planned primary entry is `decision_agent_bench_v0_3`.
 
 ## Machine-checkable preflight
 
@@ -57,7 +57,8 @@ Do not submit until all boxes are checked:
 - [ ] Public GitHub repository and immutable release tag exist.
 - [ ] Versioned arXiv abstract URL exists; the register form requires it.
 - [ ] Empirical report includes non-mock results and limitations.
-- [ ] Source blob URL points to `decision_agent_bench_v0_1` or `decision_agent_bench_v0_2` at a
+- [ ] Source blob URL points to `decision_agent_bench_v0_1`, `decision_agent_bench_v0_2`, or
+      `decision_agent_bench_v0_3` at a
       40-character commit SHA, with a line anchor if needed.
 - [ ] A clean clone installs and runs the exact task command in the report.
 - [ ] External assets resolve from the pinned release.

@@ -8,6 +8,7 @@ from typing import Any
 
 from decision_agent_bench.evals.instances import expanded_instance_catalog
 from decision_agent_bench.experiments.schema import ExperimentConfig
+from decision_agent_bench.simulator.workflow import workflow_instance_catalog
 from decision_agent_bench.specs import load_task_specs
 
 
@@ -19,7 +20,11 @@ def sample_count_for_cell(
 ) -> int:
     """Return the number of unique samples in one model/baseline/variant cell."""
 
-    if task_name == "decision_agent_bench_v0_2":
+    if task_name == "decision_agent_bench_v0_3":
+        category_counts = Counter(
+            str(instance["category"]) for instance in workflow_instance_catalog()
+        )
+    elif task_name == "decision_agent_bench_v0_2":
         category_counts = Counter(
             str(instance["category"]) for instance in expanded_instance_catalog()
         )

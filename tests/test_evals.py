@@ -24,8 +24,10 @@ from decision_agent_bench.evals.scorer import (
 )
 from decision_agent_bench.evals.task import (
     build_dataset,
+    build_workflow_dataset,
     decision_agent_bench,
     decision_agent_bench_v0_2,
+    decision_agent_bench_v0_3,
 )
 from decision_agent_bench.evals.tools import retail_sql
 from decision_agent_bench.experiments.analysis import records_from_eval_log
@@ -126,6 +128,15 @@ def test_v020_dataset_metadata_and_perturbation_schedule_remain_reproducible() -
             if sample.metadata["task_id"] == family_id
         }
         assert len(perturbations) == 1
+
+
+def test_v03_task_registers_stateful_workflow_tools() -> None:
+    dataset = build_workflow_dataset()
+
+    assert len(dataset) == 24
+    assert len(decision_agent_bench_v0_3().dataset) == 24
+    assert dataset.name.startswith("decision_agent_bench_v0_3_")
+    assert baseline_solver("single_agent", workflow=True) is not None
 
 
 def test_all_reference_research_and_ablation_baselines_resolve() -> None:
