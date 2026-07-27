@@ -2,6 +2,11 @@
 
 **Research article draft — no judge or frontier-model result is claimed before the blinded study.**
 
+The current software has two oracle-backed v0.2.1 tasks; decision quality copies lexical
+effectiveness elsewhere. The broader claims below describe the v0.4.0 target design. The blinded
+study is blocked until task-by-task applicability, independent utility measures, and grader
+construct validity are established.
+
 Open-ended business decisions are attractive targets for model judges. A judge can read a rationale
 and decide whether it sounds complete, thoughtful, or persuasive. The weakness is that economic
 quality is often executable. When a simulator can compute feasible alternatives, asking another
@@ -76,7 +81,7 @@ settings, and cost are part of the study record.
 | --- | ---: | ---: | ---: | ---: |
 | _pending_ |  |  |  |  |
 
-The deterministic threshold is frozen before unblinding. Sensitivity analysis may show alternative
+The new construct-validated deterministic threshold will be frozen before unblinding. Sensitivity analysis may show alternative
 thresholds, but it cannot replace the primary analysis after outcomes are known.
 
 ## Reading the confusion matrix

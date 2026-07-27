@@ -8,7 +8,7 @@
 DecisionAgentBench is an open benchmark for measuring how reliably AI agents make consequential,
 evidence-grounded business decisions. It evaluates not only whether an agent reaches an answer,
 but whether the decision is economically sound, policy-compliant, robust to corrupted context and
-tool failures, calibrated, efficient, and supported by valid evidence.
+tool failures, calibrated, efficient, and grounded in an auditable evidence trace.
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
@@ -16,8 +16,14 @@ The first domain is a fully synthetic convenience-retail company. No proprietary
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
-> implemented. Multi-model runs, human ratings, an external reproduction, archival DOI, and upstream
-> registration remain evidence gates; no frontier-model performance claims have been made.
+> implemented. An independent audit confirmed construct-validity defects in the historical lexical
+> scorer, so publication-scale model runs and leaderboard claims are blocked on the new v0.4.0
+> measurement-validity gate. No frontier-model performance claims have been made.
+
+The reproduced grader exploits, corrected claim counts, and adopted roadmap changes are documented
+in the [measurement-validity audit](docs/measurement-validity-review.md). The
+[versioned roadmap](docs/roadmap.md) now places scorer validity, power analysis, task discrimination,
+branching workflows, and external grader validation before the empirical beta.
 
 The research track contains **25 concepts, 100 seeded instances, and 200 paired samples**—200
 samples arranged as 100 clean/perturbed pairs. All 53 named perturbations are deterministically
@@ -40,7 +46,8 @@ interpretation, realistic use cases, code structure, and extension paths.
 
 Task-success rate can conceal costly or unsafe behavior. An agent may reach the nominal goal while destroying margin, violating an approval limit, trusting injected instructions, or citing evidence that does not support its decision. DecisionAgentBench makes those failures measurable.
 
-The benchmark is built around five principles:
+The target benchmark is built around five principles. The v0.1-v0.3 contracts establish much of
+the infrastructure but remain historical development suites until the v0.4 validity gate passes:
 
 1. **Consequential outcomes:** decisions change simulated revenue, margin, service levels, or risk.
 2. **Process-aware evaluation:** policy compliance, evidence use, recovery, and tool behavior matter.
@@ -67,7 +74,9 @@ The benchmark is built around five principles:
 - Simulated-time checkpoints at days 5, 10, and 15
 - Real price, inventory, and recall-state mutations with audited rollback
 - Trace-derived effectiveness and decision quality; answer keywords cannot complete a workflow
-- Explicitly scoped as a preview pending human-time measurement and non-mock empirical runs
+- Linear shared workflow topology and procedural outcome score, retained as a preview rather than a
+  validated planning benchmark
+- Explicitly scoped pending branching decisions, human-time measurement, and non-mock trace audits
 
 See the [v0.3 workflow specification](docs/v0.3-stateful-workflows.md).
 
@@ -166,7 +175,11 @@ decision-agent-bench plan-experiment configs/experiments/smoke.json --output run
 decision-agent-bench run-experiment runs/<run-id>/manifest.json
 ```
 
-Execution requires both `--execute` and `--acknowledge-costs`. A publishable run additionally
+The current roadmap permits these commands for dry runs, mock runs, historical reproduction, and
+explicitly non-publishable development pilots. Publication-scale execution remains blocked until
+the validity-first roadmap gates pass.
+
+Execution requires both `--execute` and `--acknowledge-costs`. The historical publishable schema additionally
 requires the exact `--acknowledge-max-cost-usd` amount printed by preflight. Publishable
 configurations are rejected unless they cover all tasks, both variants, both reference baselines,
 at least three repetitions, at least three distinct publishable model families, and explicit
@@ -203,14 +216,15 @@ kappa, majority labels, and three-way confusion comparisons.
 - [Business regret and judge disagreement](articles/03-business-regret-and-judge-disagreement.md)
 - [Editable research-talk deck](talk/decision-agent-bench-research-talk.pptx)
 - [Leaderboard governance](docs/leaderboard-governance.md) and [external reproduction](docs/external-reproduction.md)
-- [Current Inspect Evals registration package](docs/inspect-evals-registration.md)
+- [Inspect Evals registration preflight package](docs/inspect-evals-registration.md)
+- [Measurement-validity audit and roadmap decision](docs/measurement-validity-review.md)
 
 The registration package includes an offline preflight that verifies the current upstream
 requirements without publishing anything: `make audit-inspect`.
 
 See also [the research design](docs/research-design.md), [the first 25 tasks](docs/task-catalog.md),
 [the failure taxonomy](docs/failure-taxonomy.md), [the synthetic-data card](docs/data-card.md),
-[the statistical analysis protocol](docs/statistical-analysis.md), [the staged roadmap](docs/roadmap.md),
+[the statistical analysis protocol](docs/statistical-analysis.md), [the versioned roadmap](docs/roadmap.md),
 and the [public-release checklist](docs/release-checklist.md).
 
 Before a release, run `make audit` and review the [security model](docs/security-model.md). The audit

@@ -1,6 +1,12 @@
 # Measuring Recovery After Tool Errors in Business Decision Agents
 
-**Research article draft — the protocol is frozen; model results remain pending.**
+**Research article draft — model results and the confirmatory protocol remain pending.**
+
+The sequence-level definition below is the v0.4.0 target. Historical v0.1-v0.3 recovery triggers
+are weaker: transient failures use recorded retries, data-quality cases can pass when
+`data_quality_issues` is merely nonempty, contradictory context can pass through escalation or
+keywords, and constraint changes can pass with any nonempty conclusion. Those contracts are not
+authorized for the proposed recovery study.
 
 Tool failure is inevitable. The useful question is not whether an agent ever receives an error; it
 is whether the agent detects the failure, changes strategy, and repairs every conclusion that
@@ -35,9 +41,10 @@ The benchmark records tool name, arguments, success/error status, evidence ID, r
 recovery markers, approvals, and state changes. Perturbations are injected deterministically from
 the sample contract. Error messages reveal enough to act but never expose hidden scorer state.
 
-Recovery scoring combines the assigned opportunity, observable response, and contract-specific
-resolution. The final JSON also includes `data_quality_issues` and an escalation flag. Those fields
-do not earn credit by themselves; the trajectory and final decision must agree.
+The target recovery scorer combines the assigned opportunity, observable response, and
+contract-specific resolution. The final JSON also includes `data_quality_issues` and an escalation
+flag. In the new contract those fields will not earn credit by themselves; the trajectory, repaired
+claims, and final action must agree.
 
 This process-aware design prevents three common false positives:
 
@@ -72,8 +79,9 @@ can erase the mechanism.
 
 ## Architectures under test
 
-The single-agent and planner–executor baselines establish the v0.1 comparison. The research track
-adds independent verification, multi-agent critique, and within-sample memory/feedback.
+The single-agent and planner–executor baselines implement the historical comparison. The research
+track adds independent verification, multi-agent critique, and within-sample memory/feedback. Which
+contrasts remain confirmatory will be decided by v0.5.0 power analysis.
 
 The verifier is expected to detect unresolved contradictions and policy failures but may increase
 latency and cost. Memory may help avoid repeating failed calls, but poisoned context tests whether

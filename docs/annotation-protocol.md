@@ -5,12 +5,20 @@ a substitute for deterministic economic, policy, and state-transition graders. T
 three sources: blinded human raters, an optional blinded LLM judge, and the benchmark's frozen
 deterministic labels.
 
+The study is also a validation of the deterministic grader, not an assumption that its labels are
+ground truth. It will run only against the post-v0.4 construct-valid contract. Historical labels
+may be included as an explicitly separate diagnostic arm.
+
 ## Study sample
 
 Before inspecting outcomes, draw a stratified sample across task family, clean/perturbed condition,
 baseline, and model family. Use every completed sample if affordable. Record the draw seed and the
 source run manifest. Do not replace difficult or ambiguous samples after ratings begin; mark them
 for adjudication.
+
+Include a prespecified grader-validity arm that oversamples submissions the deterministic scorer
+rated highly, plus threshold, safety-critical, and known attack classes. This arm estimates false
+positive behavior that an average random sample can hide.
 
 At least two independent human raters must score every included item. Three raters are preferred
 because binary majority labels otherwise tie when two raters disagree. Raters must not know the
@@ -73,3 +81,8 @@ reported `n`.
 Publish the sampling plan, packet hash, rater counts, agreement by dimension, adjudication policy,
 and all exclusions. Keep free-text notes and the private key private unless every rater consented to
 release them.
+
+Interpret disagreement symmetrically. A deterministic-positive/human-negative case is first a
+potential grader false positive; a human-positive/deterministic-negative case is first a potential
+grader false negative or task ambiguity. Neither humans nor an LLM judge are declared noisy merely
+because they disagree with the deterministic label.

@@ -10,6 +10,9 @@
 
 ## Evidence gates
 
+- [ ] Complete every v0.4-v0.8 validity-first roadmap gate: typed scoring, evidence support,
+      structured safety, power/MDE, richer task discrimination, branching workflows, blinded human
+      validation, red team, and leakage audit.
 - [ ] Freeze the preregistered model/baseline grid, archive its preflight, and authorize the exact
       configured exposure under a whole-study cost ceiling.
 - [ ] Run at least three current model families with three or more repetitions.
@@ -17,6 +20,8 @@
 - [ ] Regenerate every report table and figure from immutable manifests.
 - [ ] Obtain one independent clean-machine reproduction.
 - [ ] Review claims against the evidence ledger; remove all placeholders and prospective language.
+- [ ] Publish the adversarial grader fixtures, metric-applicability map, human disagreement strata,
+      metric-dependence report, effective family count, and MDE beside the empirical results.
 
 ## Engineering and security
 

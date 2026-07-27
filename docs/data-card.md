@@ -51,9 +51,17 @@ All entities and events are created by project code. Names are fictional. Custom
 
 - Transaction rows represent item purchase events rather than realistic multi-line baskets.
 - Demand and substitution behavior are simplified and initially cover one retail domain.
+- The principal regional-diagnosis signal is a uniform `0.74` units multiplier across the final
+  region's last 14 days. It lacks composed causes, store heterogeneity, countervailing effects, and
+  red-herring series, so diagnostic discrimination has not been established.
+- Many v0.2 seed variants preserve the same key entity answers. They test repeatability under
+  nuisance variation more than breadth of distinct decisions.
 - Customer segments are operational fixtures, not demographic profiles.
 - Generator parameters can encode benchmark assumptions that advantage matching heuristics.
 - Synthetic validity does not imply external business validity.
+
+The v0.6.0 roadmap creates a separate richer world and task contract rather than rewriting this
+historical reference fixture.
 
 ## Validation and appropriate use
 

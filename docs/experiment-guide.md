@@ -4,6 +4,13 @@ DecisionAgentBench separates benchmark implementation from paid model execution.
 layer creates a content-hashed plan before any provider is contacted, applies the same sample-level
 budgets to every model, and requires two explicit CLI flags before execution.
 
+> **Current hold:** use this layer for dry runs, mock runs, historical reproduction, and explicitly
+> non-publishable development pilots only. The v0.1-v0.3 scorer failed the
+> [measurement-validity audit](measurement-validity-review.md), so its existing “publishable”
+> configuration checks are necessary provenance controls but not sufficient authorization for a
+> leaderboard study. Publication-scale execution is blocked by the
+> [v0.4.0-v0.8.0 roadmap gates](roadmap.md).
+
 ## 1. Configure
 
 Copy `configs/experiments/v0.1.template.json`, replace the current model identifiers, review
@@ -13,8 +20,10 @@ you authorize for the complete grid. The template names three provider families 
 model recommendations that will become stale. Credentials must come from provider environment
 variables and are rejected in `model_args`.
 
-Official v0.1 results require at least three distinct publishable model families, both baselines,
-both variants, all 25 task families, and at least three repetitions.
+The historical publication-schema checks require at least three distinct publishable model
+families, both baselines, both variants, all 25 task families, and at least three repetitions. These
+checks remain useful for testing coverage, but no result from the historical lexical contract is
+currently an official benchmark result.
 `configs/experiments/smoke.json` is deliberately limited and non-publishable.
 
 ## 2. Plan
