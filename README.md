@@ -12,7 +12,7 @@ tool failures, calibrated, efficient, and supported by valid evidence.
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.3.0 public research preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.3.1 public research preview. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
@@ -147,8 +147,8 @@ oracle fields, or public sharing tunnel.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.3.0 .
-docker run --rm decision-agent-bench:0.3.0
+docker build --tag decision-agent-bench:0.3.1 .
+docker run --rm decision-agent-bench:0.3.1
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

@@ -4,6 +4,15 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-27
+
+### Fixed
+
+- Make the Inspect mock-model integration tests independent of the remote tiktoken encoding CDN,
+  so all four advanced architectures execute in clean and network-restricted environments.
+- Include the baseline name and underlying Inspect error in architecture-test failures. The v0.3.0
+  task, scoring, workflow, and catalog contracts remain unchanged.
+
 ## [0.3.0] - 2026-07-22
 
 ### Added

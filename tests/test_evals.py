@@ -37,6 +37,19 @@ from decision_agent_bench.simulator.validation import logical_digest
 from decision_agent_bench.specs import load_task_specs
 
 
+async def _offline_mock_token_count(_model: object, text: str) -> int:
+    """Keep mock-model integration tests independent of the tiktoken CDN."""
+
+    return max(1, (len(text) + 3) // 4)
+
+
+def _patch_mock_token_count(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "inspect_ai.model._providers.mockllm.MockLLM.count_text_tokens",
+        _offline_mock_token_count,
+    )
+
+
 def _successful_call(tool_name: str, evidence_id: str, index: int) -> dict[str, object]:
     return {
         "index": index,
@@ -196,6 +209,7 @@ def test_expanded_seeds_preserve_key_answer_contracts(tmp_path: Path) -> None:
 def test_advanced_architectures_execute_under_inspect(
     tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
+    _patch_mock_token_count(monkeypatch)
     monkeypatch.setattr(
         "inspect_ai._util.appdirs.user_data_path", lambda _package: tmp_path / "inspect-data"
     )
@@ -218,7 +232,7 @@ def test_advanced_architectures_execute_under_inspect(
             display="none",
         )
         assert len(logs) == 1
-        assert logs[0].status == "success"
+        assert logs[0].status == "success", f"{baseline}: {logs[0].error}"
 
 
 def test_every_named_perturbation_is_executable_and_observable(tmp_path: Path) -> None:
@@ -629,6 +643,7 @@ def scripted_grounded_solver() -> Solver:
 def test_inspect_end_to_end_executes_setup_tools_scorer_and_cleanup(
     tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
+    _patch_mock_token_count(monkeypatch)
     monkeypatch.setattr(
         "inspect_ai._util.appdirs.user_data_path", lambda _package: tmp_path / "inspect-data"
     )
