@@ -32,6 +32,10 @@ of parity with year-scale or human-time benchmarks. See the
 [horizon methodology](docs/horizon-methodology.md) for the claim boundary and future acceptance
 criteria.
 
+**New to the project?** Start with [Understanding DecisionAgentBench](docs/understanding-decision-agent-bench.md)
+for an end-to-end explanation of the simulator, tasks, tools, agent architectures, scoring, result
+interpretation, realistic use cases, code structure, and extension paths.
+
 ## Why this benchmark
 
 Task-success rate can conceal costly or unsafe behavior. An agent may reach the nominal goal while destroying margin, violating an approval limit, trusting injected instructions, or citing evidence that does not support its decision. DecisionAgentBench makes those failures measurable.
@@ -100,7 +104,10 @@ python -m decision_agent_bench generate-world data/generated/reference
 python -m decision_agent_bench validate-world data/generated/reference/world.sqlite
 ```
 
-Generated worlds are intentionally excluded from source control. Their manifest records the complete generator configuration, table counts, schema version, and a logical content hash.
+Generation refuses to replace an existing world. Use `--overwrite` only when you intentionally want
+to regenerate that directory. Generated worlds are excluded from source control. Their manifest
+records the complete generator configuration, table counts, schema version, and a logical content
+hash.
 
 Run one category with the single-agent baseline:
 
