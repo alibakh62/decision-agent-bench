@@ -1,7 +1,7 @@
 # DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.3.0 research-preview methods report, 22 July 2026
-**Benchmark software:** `0.3.0`
+**Status:** v0.3.1 research-preview methods report, 27 July 2026
+**Benchmark software:** `0.3.1` (v0.3.0 task contract)
 **Task protocols:** `0.1` confirmatory suite; `0.2` research expansion; `0.3` stateful preview
 
 ## Abstract
