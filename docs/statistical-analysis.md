@@ -22,6 +22,10 @@ legacy 2.1 bundles by filling the new fields with nulls; newly generated bundles
 The analyzer preserves all four identifiers. It never treats seeded instances in one family as
 independent task concepts, and it never computes repeatability by mixing distinct instances.
 
+For v0.2.1 comparisons intended to generalize across registered decision concepts, the effective
+cluster count is 25 task families. The 100 seeded instances and repeated epochs add within-family
+information but do not turn the design into 100 independent constructs.
+
 ## Group estimates
 
 For each model, architecture, and variant, the analyzer reports the arithmetic mean and sample
@@ -98,3 +102,10 @@ The generated summaries are descriptive building blocks. A public model or archi
 claim additionally requires a frozen hypothesis family, effect-size definition, multiplicity plan,
 and all prespecified exclusions. Binary safety outcomes should be reported alongside the continuous
 composite rather than absorbed into a rank alone.
+
+No minimum detectable effect or power result has yet been established for the proposed architecture
+grid. Cluster count alone cannot determine power; family variance, within-family dependence,
+clean/perturbed pairing, trajectory variance, missingness, effect size, and multiplicity all matter.
+v0.5.0 therefore adds an exact-grid simulation and pilot-updated power analysis. Publication-scale
+runs remain ineligible until every confirmatory contrast has a smallest effect of interest and
+either at least 80% simulated power or an explicit exploratory label.

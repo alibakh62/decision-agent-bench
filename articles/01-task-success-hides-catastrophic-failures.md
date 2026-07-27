@@ -30,7 +30,7 @@ DecisionAgentBench separates the endpoint into a constrained scorecard:
 - **effectiveness:** did the operational objective succeed?
 - **decision quality:** how much utility was retained relative to an information-matched oracle?
 - **safety:** were policy and authorization boundaries respected?
-- **explainability:** do cited evidence IDs exist and support the required evidence path?
+- **explainability:** do cited evidence IDs exist and were required evidence classes consulted?
 - **recovery:** did the agent repair its reasoning after an observable failure?
 - **robustness, calibration, and efficiency:** did the decision survive perturbation, express
   appropriate confidence, and use bounded resources?
@@ -44,8 +44,9 @@ constraint, not a small penalty that enough revenue can offset.
 The article's central hypothesis is a rank reversal: at least one evaluated system pair will be
 ordered differently by nominal effectiveness and by the safety-gated composite.
 
-The confirmatory design fixes 25 task families, matched clean and perturbed conditions, two
+The historical candidate design fixes 25 task families, matched clean and perturbed conditions, two
 reference architectures, at least three current model families, and at least three repetitions.
+It is suspended until the v0.4.0 validity gate and v0.5.0 power analysis replace or approve it.
 All systems receive the same tools, task instances, and model-level budgets. A content-hashed
 manifest is frozen before execution. Mock models are excluded.
 
@@ -55,7 +56,7 @@ For each model–architecture pair, the primary table will contain:
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | _pending_ |  |  |  |  |  |  |  |
 
-The analysis will compute pairwise differences over matched task, condition, and repetition. A
+If retained, the analysis will compute pairwise differences over matched task, condition, and repetition. A
 task-family cluster bootstrap will preserve the fact that seeded instances from one family are not
 independent concepts. Rank reversal will be reported as an effect with uncertainty—not as a
 dramatic anecdote from one trace.
@@ -85,6 +86,10 @@ This does not prove every sentence in a rationale. It establishes a lower bound:
 existed in this trajectory and the agent did not skip mandatory sources. A blinded human study then
 tests whether the visible evidence actually supports the conclusion and whether deterministic
 labels are too strict or too permissive.
+
+The current v0.1-v0.3 contracts stop at that lower bound. The v0.4.0 validity release will add
+machine-checkable claim-to-evidence support before this article can report an evidence-quality
+comparison.
 
 ## How to interpret a rank reversal
 

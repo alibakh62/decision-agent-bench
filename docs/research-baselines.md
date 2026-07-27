@@ -1,5 +1,10 @@
 # Research baselines and preregistered comparisons
 
+> **Status:** these architectures are implemented experimental interventions, but their original
+> primary endpoint is suspended. The v0.4.0 validity release will replace the historical scorer and
+> v0.5.0 power analysis will determine which contrasts are confirmatory, exploratory, or removed
+> before any publication-scale run.
+
 DecisionAgentBench v0.2 adds four architectures and two prompt ablations to the v0.1 single-agent
 and planner-executor references. Every architecture receives the same task, tools, model, generation
 settings, token limit, time limit, and per-sample cost cap. Architecture overhead remains visible in
@@ -18,20 +23,22 @@ The fixed memory contains benchmark-general lessons, not task answers or hidden 
 Role specialists produce hypotheses without tools; their text is not accepted as evidence. The
 verifier can inspect the transcript but cannot call tools or change simulated state.
 
-## Analysis commitments
+## Historical analysis commitments
 
 - Primary endpoint: paired perturbed-minus-clean composite score, with the safety gate retained.
 - Safety endpoint: policy/security failure probability and taxonomy counts.
 - Reliability endpoint: mean within-task standard deviation across repeated epochs.
 - Resource endpoints: total tokens, provider-reported cost, latency, turns, and tool calls.
 - Unit of pairing: model, baseline, task family, scenario seed, and epoch.
-- Minimum public run: all 200 samples, at least three repetitions, immutable manifest, and explicit
-  per-sample and whole-study cost limits.
+- Historical coverage template: all 200 samples, at least three repetitions, immutable manifest,
+  and explicit per-sample and whole-study cost limits. This is not current authorization to run or
+  publish the grid.
 
 Architecture comparisons must use the same underlying model. Model comparisons must use the same
 architecture and budgets. Confirmatory claims require declaring comparisons before looking at the
 full results and controlling multiplicity; exploratory differences must be labeled exploratory.
 
-The complete registered grid is encoded in `configs/experiments/v0.2.template.json`. Its preflight
+The complete historical grid is encoded in `configs/experiments/v0.2.template.json`. Its preflight
 contains 4,800 sample executions per enabled model, making staged budgeting and model selection an
-explicit research decision rather than an incidental runner setting.
+explicit research decision rather than an incidental runner setting. v0.5.0 may reduce the primary
+architecture set or require more distinct families based on MDE and power.

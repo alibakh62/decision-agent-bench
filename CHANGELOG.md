@@ -4,6 +4,16 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+### Documentation
+
+- Record the independently reproduced scorer-validity exploits and correct version-specific counts
+  for lexical scoring, economic oracles, decision-quality duplication, tests, and workflow topology.
+- Replace the staged milestone plan with a validity-first v0.4.0-v1.0.0 roadmap that blocks
+  publication-scale runs on construct validity, power, task discrimination, branching workflows,
+  external grader validation, and red teaming.
+- Correct documentation that overstated semantic evidence support or decision-sensitive workflow
+  grading in the historical v0.1-v0.3 contracts.
+
 ## [0.3.1] - 2026-07-27
 
 ### Fixed

@@ -37,11 +37,16 @@ Stressed samples reveal a delayed disruption and cannot continue until a mutable
 rolled back. The scorer derives completion, dependency span, simulated time, invalid attempts, and
 recovery from the database trace. These are executable measurements, not prompt metadata.
 
+The preview still has a material planning limitation. Its three concepts share a linear transition
+topology, with each step depending on the prior step and the final step also depending on the first.
+The dependency span is therefore enforced but largely definitional. There is no optional path or
+decision point where two feasible orders yield different outcome utility.
+
 ## Comparison bar
 
 Recent benchmarks demonstrate why declared step counts are not enough:
 
-- [RetailBench](https://arxiv.org/abs/2603.16453) evaluates agents over a 180-day retail horizon in
+- [RetailBench](https://arxiv.org/abs/2606.15862) evaluates agents over a 180-day retail horizon in
   a partially observable, evolving environment where pricing, replenishment, and operating effects
   accumulate.
 - [YC-Bench](https://arxiv.org/abs/2604.01212) evaluates a simulated year over hundreds of turns,
@@ -78,3 +83,7 @@ v0.3.0 mechanically implements criteria 1–4 for its three-workflow preview. Cr
 open: there is no skilled-human timing study, non-mock model result, or external trace audit. Until
 those gates are satisfied, use “dependency-enforced horizon preview,” report the exact suite size,
 and keep human-time and cross-benchmark claims separate.
+
+Separately, any claim about planning quality requires branching or alternative feasible decisions
+with outcome-sensitive grading. That work is scheduled for v0.7.0 in the
+[versioned roadmap](roadmap.md); it is not implied by satisfying the horizon criteria alone.

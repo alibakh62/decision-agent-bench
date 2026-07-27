@@ -8,6 +8,12 @@ The benchmark does **not** reproduce any real retailer's data, policies, store n
 
 The primary unit of evaluation is a **task instance**: a versioned initial world state, agent-visible evidence, hidden oracle state, tool configuration, perturbation schedule, policy set, and deterministic outcome function. A **task family** defines how instances are generated from controlled seeds.
 
+> **Implementation status:** the score hierarchy below is the target design. An independent audit of
+> the v0.1-v0.3 implementation found that lexical effectiveness, evidence-ID existence, limited
+> action-intent visibility, and duplicated score dimensions do not yet meet it. Publication-scale
+> experiments are blocked until the v0.4.0 construct-validity gate passes. See the
+> [measurement-validity audit](measurement-validity-review.md).
+
 ## 2. Research questions
 
 ### RQ1 — Does task success conceal consequential failure?
@@ -120,6 +126,12 @@ No single aggregate replaces the scorecard. A preregistered composite may be use
 
 Each task contract names its applicable metrics, hard constraints, evidence requirements, and terminal state. A metric is not imputed when it is structurally inapplicable.
 
+The historical v0.1-v0.3 contracts deviate from this last rule: decision quality usually copies
+effectiveness, robustness mirrors recovery in perturbed samples, and the per-sample confidence loss
+is included in the composite. v0.4.0 introduces an applicability map, nullable inapplicable
+dimensions, and a new composite. Historical outputs remain reproducible but are not evidence that
+all named constructs were independently measured.
+
 ### 4.3 Oracle and regret
 
 For constrained decisions, the oracle sees the same decision-time information that a perfectly reasoning agent could validly use, plus only the hidden variables explicitly required to compute realized outcomes. We will distinguish:
@@ -149,6 +161,9 @@ Every perturbed instance must remain answerable or be explicitly labeled as an a
 - Preserve model identifiers, provider, date, decoding parameters, prompts, task versions, code commit, environment digest, and retries.
 - Report paired bootstrap confidence intervals for score differences and Wilson intervals for rare binary violations.
 - Use hierarchical models or cluster-aware bootstrap intervals when multiple instances come from the same task family.
+- Simulate power and minimum detectable effects at the task-family level before authorizing the
+  publication grid; increase distinct families, reduce confirmatory contrasts, or label analyses
+  exploratory when the precision target cannot be met.
 - Correct or clearly qualify families of confirmatory hypothesis tests; publish effect sizes and uncertainty, not only p-values.
 - Separate model refusal, agent failure, grader failure, and infrastructure failure.
 
@@ -196,14 +211,20 @@ The project will not publish real personal data, employer data, credentials, or 
 
 ## 8. Release gates
 
-The v0.1 empirical release is blocked until all of the following hold:
+The engineering gates for v0.1-v0.3 are complete, but those releases are historical research
+previews rather than an empirical benchmark release. The governing gates are now versioned in the
+[roadmap](roadmap.md):
 
-- 25 task families pass schema, determinism, answerability, and leakage checks;
-- oracles pass exhaustive or independently checked validation cases;
-- two baselines run end-to-end in a pinned container;
-- every primary metric has a unit test and an interpretation note;
-- a small human pilot identifies ambiguous instructions and impossible tasks;
-- the complete benchmark can be regenerated from a clean checkout.
+1. v0.4.0 - typed world-derived scoring, semantic evidence support, structured action safety, and
+   adversarial grader validity;
+2. v0.5.0 - task-family power/MDE and metric-dependence analysis;
+3. v0.6.0 - richer worlds and discriminating task families;
+4. v0.7.0 - decision-sensitive branching workflows;
+5. v0.8.0 - blinded human grader validation, leakage audit, and external red team;
+6. v0.9.0 - first publication-eligible multi-model empirical beta; and
+7. v1.0.0 - stable contracts, public validity evidence, external reproduction, and archival release.
+
+No public leaderboard or model/architecture superiority claim may bypass those gates.
 
 ## 9. Design references
 

@@ -3,6 +3,11 @@
 The DecisionAgentBench leaderboard is an evidence registry, not a marketing ranking. Entries must
 be reproducible, comparable, and attributable to a frozen benchmark version.
 
+> **Admission is currently closed.** The historical v0.1-v0.3 contracts failed the
+> [measurement-validity audit](measurement-validity-review.md). No run becomes an official entry
+> until the v0.4-v0.8 validity, power, discrimination, workflow, human-validation, red-team, and
+> leakage gates pass and a new leaderboard namespace is approved.
+
 ## Admission requirements
 
 A public entry must include a clean commit, immutable experiment manifest, exact model identifier
@@ -10,6 +15,11 @@ and access date, both paired variants, every task in the claimed suite, every re
 at least three repetitions, matched limits, and sanitized sample telemetry. The analysis manifest
 must verify source-log hashes. Mock models, development subsets, unreviewed prompt modifications,
 and runs with missing cells do not enter the primary table.
+
+For the next namespace, those provenance requirements are necessary but insufficient. Admission
+also requires the public construct-validity report, task-family power/MDE analysis, applicable-
+metric denominators, human grader-validation result, red-team disposition, and leakage audit named
+by the versioned roadmap.
 
 The planner refuses to create a publishable manifest from a dirty Git working tree. This makes the
 recorded source commit a complete code identity rather than a partial description of local state.

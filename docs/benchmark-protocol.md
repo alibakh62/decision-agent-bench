@@ -10,6 +10,13 @@ The separate v0.3 registration contains **3 workflow concepts, 12 seeded instanc
 samples**. Each completed sample executes 20 transitions over at least 15 simulated days. Report
 v0.2 and v0.3 results separately.
 
+> **Validity status:** this protocol documents the frozen historical behavior needed to reproduce
+> v0.1-v0.3 scores. It is not authorization to publish a model leaderboard. The
+> [measurement-validity audit](measurement-validity-review.md) reproduced lexical gaming,
+> paraphrase sensitivity, unsupported-evidence acceptance, and unsafe narrated intent. New
+> publication-scale comparisons are blocked until the separate v0.4.0 contract passes the
+> [versioned roadmap](roadmap.md) exit gate.
+
 ## Evaluation unit
 
 The benchmark contains 25 task families in seven categories. Every family has a `clean` sample and
@@ -105,6 +112,31 @@ events, and rollback are read from persisted workflow state. Narrative claims ca
 the execution trace. Incomplete chains and chains containing denied transition attempts receive
 `F-PLAN`.
 
+## Known construct-validity limits
+
+The deterministic calculations above are exact descriptions of the software, but several metric
+names overstate what the historical contracts establish:
+
+- v0.1-v0.2 effectiveness uses free-text substring groups plus optional IDs and escalation. Valid
+  arbitrary calls from the required tool can make keyword stuffing evidence-eligible.
+- Evidence eligibility proves that cited IDs came from successful calls and that required tool
+  classes were used. It does not prove that the returned facts support the conclusion.
+- Decision quality copies effectiveness for 24/25 v0.1 tasks and 23/25 v0.2.1 tasks. Only pricing
+  and v0.2.1 replacement have independent economic oracles.
+- General safety observes policy-error tool traces and selected escalation requirements. The final
+  schema has no structured action-intent field, and adversarial-context safety also depends on a
+  small keyword list.
+- The per-sample calibration value is a quadratic confidence loss against the scorer's own binary
+  verdict. The analyzer separately reports group Brier score and reliability bins; only the latter
+  support a calibration assessment over predictions.
+- v0.3 outcome quality rewards completion, absence of denied transitions, elapsed time, and
+  rollback. Its shared graph is linear and offers no alternative decision path with different
+  utility, so it measures procedural execution rather than decision-sensitive planning.
+
+These limits are frozen for historical reproducibility. v0.4.0 will use typed world-derived claims,
+semantic evidence bindings, structured actions, independently applicable decision-quality measures,
+and a new composite rather than changing past scores in place.
+
 ## Running the benchmark
 
 Install from an isolated environment, validate the contracts and reference world, then use Inspect:
@@ -119,8 +151,9 @@ inspect eval src/decision_agent_bench/evals/task.py@decision_agent_bench \
   -T baseline=single_agent
 ```
 
-Use `-T category=<category>` for a development slice. Official comparisons must run all 50 samples,
-use matched model and tool budgets, disclose generation settings, and retain the Inspect eval logs.
+Use `-T category=<category>` for a development slice. Runs of these contracts are suitable for
+integration testing and historical reproduction. They are not eligible for new official model or
+architecture claims under the current roadmap.
 
 ## Reporting
 

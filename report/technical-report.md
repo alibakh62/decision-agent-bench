@@ -4,6 +4,12 @@
 **Benchmark software:** `0.3.1` (v0.3.0 task contract)
 **Task protocols:** `0.1` confirmatory suite; `0.2` research expansion; `0.3` stateful preview
 
+> **Measurement hold:** an independent audit reproduced lexical grader gaming, paraphrase
+> sensitivity, unsupported-evidence acceptance, and unsafe narrated intent. The v0.1-v0.3
+> contracts remain reproducible development suites, but the confirmatory study and leaderboard are
+> blocked until the v0.4.0 construct-validity contract and subsequent roadmap gates pass. See the
+> [measurement-validity audit](../docs/measurement-validity-review.md).
+
 ## Abstract
 
 AI-agent benchmarks often reduce a trajectory to whether a final task was completed. That endpoint
@@ -17,11 +23,13 @@ Inspect AI framework.
 
 The frozen v0.1 protocol defines 25 task families with matched clean and controlled-perturbation
 conditions, yielding 50 evaluation samples per repetition. A registered v0.2 expansion contains
-25 concepts, 100 seeded instances, and 200 paired samples (100 clean/perturbed pairs). The benchmark reports task effectiveness,
-oracle-relative decision quality, safety, robustness, calibration, efficiency, recovery,
+25 concepts, 100 seeded instances, and 200 paired samples (100 clean/perturbed pairs). The software reports task effectiveness,
+decision quality, safety, robustness, calibration, efficiency, recovery,
 explainability, and a safety-gated composite. Six agent architectures and two prompt ablations are
-implemented. Deterministic state, economic, evidence-lineage, and policy graders are preferred over
-model judgments; a blinded study protocol measures human, LLM-judge, and deterministic agreement.
+implemented. Only two v0.2.1 tasks currently have oracle-relative decision quality; most historical
+decision-quality values copy lexical effectiveness. Deterministic state, economic,
+evidence-lineage, and policy graders are preferred over model judgments, but their constructs must
+first pass the new validity protocol.
 
 A separate v0.3 preview adds three stateful workflow concepts, twelve seeded instances, and 24
 clean/stressed samples. Each requires 20 persisted transitions over at least 15 simulated days,
@@ -30,8 +38,9 @@ rollback in stressed conditions. We call this a dependency-enforced horizon prev
 general or human-time long-horizon benchmark.
 
 This prerelease report documents the design, implementation, and statistical plan. It deliberately
-contains no frontier-model performance claims: confirmatory provider runs, human ratings, and an
-independent reproduction remain release gates.
+contains no frontier-model performance claims: construct validity, power, task discrimination,
+branching workflows, human ratings, red teaming, and an independent reproduction remain release
+gates before the empirical beta.
 
 ## 1. Introduction
 
@@ -180,7 +189,8 @@ is measuring those properties.
 
 Each applicable dimension is bounded in `[0,1]`.
 
-**Task effectiveness** checks contract-specific concepts, entities, and escalation behavior.
+**Task effectiveness** in v0.1-v0.2 checks free-text substring concepts, entities, and escalation
+behavior. This is the implemented historical definition, not a validated semantic measure.
 **Decision quality** uses executable utility where defined. Primary normalized regret is
 
 ```text
@@ -192,18 +202,22 @@ The primary oracles are information-matched: they use information a perfectly re
 validly obtain at decision time. v0.1 exhaustively searches a feasible one-cent pricing grid. v0.2
 adds exhaustive same-category replacement selection using observed 28-day unit-margin opportunity
 and vendor feasibility. A clairvoyant oracle, when present, is diagnostic only; v0.1 results are not
-rescored under the new v0.2 contract.
+rescored under the new v0.2 contract. Only `DAB-PRO-001` in v0.1 and `DAB-PRO-001` plus
+`DAB-ASS-001` in v0.2.1 use these economic oracles; decision quality otherwise copies
+effectiveness.
 
 Sanitized analysis retains candidate and oracle utility, the declared utility unit, and absolute and
 normalized regret. Invalid or infeasible candidates remain explicit counts. Absolute utility is
 never pooled across unlike units; normalized regret is the cross-oracle scale-free estimand.
 
-**Safety** detects prohibited attempts, missing mandatory escalation, untrusted-instruction use,
-and authorization failures. **Robustness** scores performance in the assigned perturbation.
+**Safety** detects policy-error tool traces, selected mandatory-escalation failures, and a lexical
+adversarial-context rule; the final schema does not expose structured action intent.
+**Robustness** scores performance in the assigned perturbation.
 **Recovery** requires an observable failure opportunity, detection, and downstream repair.
 **Calibration** uses a Brier-style score between declared confidence and deterministic correctness.
 **Efficiency** penalizes excess tool calls within a declared maximum and is conditioned on useful
-work. **Explainability** combines evidence validity, sufficiency, and required-tool coverage. Under
+work. **Explainability** combines evidence-ID validity, sufficiency, and required-tool coverage. It
+does not test whether returned facts support the submitted conclusion. Under
 the v0.2.1 and v0.3.0 contracts, a submission is eligible for task effectiveness and decision quality only when
 it cites the minimum distinct valid evidence, has no invalid citations, and covers every required
 tool. An evidence-ineligible submission receives zero effectiveness, decision quality, and
@@ -224,10 +238,15 @@ function of completion, dependency integrity, temporal integrity, and required r
 scorer reads those measurements from the persisted trace. Answer keywords do not satisfy a
 transition, and an incomplete or invalid chain receives `F-PLAN`.
 
+The three workflows share a linear topology and contain no alternative path with different utility,
+so the outcome is procedural integrity rather than independently validated planning quality.
+
 ## 6. Experimental design and analysis
 
-The confirmatory comparison requires at least three model families, both v0.1 reference baselines,
-both conditions, every task family, and at least three repetitions. A frozen manifest records the
+The historical experiment configuration requires at least three model families, both v0.1 reference
+baselines, both conditions, every task family, and at least three repetitions. It is retained to
+test the pipeline but is no longer authorized as the confirmatory grid. v0.5.0 will choose the final
+grid from task-family power and MDE analysis after the v0.4 scorer passes. A frozen manifest records the
 code commit and dirty flag, reference-world digest, model IDs, generation settings, task arguments,
 scenario coverage, budgets, cost cap, and exact commands. Execution is dry by default and requires
 separate execute and cost-acknowledgement flags.
@@ -297,9 +316,10 @@ Mock-model outputs are intentionally not reported as research results. Docker so
 hash-locked dependency set are present; the public release still requires a clean external
 container reproduction.
 
-## 8. Planned confirmatory analyses
+## 8. Candidate confirmatory analyses
 
-The following tests are preregistered before provider execution:
+The following hypotheses remain candidates. They must be revised against the v0.4 construct map and
+v0.5 power analysis before provider execution:
 
 - H1: at least one system pair reverses order between nominal effectiveness and the safety-gated
   composite;
@@ -322,6 +342,12 @@ four seeded instances per family create clustered—not independent—evidence. 
 change even under stable model names. Architecture prompts may interact with models differently.
 Tool-call and token parity do not guarantee equal effective computation. Public tasks invite
 contamination over time.
+
+The main present threat is construct validity: lexical primary scores can be gamed, semantic
+evidence support is not checked, action intent is not structured, most decision-quality values are
+duplicates, and the v0.3 workflow outcome is procedural. No model-performance inference should be
+drawn from those historical composites. The [versioned roadmap](../docs/roadmap.md) makes their
+replacement and external validation release blockers.
 
 The v0.3 workflow suite is intentionally small. Its simulated 15-day clock, 20 transitions, and
 dependency span of 19 demonstrate enforced temporal structure but do not estimate skilled-human
