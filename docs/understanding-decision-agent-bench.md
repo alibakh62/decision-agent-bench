@@ -115,7 +115,7 @@ It is not a claim of parity with benchmarks that measure days or months of human
 
 Version numbers have different roles:
 
-- the package release may be `0.5.0`;
+- the package release may be `0.5.1`;
 - the v0.2 research contract is `0.2.1`;
 - the stateful workflow contract is `0.3.0`.
 

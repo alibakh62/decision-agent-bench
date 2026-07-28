@@ -4,6 +4,19 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-07-28
+
+### Added
+
+- Add a tested bring-your-own-agent solver example and an end-to-end guide covering Inspect-native
+  solvers, external-system adapters, matched runs, trace inspection, sanitization, and current
+  research claim limits.
+
+### Changed
+
+- Preserve an explicit custom `system_name` in task logs, sanitized analysis, and blinded
+  annotation keys when an external solver overrides a reference baseline.
+
 ## [0.5.0] - 2026-07-27
 
 ### Added
@@ -21,9 +34,6 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   explicit high-correlation review rule.
 - Publish the power-analysis and metric-dependence protocols, including assumptions, initial
   underpowered results, the confirmatory/exploratory decision, pilot-update rules, and claim limits.
-- Add a tested bring-your-own-agent solver example and an end-to-end guide covering Inspect-native
-  solvers, external-system adapters, matched runs, trace inspection, sanitization, and current
-  research claim limits.
 
 ### Changed
 
@@ -32,8 +42,6 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   verifier explainability are exploratory, while prompt/context ablations remain validation probes.
 - Keep paid publication-scale execution blocked because the merged v0.4 audit did not implement
   the typed measurement-validity contract required by the roadmap.
-- Preserve an explicit custom `system_name` in task logs, sanitized analysis, and blinded
-  annotation keys when an external solver overrides a reference baseline.
 
 ## [0.4.0] - 2026-07-27
 

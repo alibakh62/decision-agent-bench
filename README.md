@@ -12,12 +12,13 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.5.0 statistical-design preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.5.1 custom-agent integration patch on the statistical-design preview. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
 > implemented. An independent audit confirmed construct-validity defects in the historical lexical
-> scorer. v0.5 adds deterministic power/MDE and metric-dependence tooling, but publication-scale
+> scorer. v0.5 adds deterministic power/MDE and metric-dependence tooling; v0.5.1 adds a tested
+> bring-your-own-agent path. Publication-scale
 > model runs and leaderboard claims remain blocked on the v0.4 measurement-validity implementation.
 > No frontier-model performance claims have been made.
 
@@ -177,8 +178,8 @@ oracle fields, or public sharing tunnel.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.5.0 .
-docker run --rm decision-agent-bench:0.5.0
+docker build --tag decision-agent-bench:0.5.1 .
+docker run --rm decision-agent-bench:0.5.1
 ```
 
 Plan a matched-budget experiment without contacting a model provider:
