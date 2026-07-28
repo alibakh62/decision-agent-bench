@@ -1,0 +1,141 @@
+{
+  "assumptions": {
+    "architecture_family_sd": 0.08,
+    "architecture_model_family_sd": 0.06,
+    "architecture_variant_family_sd": 0.05,
+    "clean_perturbed_correlation": 0.6,
+    "family_sd": 0.18,
+    "instance_sd": 0.08,
+    "missingness_rate": 0.02,
+    "trajectory_sd": 0.16
+  },
+  "contrasts": [
+    {
+      "anticipated_effect": 0.08,
+      "contrast_id": "planner-vs-single-effectiveness",
+      "control": "single_agent",
+      "critical_value": 2.059258,
+      "effective_families_median": 25,
+      "effective_families_min": 25,
+      "estimand": "average_variants",
+      "label": "Planner-executor improvement over single-agent effectiveness",
+      "median_simultaneous_interval_width": 0.111743,
+      "metric": "task_effectiveness",
+      "minimum_detectable_effect_at_target_power": 0.080644,
+      "multiplicity_control": "none_exploratory_per_contrast_alpha",
+      "power_at_anticipated_effect": 0.793,
+      "power_at_smallest_effect": 0.793,
+      "power_gate_passed": null,
+      "smallest_effect_of_interest": 0.08,
+      "status": "exploratory",
+      "treatment": "planner_executor"
+    },
+    {
+      "anticipated_effect": 0.08,
+      "contrast_id": "verifier-vs-single-explainability",
+      "control": "single_agent",
+      "critical_value": 2.127126,
+      "effective_families_median": 25,
+      "effective_families_min": 25,
+      "estimand": "average_variants",
+      "label": "Independent-verifier improvement over single-agent evidence explainability",
+      "median_simultaneous_interval_width": 0.115694,
+      "metric": "explainability",
+      "minimum_detectable_effect_at_target_power": 0.082396,
+      "multiplicity_control": "none_exploratory_per_contrast_alpha",
+      "power_at_anticipated_effect": 0.7765,
+      "power_at_smallest_effect": 0.7765,
+      "power_gate_passed": null,
+      "smallest_effect_of_interest": 0.08,
+      "status": "exploratory",
+      "treatment": "independent_verifier"
+    },
+    {
+      "anticipated_effect": 0.1,
+      "contrast_id": "memory-vs-single-recovery",
+      "control": "single_agent",
+      "critical_value": 2.08811,
+      "effective_families_median": 25,
+      "effective_families_min": 25,
+      "estimand": "perturbed",
+      "label": "Memory-feedback improvement over single-agent perturbed recovery",
+      "median_simultaneous_interval_width": 0.120693,
+      "metric": "recovery",
+      "minimum_detectable_effect_at_target_power": 0.084927,
+      "multiplicity_control": "single_step_max_t",
+      "power_at_anticipated_effect": 0.90025,
+      "power_at_smallest_effect": 0.90025,
+      "power_gate_passed": true,
+      "smallest_effect_of_interest": 0.1,
+      "status": "confirmatory",
+      "treatment": "memory_feedback"
+    }
+  ],
+  "decision": {
+    "all_confirmatory_power_gates_passed": true,
+    "blocking_reasons": [
+      "the upstream measurement-validity gate has not passed"
+    ],
+    "confirmatory_contrast_count": 1,
+    "cost_gate_passed": true,
+    "grid_frozen": false,
+    "publication_scale_run_authorized": false,
+    "validity_gate": {
+      "evidence": "The merged audit documents the required redesign, but main still contains the historical lexical scorer and no typed v0.4 task contract.",
+      "required_release": "v0.4.0 measurement-validity implementation",
+      "status": "blocked"
+    }
+  },
+  "design_name": "decision-agent-bench-v0.5-candidate-study",
+  "design_sha256": "964da5c3897ca1be4db853c36d71aafff643c77dc4f4643ec24a7e2c54f71622",
+  "grid": {
+    "architecture_count": 4,
+    "architectures": [
+      "single_agent",
+      "planner_executor",
+      "independent_verifier",
+      "memory_feedback"
+    ],
+    "configured_cost_exposure_usd": 1800.0,
+    "independent_task_families": 25,
+    "model_families": [
+      "openai",
+      "anthropic",
+      "google"
+    ],
+    "model_family_count": 3,
+    "paired_samples": 200,
+    "per_sample_cost_limit_usd": 0.25,
+    "repetitions": 3,
+    "sample_executions": 7200,
+    "seeded_instances": 100,
+    "study_cost_ceiling_usd": 1800.0,
+    "variant_count": 2,
+    "variants": [
+      "clean",
+      "perturbed"
+    ]
+  },
+  "interpretation_limits": [
+    "Power is conditional on the documented variance and missingness assumptions.",
+    "The three named model families are fixed study blocks, not a random sample of all models.",
+    "A non-publishable pilot must replace assumptions that materially disagree with observed variance.",
+    "Power cannot establish construct validity or authorize use of the historical lexical scorer."
+  ],
+  "report_sha256": "d4d5e75ee239b361089970a56845acb2a7cf466f47d64e32e213dbffb3443b36",
+  "schema_version": "1.0.0",
+  "simulation": {
+    "alpha": 0.05,
+    "draws": 4000,
+    "method": "hierarchical Gaussian score simulation; paired task-family estimates; single-step Monte Carlo max-|t| control",
+    "multiplicity_method": "single_step_max_t",
+    "realized_null_family_wise_error": 0.05025,
+    "seed": 20260717,
+    "simultaneous_critical_value": 2.08811,
+    "target_power": 0.8
+  },
+  "source_design": {
+    "path": "v0.5.json",
+    "sha256": "d7b143b0c61a60c8e3f49e0ee9cb2ce11b9754854cba2430c5901fd1abc856ca"
+  }
+}

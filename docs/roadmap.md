@@ -22,7 +22,7 @@ contracts.
   and an immutable cost-authorized experiment manifest.
 - A leaderboard is an output of a validated study, not evidence that the study is valid.
 
-## Completed foundation: v0.0.1-v0.3.1
+## Completed foundation and audit releases: v0.0.1-v0.4.0
 
 | Release | Completed scope | Claim boundary |
 | --- | --- | --- |
@@ -32,14 +32,15 @@ contracts.
 | `v0.2.0-v0.2.1` | Strict JSON contract, evidence-ID eligibility, 100 seeded instances, 200 paired samples, second economic oracle | 25 concepts, not 200 independent tasks; evidence existence is not semantic support |
 | `v0.3.0` | Three dependency-enforced workflow concepts with persisted transitions, delayed events, and rollback | Workflow preview with a linear shared topology, not general long-horizon planning |
 | `v0.3.1` | Offline Inspect test fix and documentation consolidation | No empirical model-performance claim |
+| `v0.4.0` | Independently reproduced measurement audit and validity-first roadmap | The audit specified the scorer redesign but did not implement it; the validity gate remains open |
 
 The experiment planner, cost gates, sanitizer, cluster bootstrap, annotation tooling, demo, release
 audit, and governance materials are implemented infrastructure. They are not substitutes for the
 validation work below.
 
-## v0.4.0 - Measurement validity
+## v0.4 measurement-validity implementation gate
 
-**Status:** next and blocking.
+**Status:** blocking. The v0.4.0 audit release is merged; the implementation below is not.
 
 Replace the v0.1-v0.3 lexical grading surface with a separate versioned contract whose primary
 scores come from typed, world-derived outcomes and audited behavior. The frozen historical tasks
@@ -93,7 +94,7 @@ remain runnable but become ineligible for new leaderboard claims.
 
 ## v0.5.0 - Statistical design and metric audit
 
-**Status:** planned after v0.4.0 approval.
+**Status:** implemented statistical layer; publication authorization remains blocked by v0.4.
 
 Determine whether the registered task-family population can answer the proposed model and
 architecture questions before paying for a full grid.
@@ -113,6 +114,26 @@ architecture questions before paying for a full grid.
   correlations and uncertainty. High correlation triggers investigation; it is not an automatic
   instruction to merge constructs.
 
+### Implemented outcome
+
+- `simulate-power` executes a strict, content-addressed 4,000-draw hierarchical simulation with
+  task-family inference, clean/perturbed correlation, missingness, MDEs, simultaneous interval
+  widths, and single-step max-|t| control.
+- The candidate grid has 25 independent families, 100 seeded instances, 200 paired samples, three
+  repetitions, three fixed model-family blocks, four architectures, and 7,200 executions under a
+  $1,800 ceiling.
+- The initial three-contrast max-|t| design placed all three effects below 80% power. Planner
+  effectiveness and verifier explainability were therefore labeled exploratory. With the smaller
+  confirmatory family, memory-feedback perturbed recovery remains the sole confirmatory contrast,
+  with 90.03% simulated power at its 0.10 smallest effect and an 80% MDE of 0.0849 under the stated
+  assumptions.
+- `metric-dependence` publishes Pearson/Spearman correlations, identical-value rates, and whole-
+  family bootstrap intervals after a sanitized pilot. The structural audit is public; no empirical
+  report is fabricated before a valid typed-score pilot exists.
+- The report keeps `publication_scale_run_authorized` and `grid_frozen` false because the upstream
+  measurement-validity implementation has not passed. See [the power analysis](power-analysis.md)
+  and [metric-dependence audit](metric-dependence.md).
+
 ### Exit gate
 
 - Every confirmatory contrast has a prespecified smallest effect of interest and either at least 80%
@@ -122,9 +143,13 @@ architecture questions before paying for a full grid.
 - The final architecture and ablation grid is frozen before the empirical run and fits within an
   explicit study-cost ceiling.
 
+The first two exit conditions are satisfied by the candidate design. The cost ceiling is satisfied,
+but the grid cannot become execution-frozen until the v0.4 endpoint contract exists and any required
+non-publishable pilot has checked the variance assumptions.
+
 ## v0.6.0 - Richer retail world and discriminating tasks
 
-**Status:** planned after v0.5.0 approval.
+**Status:** next after v0.5.0 review, but still blocked on the v0.4 implementation gate.
 
 Create a new retail-world and task-contract version without modifying the historical reference
 world. Increase construct diversity only where the power and validity audits show a need.

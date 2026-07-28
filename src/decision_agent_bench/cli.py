@@ -35,6 +35,32 @@ def _parser() -> argparse.ArgumentParser:
         "estimate-experiment", help="size an experiment grid and calculate cost exposure"
     )
     estimate.add_argument("config", type=Path)
+    power = subparsers.add_parser(
+        "simulate-power",
+        help="simulate family-level power, precision, multiplicity, and cost gates",
+    )
+    power.add_argument("design", type=Path)
+    power.add_argument("output", type=Path)
+    verify_power = subparsers.add_parser(
+        "verify-power", help="verify a content-addressed power report"
+    )
+    verify_power.add_argument("report", type=Path)
+    verify_power.add_argument("--design", type=Path)
+    dependence = subparsers.add_parser(
+        "metric-dependence",
+        help="audit structural and empirical dependence among score dimensions",
+    )
+    dependence.add_argument("samples", type=Path)
+    dependence.add_argument("output", type=Path)
+    dependence.add_argument("--draws", type=int, default=2_000)
+    dependence.add_argument("--seed", type=int, default=20260717)
+    dependence.add_argument("--high-correlation-threshold", type=float, default=0.9)
+    verify_dependence = subparsers.add_parser(
+        "verify-metric-dependence",
+        help="verify a content-addressed metric-dependence report",
+    )
+    verify_dependence.add_argument("report", type=Path)
+    verify_dependence.add_argument("--samples", type=Path)
     plan = subparsers.add_parser(
         "plan-experiment", help="create an immutable matched-budget experiment manifest"
     )
@@ -171,6 +197,43 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         report = estimate_experiment(load_experiment_config(args.config))
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "simulate-power":
+        from decision_agent_bench.experiments.power import write_power_report
+
+        report = write_power_report(
+            args.design,
+            args.output,
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "verify-power":
+        from decision_agent_bench.experiments.power import verify_power_report
+
+        report = verify_power_report(args.report, args.design)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        if not report["verified"]:
+            return 1
+    elif args.command == "metric-dependence":
+        from decision_agent_bench.experiments.metric_dependence import (
+            write_metric_dependence_report,
+        )
+
+        report = write_metric_dependence_report(
+            args.samples,
+            args.output,
+            seed=args.seed,
+            draws=args.draws,
+            high_correlation_threshold=args.high_correlation_threshold,
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "verify-metric-dependence":
+        from decision_agent_bench.experiments.metric_dependence import (
+            verify_metric_dependence_report,
+        )
+
+        report = verify_metric_dependence_report(args.report, args.samples)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        if not report["verified"]:
+            return 1
     elif args.command == "plan-experiment":
         from decision_agent_bench.experiments.manifest import plan_experiment
         from decision_agent_bench.experiments.schema import load_experiment_config

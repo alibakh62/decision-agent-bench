@@ -12,18 +12,25 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.3.1 public research preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.5.0 statistical-design preview. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
 > implemented. An independent audit confirmed construct-validity defects in the historical lexical
-> scorer, so publication-scale model runs and leaderboard claims are blocked on the new v0.4.0
-> measurement-validity gate. No frontier-model performance claims have been made.
+> scorer. v0.5 adds deterministic power/MDE and metric-dependence tooling, but publication-scale
+> model runs and leaderboard claims remain blocked on the v0.4 measurement-validity implementation.
+> No frontier-model performance claims have been made.
 
 The reproduced grader exploits, corrected claim counts, and adopted roadmap changes are documented
 in the [measurement-validity audit](docs/measurement-validity-review.md). The
 [versioned roadmap](docs/roadmap.md) now places scorer validity, power analysis, task discrimination,
 branching workflows, and external grader validation before the empirical beta.
+
+The [v0.5 power analysis](docs/power-analysis.md) reduces the candidate paid grid to four
+architectures and one confirmatory contrast. Under the documented planning assumptions, the
+confirmatory memory-feedback recovery effect has 90.03% simulated power at a 0.10 smallest effect
+of interest. Planner effectiveness and verifier explainability remain exploratory. Statistical
+adequacy does not override the unresolved scorer-validity gate.
 
 The research track contains **25 concepts, 100 seeded instances, and 200 paired samples**—200
 samples arranged as 100 clean/perturbed pairs. All 53 named perturbations are deterministically
@@ -85,9 +92,11 @@ See the [v0.3 workflow specification](docs/v0.3-stateful-workflows.md).
 ```text
 decision-agent-bench/
 ├── articles/                 # Three research-oriented article drafts
+├── configs/power/            # Versioned statistical study designs
 ├── data/task_specs/          # Versioned benchmark task contracts
 ├── docs/                     # Protocol, taxonomy, governance, and task catalog
 ├── report/                   # Technical report source
+├── results/design/           # Content-addressed planning evidence, not model results
 ├── src/decision_agent_bench/ # Python package
 ├── talk/                     # Editable research-talk deck
 └── tests/                    # Fast deterministic checks
@@ -163,8 +172,8 @@ oracle fields, or public sharing tunnel.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.3.1 .
-docker run --rm decision-agent-bench:0.3.1
+docker build --tag decision-agent-bench:0.5.0 .
+docker run --rm decision-agent-bench:0.5.0
 ```
 
 Plan a matched-budget experiment without contacting a model provider:
@@ -178,6 +187,30 @@ decision-agent-bench run-experiment runs/<run-id>/manifest.json
 The current roadmap permits these commands for dry runs, mock runs, historical reproduction, and
 explicitly non-publishable development pilots. Publication-scale execution remains blocked until
 the validity-first roadmap gates pass.
+
+Reproduce and verify the v0.5 statistical design without contacting a model provider:
+
+```bash
+decision-agent-bench simulate-power \
+  configs/power/v0.5.json results/design/v0.5-power.json
+decision-agent-bench verify-power \
+  results/design/v0.5-power.json --design configs/power/v0.5.json
+```
+
+After a declared non-publishable pilot, audit score dependence from sanitized analysis data:
+
+```bash
+decision-agent-bench metric-dependence \
+  results/generated/<run-id>/samples.sanitized.jsonl \
+  results/generated/<run-id>/metric-dependence.json
+decision-agent-bench verify-metric-dependence \
+  results/generated/<run-id>/metric-dependence.json \
+  --samples results/generated/<run-id>/samples.sanitized.jsonl
+```
+
+See the [power analysis](docs/power-analysis.md) and
+[metric-dependence protocol](docs/metric-dependence.md). No empirical dependence report is
+committed yet because no valid typed-score pilot exists.
 
 Execution requires both `--execute` and `--acknowledge-costs`. The historical publishable schema additionally
 requires the exact `--acknowledge-max-cost-usd` amount printed by preflight. Publishable
@@ -218,6 +251,8 @@ kappa, majority labels, and three-way confusion comparisons.
 - [Leaderboard governance](docs/leaderboard-governance.md) and [external reproduction](docs/external-reproduction.md)
 - [Inspect Evals registration preflight package](docs/inspect-evals-registration.md)
 - [Measurement-validity audit and roadmap decision](docs/measurement-validity-review.md)
+- [v0.5 power analysis](docs/power-analysis.md) and
+  [metric-dependence audit](docs/metric-dependence.md)
 
 The registration package includes an offline preflight that verifies the current upstream
 requirements without publishing anything: `make audit-inspect`.

@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0.0",
+  "name": "decision-agent-bench-v0.5-initial-three-contrast-study",
+  "seed": 20260717,
+  "simulations": 4000,
+  "alpha": 0.05,
+  "target_power": 0.8,
+  "multiplicity_method": "single_step_max_t",
+  "grid": {
+    "model_families": ["openai", "anthropic", "google"],
+    "architectures": [
+      "single_agent",
+      "planner_executor",
+      "independent_verifier",
+      "memory_feedback"
+    ],
+    "variants": ["clean", "perturbed"],
+    "task_families": 25,
+    "instances_per_family": 4,
+    "repetitions": 3,
+    "per_sample_cost_limit_usd": 0.25,
+    "study_cost_ceiling_usd": 1800.0
+  },
+  "assumptions": {
+    "family_sd": 0.18,
+    "architecture_family_sd": 0.08,
+    "architecture_model_family_sd": 0.06,
+    "architecture_variant_family_sd": 0.05,
+    "instance_sd": 0.08,
+    "trajectory_sd": 0.16,
+    "clean_perturbed_correlation": 0.6,
+    "missingness_rate": 0.02
+  },
+  "contrasts": [
+    {
+      "contrast_id": "planner-vs-single-effectiveness",
+      "label": "Planner-executor improvement over single-agent effectiveness",
+      "metric": "task_effectiveness",
+      "control": "single_agent",
+      "treatment": "planner_executor",
+      "estimand": "average_variants",
+      "smallest_effect_of_interest": 0.08,
+      "anticipated_effect": 0.08,
+      "status": "confirmatory"
+    },
+    {
+      "contrast_id": "verifier-vs-single-explainability",
+      "label": "Independent-verifier improvement over single-agent evidence explainability",
+      "metric": "explainability",
+      "control": "single_agent",
+      "treatment": "independent_verifier",
+      "estimand": "average_variants",
+      "smallest_effect_of_interest": 0.08,
+      "anticipated_effect": 0.08,
+      "status": "confirmatory"
+    },
+    {
+      "contrast_id": "memory-vs-single-recovery",
+      "label": "Memory-feedback improvement over single-agent perturbed recovery",
+      "metric": "recovery",
+      "control": "single_agent",
+      "treatment": "memory_feedback",
+      "estimand": "perturbed",
+      "smallest_effect_of_interest": 0.1,
+      "anticipated_effect": 0.1,
+      "status": "confirmatory"
+    }
+  ],
+  "validity_gate": {
+    "required_release": "v0.4.0 measurement-validity implementation",
+    "status": "blocked",
+    "evidence": "The merged audit documents the required redesign, but main still contains the historical lexical scorer and no typed v0.4 task contract."
+  }
+}

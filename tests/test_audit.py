@@ -62,6 +62,10 @@ def test_repository_audit_passes_deterministic_safety_checks() -> None:
     assert checks["secrets"]["status"] == "pass"
     assert checks["provenance"]["status"] == "pass"
     assert checks["research_artifacts"]["status"] == "pass"
+    assert checks["research_artifacts"]["evidence"]["initial_power_design"][
+        "verified"
+    ] is True
+    assert checks["research_artifacts"]["evidence"]["power_design"]["verified"] is True
     assert checks["research_artifacts"]["evidence"]["social_preview"] == {
         "path": "docs/assets/social-preview.png",
         "dimensions": [1280, 640],

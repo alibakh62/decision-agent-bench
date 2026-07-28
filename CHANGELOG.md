@@ -4,6 +4,34 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-27
+
+### Added
+
+- Add a strict, deterministic `simulate-power` workflow for the exact candidate study grid, with
+  hierarchical family/instance/trajectory variance, clean/perturbed correlation, missingness,
+  family-level contrasts, Monte Carlo max-|t| family-wise error control, MDEs, interval widths,
+  effective-family counts, cost exposure, and upstream validity authorization.
+- Add content-addressed power-design/report verification and commit both the failed initial
+  three-confirmatory-contrast preflight and the revised 4,000-draw v0.5 candidate result: 25
+  independent families, 100 seeded instances, 200 paired samples, three repetitions, four
+  architectures, three fixed model-family blocks, 7,200 executions, and a $1,800 ceiling.
+- Add a structural and empirical `metric-dependence` audit with Pearson and tie-aware Spearman
+  correlations, identical-value rates, whole-family bootstrap intervals, source hashes, and an
+  explicit high-correlation review rule.
+- Publish the power-analysis and metric-dependence protocols, including assumptions, initial
+  underpowered results, the confirmatory/exploratory decision, pilot-update rules, and claim limits.
+
+### Changed
+
+- Reduce the candidate architecture grid from eight historical baselines to four. Retain only the
+  adequately powered memory-feedback recovery contrast as confirmatory; planner effectiveness and
+  verifier explainability are exploratory, while prompt/context ablations remain validation probes.
+- Keep paid publication-scale execution blocked because the merged v0.4 audit did not implement
+  the typed measurement-validity contract required by the roadmap.
+
+## [0.4.0] - 2026-07-27
+
 ### Documentation
 
 - Record the independently reproduced scorer-validity exploits and correct version-specific counts

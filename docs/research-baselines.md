@@ -1,9 +1,9 @@
 # Research baselines and preregistered comparisons
 
 > **Status:** these architectures are implemented experimental interventions, but their original
-> primary endpoint is suspended. The v0.4.0 validity release will replace the historical scorer and
-> v0.5.0 power analysis will determine which contrasts are confirmatory, exploratory, or removed
-> before any publication-scale run.
+> primary endpoint is suspended. The v0.5.0 power analysis retains one confirmatory architecture
+> contrast and two exploratory comparisons. Publication-scale execution remains blocked until the
+> v0.4 typed measurement contract is implemented.
 
 DecisionAgentBench v0.2 adds four architectures and two prompt ablations to the v0.1 single-agent
 and planner-executor references. Every architecture receives the same task, tools, model, generation
@@ -40,5 +40,11 @@ full results and controlling multiplicity; exploratory differences must be label
 
 The complete historical grid is encoded in `configs/experiments/v0.2.template.json`. Its preflight
 contains 4,800 sample executions per enabled model, making staged budgeting and model selection an
-explicit research decision rather than an incidental runner setting. v0.5.0 may reduce the primary
-architecture set or require more distinct families based on MDE and power.
+explicit research decision rather than an incidental runner setting.
+
+v0.5 reduces the candidate paid grid to `single_agent`, `planner_executor`,
+`independent_verifier`, and `memory_feedback`. Memory-feedback improvement in perturbed recovery is
+the sole confirmatory contrast (smallest effect 0.10; simulated power 0.90025; 80% MDE 0.0849).
+Planner effectiveness and verifier explainability are exploratory. `multi_agent` is excluded from
+the candidate paid grid, while `corrupted_context`, `no_policy_prompt`, and `no_evidence_prompt`
+remain non-confirmatory validation probes. See the [power analysis](power-analysis.md).

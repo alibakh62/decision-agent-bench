@@ -11,7 +11,8 @@ The primary unit of evaluation is a **task instance**: a versioned initial world
 > **Implementation status:** the score hierarchy below is the target design. An independent audit of
 > the v0.1-v0.3 implementation found that lexical effectiveness, evidence-ID existence, limited
 > action-intent visibility, and duplicated score dimensions do not yet meet it. Publication-scale
-> experiments are blocked until the v0.4.0 construct-validity gate passes. See the
+> experiments are blocked until the v0.4 construct-validity implementation gate passes. v0.5 has
+> implemented statistical power preflight but cannot validate the endpoint it simulates. See the
 > [measurement-validity audit](measurement-validity-review.md).
 
 ## 2. Research questions
@@ -167,6 +168,14 @@ Every perturbed instance must remain answerable or be explicitly labeled as an a
 - Correct or clearly qualify families of confirmatory hypothesis tests; publish effect sizes and uncertainty, not only p-values.
 - Separate model refusal, agent failure, grader failure, and infrastructure failure.
 
+v0.5 implements this preflight as a content-addressed 4,000-draw simulation. The candidate grid
+uses 25 independent task families, four seeded instances per family, both variants, three
+repetitions, three fixed model-family blocks, and four architectures. Under the documented
+assumptions, only memory-feedback improvement in perturbed recovery remains confirmatory
+(smallest effect 0.10, power 0.90025, 80% MDE 0.0849). Planner effectiveness and verifier
+explainability are exploratory. The design and limitations are published in
+[the power analysis](power-analysis.md).
+
 ### 4.6 Leakage controls
 
 Public development tasks and held-out test instances use different seeds and, where necessary, different surface forms. Hidden data must never be embedded in client code, prompts, tool descriptions, or error messages. Before public claims, a leakage audit will search traces for oracle fields and compare performance on semantically matched novel variants.
@@ -215,9 +224,10 @@ The engineering gates for v0.1-v0.3 are complete, but those releases are histori
 previews rather than an empirical benchmark release. The governing gates are now versioned in the
 [roadmap](roadmap.md):
 
-1. v0.4.0 - typed world-derived scoring, semantic evidence support, structured action safety, and
-   adversarial grader validity;
-2. v0.5.0 - task-family power/MDE and metric-dependence analysis;
+1. v0.4 audit plus the still-open implementation gate - typed world-derived scoring, semantic
+   evidence support, structured action safety, and adversarial grader validity;
+2. v0.5.0 - implemented task-family power/MDE and metric-dependence analysis, with execution still
+   blocked by gate 1;
 3. v0.6.0 - richer worlds and discriminating task families;
 4. v0.7.0 - decision-sensitive branching workflows;
 5. v0.8.0 - blinded human grader validation, leakage audit, and external red team;

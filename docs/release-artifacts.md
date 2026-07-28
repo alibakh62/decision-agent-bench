@@ -2,9 +2,9 @@
 
 DecisionAgentBench releases are exact evidence bundles rather than loose attachments. Each bundle
 contains the Python wheel and source distribution, both task catalogs, reference-world provenance,
-technical report, articles, presentation, social-preview image, citation and archive metadata,
-dependency lock, OpenVEX record, CycloneDX SBOM, vulnerability scan, container identity, and
-admitted sanitized results.
+technical report, content-addressed power design/report, statistical protocols, articles,
+presentation, social-preview image, citation and archive metadata, dependency lock, OpenVEX record,
+CycloneDX SBOM, vulnerability scan, container identity, and admitted sanitized results.
 
 `release-manifest.json` records every asset's portable path, role, media type, byte size, and
 SHA-256. It also binds the software version, Git commit and commit timestamp, benchmark counts,
@@ -22,8 +22,9 @@ and instance counts from the bundled catalogs, verifies the reference-world dige
 SBOM and vulnerability-report inventories against the bundled lock, requires current OpenVEX
 coverage for every finding, verifies every embedded analysis bundle, and recomputes whether the
 release contains publishable results from its sanitized records and portable three-family
-publication plan. For final releases it additionally requires passing container provenance, the
-matching source tag, and a verified publishable analysis. Rewriting an artifact and then
+publication plan. It also verifies the power report's self-digest and exact source-design digest.
+For final releases it additionally requires passing container provenance, the matching source tag,
+and a verified publishable analysis. Rewriting an artifact and then
 regenerating the outer manifest and checksums does not bypass these checks.
 
 ## Local release-candidate rehearsal
@@ -53,13 +54,13 @@ After committing the exact source being packaged, assemble a research-preview re
 
 ```bash
 decision-agent-bench prepare-release \
-  build/release/decision-agent-bench-0.3.1 \
+  build/release/decision-agent-bench-0.5.0 \
   --sbom build/sbom.cdx.json \
   --dependency-report build/pip-audit.json \
   --container-image decision-agent-bench:release \
   --allow-prerelease
 decision-agent-bench verify-release \
-  build/release/decision-agent-bench-0.3.1
+  build/release/decision-agent-bench-0.5.0
 ```
 
 Preview mode records `release_mode: preview` independently of whether the package version itself is

@@ -115,7 +115,9 @@ The calibration and power recommendations also have methodological support, with
 
 ## Governing consequence
 
-The [versioned roadmap](roadmap.md) is now the authoritative sequence. v0.4.0 measurement validity
-is next. v0.5.0 power analysis determines the comparison grid. World enrichment, branching
+The [versioned roadmap](roadmap.md) is now the authoritative sequence. The v0.4.0 audit is complete,
+but its typed measurement-validity implementation remains the primary blocker. v0.5.0 implements
+the power/MDE system and reduces the candidate comparison grid to one confirmatory and two
+exploratory contrasts; it does not override the validity hold. World enrichment, branching
 workflows, external grader validation, and red teaming precede the v0.9.0 empirical beta. v1.0.0 is
 blocked until public construct-validity evidence accompanies the benchmark results.

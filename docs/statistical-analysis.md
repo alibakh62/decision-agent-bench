@@ -103,9 +103,27 @@ claim additionally requires a frozen hypothesis family, effect-size definition, 
 and all prespecified exclusions. Binary safety outcomes should be reported alongside the continuous
 composite rather than absorbed into a rank alone.
 
-No minimum detectable effect or power result has yet been established for the proposed architecture
-grid. Cluster count alone cannot determine power; family variance, within-family dependence,
-clean/perturbed pairing, trajectory variance, missingness, effect size, and multiplicity all matter.
-v0.5.0 therefore adds an exact-grid simulation and pilot-updated power analysis. Publication-scale
-runs remain ineligible until every confirmatory contrast has a smallest effect of interest and
-either at least 80% simulated power or an explicit exploratory label.
+v0.5.0 implements the exact-grid simulation described in
+[`power-analysis.md`](power-analysis.md). The committed 4,000-draw report uses 25 task families,
+four instances per family, clean/perturbed pairing, three repetitions, three fixed model-family
+blocks, documented hierarchical variance, 2% missingness, and Monte Carlo max-|t| multiplicity
+control. Every contrast has a smallest effect of interest and is explicitly confirmatory or
+exploratory. The sole confirmatory recovery contrast has 90.03% simulated power under the planning
+assumptions; the other two comparisons are exploratory.
+
+These results do not authorize provider execution. The machine-readable report retains the open
+measurement-validity gate, and pilot variance can require a rerun before the grid is frozen.
+
+## Metric dependence
+
+The standalone `metric-dependence` command analyzes sanitized sample JSONL without raw prompts or
+transcripts. For every pair of score dimensions it reports Pearson correlation, tie-aware Spearman
+correlation, identical-value rate, sample count, independent family count, and 95% whole-family
+cluster-bootstrap intervals. A magnitude of 0.90 places a pair into structural review; it does not
+automatically merge or remove a metric.
+
+Structural definitions take priority when interpreting correlation. In the historical scorer,
+decision quality often defaults to effectiveness, robustness is derived from recovery, efficiency
+is scaled by effectiveness, and composite is a gated weighted function of other scores. See the
+[metric-dependence audit](metric-dependence.md). No empirical v0.5 dependence report is claimed
+until a valid typed-score pilot exists.
