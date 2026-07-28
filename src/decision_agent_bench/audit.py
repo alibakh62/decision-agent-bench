@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from decision_agent_bench.evals.tools import benchmark_tools
+from decision_agent_bench.experiments.power import verify_power_report
 from decision_agent_bench.integrity import (
     accepted_vex_identifiers,
     verify_pip_audit_inventory,
@@ -166,6 +167,10 @@ def _artifact_check(repository: Path) -> AuditCheck:
     presentation = repository / "talk/decision-agent-bench-research-talk.pptx"
     report = repository / "report/technical-report.md"
     social_preview = repository / "docs/assets/social-preview.png"
+    initial_power_design = repository / "configs/power/v0.5-initial.json"
+    initial_power_report = repository / "results/design/v0.5-initial-power.json"
+    power_design = repository / "configs/power/v0.5.json"
+    power_report = repository / "results/design/v0.5-power.json"
     errors = []
     if len(articles) != 3:
         errors.append(f"expected 3 articles, found {len(articles)}")
@@ -173,6 +178,17 @@ def _artifact_check(repository: Path) -> AuditCheck:
         errors.append("technical report is missing")
     if not presentation.is_file() or not zipfile.is_zipfile(presentation):
         errors.append("editable presentation is missing or structurally invalid")
+    initial_power_verification = verify_power_report(
+        initial_power_report, initial_power_design
+    )
+    power_verification = verify_power_report(power_report, power_design)
+    errors.extend(
+        f"initial power design evidence: {issue}"
+        for issue in initial_power_verification["issues"]
+    )
+    errors.extend(
+        f"power design evidence: {issue}" for issue in power_verification["issues"]
+    )
     preview_evidence: dict[str, Any] = {
         "path": "docs/assets/social-preview.png",
         "dimensions": None,
@@ -224,11 +240,13 @@ def _artifact_check(repository: Path) -> AuditCheck:
         (
             "research artifact set is incomplete"
             if errors
-            else "report, articles, and deck are present"
+            else "report, articles, deck, and power-design evidence are present"
         ),
         {
             "errors": errors,
             "articles": [path.name for path in articles],
+            "initial_power_design": initial_power_verification,
+            "power_design": power_verification,
             "social_preview": preview_evidence,
         },
     )

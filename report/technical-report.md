@@ -1,13 +1,13 @@
 # DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.3.1 research-preview methods report, 27 July 2026
-**Benchmark software:** `0.3.1` (v0.3.0 task contract)
+**Status:** v0.5.0 statistical-design preview, 27 July 2026
+**Benchmark software:** `0.5.0` (historical v0.1-v0.3 task contracts)
 **Task protocols:** `0.1` confirmatory suite; `0.2` research expansion; `0.3` stateful preview
 
 > **Measurement hold:** an independent audit reproduced lexical grader gaming, paraphrase
 > sensitivity, unsupported-evidence acceptance, and unsafe narrated intent. The v0.1-v0.3
 > contracts remain reproducible development suites, but the confirmatory study and leaderboard are
-> blocked until the v0.4.0 construct-validity contract and subsequent roadmap gates pass. See the
+> blocked until the v0.4 construct-validity implementation and subsequent roadmap gates pass. See the
 > [measurement-validity audit](../docs/measurement-validity-review.md).
 
 ## Abstract
@@ -36,6 +36,15 @@ clean/stressed samples. Each requires 20 persisted transitions over at least 15 
 with delayed events, a dependency-span target of 19, real simulator mutations, and mandatory
 rollback in stressed conditions. We call this a dependency-enforced horizon preview rather than a
 general or human-time long-horizon benchmark.
+
+v0.5 adds a deterministic hierarchical study-design simulator and structural/empirical metric-
+dependence tooling. A 4,000-draw analysis of the reduced four-architecture candidate grid retains
+one confirmatory contrast: memory-feedback improvement in perturbed recovery has 90.03% simulated
+power for a 0.10 smallest effect under the stated assumptions. Planner effectiveness and verifier
+explainability are exploratory. The exact design contains 25 independent families, 100 seeded
+instances, 200 paired samples, three repetitions, three fixed model-family blocks, 7,200 sample
+executions, and a $1,800 exposure ceiling. It does not authorize execution while the validity gate
+is open.
 
 This prerelease report documents the design, implementation, and statistical plan. It deliberately
 contains no frontier-model performance claims: construct validity, power, task discrimination,
@@ -76,7 +85,7 @@ emphasizes reproducible, functional web environments and execution-based task co
 [ToolLLM/ToolBench](https://arxiv.org/abs/2307.16789) studies broad API retrieval and use.
 
 Recent long-duration work sets a materially different bar from a declared step count.
-[RetailBench](https://arxiv.org/abs/2603.16453) uses a partially observable, evolving 180-day retail
+[RetailBench](https://arxiv.org/abs/2606.15862) uses a partially observable, evolving 180-day retail
 environment; [YC-Bench](https://arxiv.org/abs/2604.01212) spans a simulated year and hundreds of
 turns with delayed and compounding consequences; and
 [LongDS-Bench](https://arxiv.org/abs/2605.30434) reports evolving-state tasks averaging 33 turns and
@@ -245,11 +254,24 @@ so the outcome is procedural integrity rather than independently validated plann
 
 The historical experiment configuration requires at least three model families, both v0.1 reference
 baselines, both conditions, every task family, and at least three repetitions. It is retained to
-test the pipeline but is no longer authorized as the confirmatory grid. v0.5.0 will choose the final
-grid from task-family power and MDE analysis after the v0.4 scorer passes. A frozen manifest records the
-code commit and dirty flag, reference-world digest, model IDs, generation settings, task arguments,
-scenario coverage, budgets, cost cap, and exact commands. Execution is dry by default and requires
-separate execute and cost-acknowledgement flags.
+test the pipeline but is no longer authorized as the confirmatory grid. v0.5.0 reduces the candidate
+grid to single-agent, planner-executor, independent-verifier, and memory-feedback across three fixed
+model-family blocks. The exact design has 25 independent task families, 100 seeded instances, 200
+paired samples, three repetitions, 7,200 sample executions, and a $1,800 ceiling. A frozen manifest
+records the code commit and dirty flag, reference-world digest, model IDs, generation settings, task
+arguments, scenario coverage, budgets, cost cap, and exact commands. Execution is dry by default
+and requires separate execute and cost-acknowledgement flags.
+
+The 4,000-draw power simulation includes family, architecture-by-family, architecture-by-model-
+block-by-family, architecture-by-variant-by-family, instance, and trajectory variance;
+clean/perturbed correlation; and missingness. The initial three-confirmatory-contrast design left
+all three effects below the 80% target after max-|t| control. Planner effectiveness and verifier
+explainability are therefore exploratory. Reducing the confirmatory family raises recovery power
+above the threshold.
+Memory-feedback perturbed recovery is the sole confirmatory architecture contrast: its smallest
+effect is 0.10, simulated power is 0.90025, MDE is 0.0849, and median simultaneous interval width is
+0.1207 under the planning assumptions. The full method and claim limits appear in
+`docs/power-analysis.md`.
 
 Clean and perturbed samples are paired by run, model, baseline, seeded instance, and epoch. Primary
 reports include means and sample standard deviations, within-instance repeatability, deterministic
@@ -264,6 +286,10 @@ that check from sanitized records and a path- and command-free copy of the publi
 incomplete publishable cell, malformed or duplicate record, inconsistent model identity, unexpected
 record, or missing manifest prevents leaderboard inclusion. The full implemented estimand
 definitions appear in `docs/statistical-analysis.md`.
+
+The separate metric-dependence audit reports structural overlap before empirical Pearson and
+Spearman correlations, identical-value rates, and whole-family bootstrap intervals. No empirical
+dependence result is claimed before a valid non-mock typed-score pilot exists.
 
 The analyzer emits sanitized sample telemetry, group summaries, failure counts, robustness and
 failure matrices, and a publishable-only leaderboard. Prompts, targets, transcripts, raw tool
@@ -316,16 +342,19 @@ Mock-model outputs are intentionally not reported as research results. Docker so
 hash-locked dependency set are present; the public release still requires a clean external
 container reproduction.
 
-## 8. Candidate confirmatory analyses
+## 8. Confirmatory and exploratory analysis status
 
-The following hypotheses remain candidates. They must be revised against the v0.4 construct map and
-v0.5 power analysis before provider execution:
+The v0.5 design permits only one candidate confirmatory architecture claim after the v0.4 endpoint
+contract and pilot variance are bound: memory-feedback improves perturbed recovery by at least the
+prespecified 0.10 smallest effect. The remaining historical hypotheses are exploratory or future
+validation questions:
 
 - H1: at least one system pair reverses order between nominal effectiveness and the safety-gated
   composite;
 - H2: independent verification reduces policy violations, with explicit cost and latency effects;
 - H3: paired perturbations reduce recovery and evidence validity more than clean task
-  effectiveness;
+  effectiveness; the memory-feedback recovery contrast is the only confirmatory architecture
+  component under the current power design;
 - H4: a single-repetition rank differs from the repeated-run estimate for at least one close pair;
 - H5: judge-positive/deterministic-negative disagreements concentrate among fluent answers with
   invalid evidence or economic regret.

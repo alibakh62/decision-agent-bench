@@ -11,6 +11,19 @@ budgets to every model, and requires two explicit CLI flags before execution.
 > leaderboard study. Publication-scale execution is blocked by the
 > [v0.4.0-v0.8.0 roadmap gates](roadmap.md).
 
+Before even a candidate paid manifest is reviewed, reproduce the v0.5 statistical design:
+
+```bash
+decision-agent-bench simulate-power \
+  configs/power/v0.5.json results/design/v0.5-power.json
+decision-agent-bench verify-power \
+  results/design/v0.5-power.json --design configs/power/v0.5.json
+```
+
+The committed report deliberately returns `publication_scale_run_authorized: false` while the
+typed measurement-validity implementation is absent. A successful cost or power gate cannot
+override that result.
+
 ## 1. Configure
 
 Copy `configs/experiments/v0.1.template.json`, replace the current model identifiers, review
@@ -88,7 +101,23 @@ The analyzer emits:
   coverage, and sanitization provenance.
 
 The analyzer refuses to mix a new run into a non-empty output directory and verifies that source
-logs did not change during analysis. Verify a downloaded shareable bundle without raw logs:
+logs did not change during analysis.
+
+Generate the separate metric-dependence audit from the sanitized records:
+
+```bash
+decision-agent-bench metric-dependence \
+  results/generated/<run-id>/samples.sanitized.jsonl \
+  results/generated/<run-id>/metric-dependence.json
+decision-agent-bench verify-metric-dependence \
+  results/generated/<run-id>/metric-dependence.json \
+  --samples results/generated/<run-id>/samples.sanitized.jsonl
+```
+
+The correlation report uses whole task families as bootstrap clusters and must retain its
+confirmatory/exploratory context. See the [metric-dependence protocol](metric-dependence.md).
+
+Verify a downloaded shareable analysis bundle without raw logs:
 
 ```bash
 decision-agent-bench verify-analysis results/generated/<run-id>

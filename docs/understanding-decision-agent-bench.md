@@ -115,7 +115,7 @@ It is not a claim of parity with benchmarks that measure days or months of human
 
 Version numbers have different roles:
 
-- the package release may be `0.3.1`;
+- the package release may be `0.5.0`;
 - the v0.2 research contract is `0.2.1`;
 - the stateful workflow contract is `0.3.0`.
 
@@ -566,6 +566,24 @@ leaderboard evidence.
 
 See the [experiment guide](experiment-guide.md) and
 [statistical analysis protocol](statistical-analysis.md) before running a comparative study.
+
+Before creating a paid grid, reproduce the v0.5 family-level power design:
+
+```bash
+decision-agent-bench simulate-power \
+  configs/power/v0.5.json results/design/v0.5-power.json
+decision-agent-bench verify-power \
+  results/design/v0.5-power.json --design configs/power/v0.5.json
+```
+
+The report distinguishes 25 independent concepts from 100 seeded instances and 7,200 repeated
+executions. It records each smallest effect of interest, MDE, interval width, multiplicity rule,
+cost ceiling, and confirmatory/exploratory label. Its authorization remains false until the typed
+measurement-validity scorer exists.
+
+After an explicitly non-publishable pilot, run `metric-dependence` on
+`samples.sanitized.jsonl`. The resulting Pearson/Spearman report resamples whole task families and
+must be interpreted alongside the historical scorer's structural dependencies.
 
 ## Realistic use cases
 

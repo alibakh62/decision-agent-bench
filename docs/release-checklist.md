@@ -10,6 +10,10 @@
 
 ## Evidence gates
 
+- [x] Publish and independently verify the v0.5 candidate power/MDE design, effective family count,
+      multiplicity plan, confirmatory/exploratory labels, and study-cost ceiling.
+- [ ] Replace the v0.5 planning assumptions with pilot variance where materially different and
+      generate the empirical metric-dependence report from valid typed-score samples.
 - [ ] Complete every v0.4-v0.8 validity-first roadmap gate: typed scoring, evidence support,
       structured safety, power/MDE, richer task discrimination, branching workflows, blinded human
       validation, red team, and leakage audit.

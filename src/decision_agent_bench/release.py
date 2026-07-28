@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from decision_agent_bench.experiments.analysis import verify_analysis_bundle
+from decision_agent_bench.experiments.power import verify_power_report
 from decision_agent_bench.integrity import (
     digest_payload,
     file_evidence,
@@ -190,6 +191,42 @@ def _base_assets(
             repository / "report/technical-report.md",
             "research/technical-report.md",
             "technical-report",
+            "text/markdown",
+        ),
+        ReleaseAsset(
+            repository / "configs/power/v0.5-initial.json",
+            "research/design/power-v0.5-initial.json",
+            "statistical-design",
+            "application/json",
+        ),
+        ReleaseAsset(
+            repository / "results/design/v0.5-initial-power.json",
+            "research/design/power-report-v0.5-initial.json",
+            "statistical-evidence",
+            "application/json",
+        ),
+        ReleaseAsset(
+            repository / "configs/power/v0.5.json",
+            "research/design/power-v0.5.json",
+            "statistical-design",
+            "application/json",
+        ),
+        ReleaseAsset(
+            repository / "results/design/v0.5-power.json",
+            "research/design/power-report-v0.5.json",
+            "statistical-evidence",
+            "application/json",
+        ),
+        ReleaseAsset(
+            repository / "docs/power-analysis.md",
+            "research/power-analysis.md",
+            "statistical-protocol",
+            "text/markdown",
+        ),
+        ReleaseAsset(
+            repository / "docs/metric-dependence.md",
+            "research/metric-dependence.md",
+            "statistical-protocol",
             "text/markdown",
         ),
         ReleaseAsset(
@@ -478,6 +515,12 @@ def _verify_release_semantics(
         "metadata/requirements.lock",
         "metadata/zenodo.json",
         "research/decision-agent-bench-research-talk.pptx",
+        "research/design/power-report-v0.5-initial.json",
+        "research/design/power-report-v0.5.json",
+        "research/design/power-v0.5-initial.json",
+        "research/design/power-v0.5.json",
+        "research/metric-dependence.md",
+        "research/power-analysis.md",
         "research/technical-report.md",
         sdist_path,
     }
@@ -493,6 +536,25 @@ def _verify_release_semantics(
     )
     if len(article_paths) != 3:
         issues.append(f"release must contain exactly three articles, found {len(article_paths)}")
+
+    initial_power_verification = verify_power_report(
+        directory / "research/design/power-report-v0.5-initial.json",
+        directory / "research/design/power-v0.5-initial.json",
+    )
+    if not initial_power_verification["verified"]:
+        issues.extend(
+            f"initial power design evidence: {issue}"
+            for issue in initial_power_verification["issues"]
+        )
+
+    power_verification = verify_power_report(
+        directory / "research/design/power-report-v0.5.json",
+        directory / "research/design/power-v0.5.json",
+    )
+    if not power_verification["verified"]:
+        issues.extend(
+            f"power design evidence: {issue}" for issue in power_verification["issues"]
+        )
 
     try:
         task_families = json.loads(

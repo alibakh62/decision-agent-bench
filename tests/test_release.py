@@ -19,6 +19,7 @@ from decision_agent_bench.specs import load_task_specs
 
 
 def _write_fake_repository(root: Path, version: str = "0.2.1.dev0") -> Path:
+    repository = Path(__file__).parents[1]
     files = {
         "pyproject.toml": f'[project]\nname = "decision-agent-bench"\nversion = "{version}"\n',
         "data/task_specs/v0.1.json": json.dumps([{"id": "one"}, {"id": "two"}]),
@@ -33,6 +34,20 @@ def _write_fake_repository(root: Path, version: str = "0.2.1.dev0") -> Path:
         ),
         "data/reference-world-manifest.json": json.dumps({"logical_sha256": "a" * 64}),
         "report/technical-report.md": "# Report\n",
+        "configs/power/v0.5.json": (
+            repository / "configs/power/v0.5.json"
+        ).read_text(encoding="utf-8"),
+        "configs/power/v0.5-initial.json": (
+            repository / "configs/power/v0.5-initial.json"
+        ).read_text(encoding="utf-8"),
+        "results/design/v0.5-power.json": (
+            repository / "results/design/v0.5-power.json"
+        ).read_text(encoding="utf-8"),
+        "results/design/v0.5-initial-power.json": (
+            repository / "results/design/v0.5-initial-power.json"
+        ).read_text(encoding="utf-8"),
+        "docs/power-analysis.md": "# Power analysis\n",
+        "docs/metric-dependence.md": "# Metric dependence\n",
         "talk/decision-agent-bench-research-talk.pptx": "presentation",
         "docs/assets/social-preview.png": "preview",
         "CITATION.cff": "cff-version: 1.2.0\n",
@@ -295,7 +310,7 @@ def test_release_bundle_is_exact_and_detects_tampering(
         "reference_world_sha256": "a" * 64,
     }
     assert verified["verified"] is True
-    assert verified["artifact_count"] == 18
+    assert verified["artifact_count"] == 24
     assert tampered["verified"] is False
     assert "sha256 mismatch: research/technical-report.md" in tampered["issues"]
     assert "SHA256SUMS does not match release contents" in tampered["issues"]
@@ -443,7 +458,7 @@ def test_final_release_accepts_complete_tagged_evidence(
     assert manifest["contains_publishable_results"] is True
     assert manifest["release_mode"] == "final"
     assert verified["verified"] is True
-    assert verified["artifact_count"] == 30
+    assert verified["artifact_count"] == 36
 
     result_path = tmp_path / "bundle/results/primary" / ANALYSIS_ARTIFACTS[0]
     result_path.write_text("outer manifest was recomputed\n", encoding="utf-8")
