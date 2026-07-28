@@ -22,7 +22,13 @@ from decision_agent_bench.lab import (
     score_explainer_html,
     trace_inspector_html,
     trace_rows,
+    trace_workbench_html,
     write_run_report,
+)
+from decision_agent_bench.lab_runtime import (
+    run_live_evaluation,
+    safe_model_name,
+    trusted_solver_spec,
 )
 
 
@@ -93,6 +99,72 @@ def test_gradio_blocks_builds_without_launching() -> None:
 
     assert demo is not None
     assert json.loads(default_candidate())["selected_ids"] == ["R03"]
+
+
+def test_lab_starts_without_a_fabricated_completed_result(monkeypatch) -> None:
+    def fail_if_called(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("the legacy replay must not run while the page is being built")
+
+    monkeypatch.setattr("decision_agent_bench.demo._execute_lab_run", fail_if_called)
+
+    assert build_demo() is not None
+
+
+def test_live_lab_runs_one_real_inspect_sample(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "inspect_ai._util.appdirs.user_data_path", lambda _package: tmp_path / "inspect-data"
+    )
+    monkeypatch.setattr(
+        "inspect_ai._util.appdirs.user_cache_path", lambda _package: tmp_path / "inspect-cache"
+    )
+    from decision_agent_bench.demo import _CATALOG
+
+    payload = run_live_evaluation(
+        agent_source="Built-in baseline",
+        baseline="single_agent",
+        solver_reference="examples/custom_solver.py@custom_agent",
+        system_name="lab-test",
+        model_name="mockllm/model",
+        instance=_CATALOG["DAB-ASS-001-i1"],
+        variant="clean",
+    )
+
+    assert payload["status"] == "success"
+    assert payload["model"] == "mockllm/model"
+    assert payload["sample_id"] == "DAB-ASS-001-i1-clean"
+    assert payload["grade"]["available"] is True
+    assert payload["trace"][0]["event"] == "Run started"
+    assert payload["log_path"].endswith(".eval")
+
+
+def test_lab_trace_matches_the_selectable_trace_inspector_contract() -> None:
+    run = _execute_lab_run("planner_executor", "DAB-ASS-001-i1", "clean")
+    run.update(
+        {
+            "status": "success",
+            "model": "openai/example-model",
+            "task_version": "0.2.1",
+            "duration_seconds": 12.3,
+        }
+    )
+
+    rendered = trace_workbench_html(run)
+
+    assert "trace-event-row" in rendered
+    assert "Event details" in rendered
+    assert "Evidence payload" in rendered
+    assert "Score impact" in rendered
+    assert "openai/example-model" in rendered
+
+
+def test_custom_solver_is_limited_to_trusted_project_agent_directories() -> None:
+    spec = trusted_solver_spec("examples/custom_solver.py@custom_agent")
+
+    assert spec.solver.endswith("examples/custom_solver.py@custom_agent")
+    with pytest.raises(ValueError, match="must already exist under"):
+        trusted_solver_spec("../Downloads/untrusted.py@agent")
+    with pytest.raises(ValueError, match="model must be an Inspect identifier"):
+        safe_model_name("$(unsafe)")
 
 
 def test_lab_replays_agent_trace_and_real_historical_scorer() -> None:

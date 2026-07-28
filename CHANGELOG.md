@@ -8,14 +8,14 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ### Added
 
-- Rebuild DecisionAgentBench Lab as one setup-to-review evaluation studio with eight selectable
-  provider-free baseline replays, all registered v0.2 task pairs, isolated seeded worlds, ordered
-  traces, row-level argument/result inspection, final structured decisions, and portable reports.
+- Rebuild DecisionAgentBench Lab as a full-width evaluation studio with real one-sample Inspect
+  execution, editable model selection, eight built-in architectures, trusted custom-solver loading,
+  all registered v0.2 task pairs, selectable traces, and portable Lab and Inspect logs.
 - Add a transparent score workbench that reconstructs the historical weighted equation, dimension
   contributions, format/evidence/safety gates, failure effects, robustness diagnostic, contribution
   ledger, and evidence-to-dimension lineage.
-- Add a dedicated Lab guide with realistic experiments, replay-versus-empirical boundaries, score
-  interpretation, export behavior, and extension points.
+- Add a dedicated Lab guide covering model credentials, real execution, custom-agent import, trace
+  interpretation, exact scoring, export behavior, and current research claim limits.
 
 ### Fixed
 
@@ -24,6 +24,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   receive unsupported `launch()` keywords.
 - Validate every client-provided Lab selection at the callback boundary and generate world/report
   paths independently of client values, preventing path traversal through direct Gradio requests.
+- Remove the narrow page cap, decorative stage strip, native spreadsheet trace, and preloaded
+  completed replay; runs now start empty and visibly populate from a finalized Inspect log.
 
 ## [0.5.1] - 2026-07-28
 
@@ -143,8 +145,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
   plus no-policy and no-evidence prompt ablations.
 - A v0.2 task registration with 100 seeded scenario instances, 200 paired evaluation samples, and a
   generated machine-readable instance catalog.
-- A provider-free Gradio research lab for task exploration, deterministic decision scoring, and
-  allow-listed reference-world inspection.
+- A local Gradio evaluation Lab with real one-sample Inspect execution, editable model selection,
+  trusted custom-solver loading, selectable trace inspection, and transparent score reconstruction.
 - Blinded annotation export, private re-identification keys, strict rating validation, Fleiss'
   kappa, and human/LLM-judge/deterministic agreement reports.
 - A methods-complete technical report draft, three preregistered research article drafts, and an

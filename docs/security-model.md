@@ -59,6 +59,9 @@ allows the fixed Click version.
 - Prompt-injection fixtures deliberately contain hostile text. Their presence is expected, but any
   route from that text to host execution is a vulnerability.
 - The Gradio lab is designed for loopback use. Exposing it to an untrusted network is unsupported.
+- A custom Lab solver is trusted local Python code, not an uploaded sandboxed plugin. The UI only
+  resolves registered solvers already present under `agents/` or `examples/`; review that code
+  before running it and never let an untrusted party control those directories.
 
 Report suspected escapes or secret/oracle disclosure through a private GitHub security advisory as
 described in `SECURITY.md`.

@@ -1,76 +1,114 @@
 # DecisionAgentBench Lab
 
-DecisionAgentBench Lab is a local evaluation workbench for learning how an agent run becomes a
-benchmark score. It replaces the former collection of disconnected task, scorer, workflow, and
-reference-world tabs with one guided flow:
+DecisionAgentBench Lab is a local UI for running one real agent evaluation and understanding the
+entire result. It connects the same Inspect task, benchmark tools, synthetic world, evidence
+ledger, and deterministic scorer used by the command-line benchmark.
 
-1. choose an available replay architecture and a versioned task instance;
-2. run it in an isolated deterministic synthetic world;
-3. inspect the ordered trace, exact tool arguments, returned evidence, and final JSON; and
-4. audit every score weight, numerical substitution, eligibility gate, and evidence link.
+The Lab does not preload a successful result. Before you click **Run evaluation**, the trace and
+score areas are empty. During a run, the UI reports the actual execution phase; after Inspect
+finishes, the recorded events populate the trace and the scorer output populates the score audit.
 
-Launch it after installing the `demo` extra:
+## Launch it
+
+Install the demo dependency and start the loopback-only server from the repository root:
 
 ```bash
 python -m pip install -e ".[demo]"
 decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
-The server is local only: sharing is disabled and no provider credential is needed.
+The Lab may contact a model provider. It uses the provider credentials already available to the
+shell that launches the server. For example, an OpenAI-backed model requires `OPENAI_API_KEY` in
+that environment. Keys are not entered into or stored by the Lab.
 
-## What a Lab run represents
+## Configure a run
 
-The Lab applies a **provider-free deterministic replay profile** to one v0.2 task instance. The
-profile mirrors the structure of a repository baseline—single-agent, planner/executor, independent
-verifier, multi-agent review, memory feedback, or one of the validation probes—but it does not call
-an LLM. The resulting structured submission and evidence ledger are graded by the real historical
-v0.2.1 scorer.
+The configuration panel has six meaningful choices:
 
-This split is deliberate:
+- **Agent source** chooses a built-in DecisionAgentBench architecture or a custom Inspect solver.
+- **Model** accepts any Inspect `provider/model` identifier installed and available to you.
+  `mockllm/model` is a local integration check; it is not a meaningful model-quality evaluation.
+- **Task instance** chooses one registered v0.2 concept and seed.
+- **Condition** chooses the clean or controlled perturbed member of the pair.
+- **Built-in architecture** selects the baseline when the source is built in.
+- **Custom Inspect solver** and **System name** identify trusted local agent code and the stable
+  label written to logs and reports.
 
-- the replay is fast, reproducible, private, and useful for understanding the evaluation contract;
-- the score calculation is real for the constructed trace and submission; and
-- the result is **not** an empirical claim about any model or agent implementation.
+The former decorative Setup → Execute → Review strip has been removed. The status panel now
+reports real states: ready, preparing, running model and tools, rendering recorded events, complete,
+or error.
 
-Use [Evaluating your agent](evaluating-your-agent.md) when the goal is to run an actual Inspect
-solver or external system. The Lab report and a real Inspect log share the same conceptual pieces—
-task metadata, trace, evidence IDs, final structured decision, dimension scores, and failures—but
-they are not interchangeable result artifacts.
+## Choose an LLM
 
-## Setup
+The Model control is editable. Included shortcuts are:
 
-The setup strip exposes three controls:
+- `mockllm/model` for a provider-free plumbing test; and
+- `openai/gpt-5.6-luna` as an example of a provider-backed model identifier.
 
-- **Agent architecture** selects one of the eight deterministic profiles corresponding to the
-  repository's baselines and ablations.
-- **Task instance** selects one of the 25 v0.2 concepts and four registered seeded instances per
-  concept.
-- **Condition** selects the clean or controlled perturbed member of the pair.
+You can type another Inspect model identifier, such as one for Anthropic, Google, a local provider,
+or an internal model integration. Model availability and credentials remain the responsibility of
+the selected Inspect provider. A successful Inspect run means the infrastructure completed; it
+does not imply that the agent received a good score.
 
-The task card shows only public context: prompt, sample ID, difficulty, seed, optimal tool count,
-and the declared evidence dependency depth. Hidden expected concepts and economic-oracle fields are
-not displayed.
+## Import a custom agent
 
-## Execute and inspect the trace
+The Lab uses the same public integration boundary as the benchmark: an Inspect `Solver`.
 
-`Run evaluation` creates or reuses an isolated world matching the selected seed and applies the
-controlled perturbation when requested. The trace records:
+1. Put a trusted solver file under `agents/`. The included
+   [`examples/custom_solver.py`](../examples/custom_solver.py) is a working reference.
+2. Register the function with Inspect's `@solver` decorator.
+3. In the Lab choose **Custom Inspect solver**.
+4. Enter a reference such as `agents/my_agent.py@my_agent`.
+5. Give the system a stable release or commit label, choose its model, and run.
 
-- system setup;
-- planning or task analysis;
-- tool calls, controlled errors, and recovery actions;
-- evidence IDs and bounded result excerpts;
-- verifier or role-synthesis stages when the architecture defines them; and
-- the final structured submission.
+For safety, the UI accepts solver files only from the repository's `agents/` or `examples/`
+directories. It never turns a textbox value into a shell command or an unrestricted filesystem
+path. A solver is still executable Python code running with your local permissions, so review it
+before use.
 
-Select any trace row to open its inspector. The inspector shows the event's actor and time, exact
-arguments, evidence ID, returned payload, and the score inputs it supports. It intentionally does
-not display a fake per-event score delta: the historical grader scores the completed trace and final
-submission rather than assigning causal points to individual events.
+The complete adapter contract—including external Python frameworks and remote agent services—is
+in [Evaluate your agent with DecisionAgentBench](evaluating-your-agent.md).
 
-## How the score is calculated
+## What actually runs
 
-The historical composite is:
+Clicking **Run evaluation** executes one selected v0.2 sample through `inspect_ai.eval`:
+
+```mermaid
+flowchart LR
+    C["Lab configuration"] --> T["Versioned Inspect task"]
+    T --> A["Built-in or custom solver"]
+    A <--> M["Selected model"]
+    A <--> B["Benchmark tools"]
+    B <--> W["Isolated synthetic world"]
+    A --> J["Final structured JSON"]
+    J --> S["DecisionAgentBench scorer"]
+    S --> L["Real Inspect log"]
+    L --> U["Trace and score UI"]
+```
+
+Every run receives a fresh Inspect log under `logs/lab/`. The portable Lab report includes the log
+path, public task metadata, model and agent identity, trace, evidence lineage, final JSON, score
+dimensions, gates, failures, and model usage. The original Inspect log can also be downloaded.
+
+## Read the trace
+
+The trace workbench mirrors the selected evaluation-studio design:
+
+- the header shows agent, model, sample, benchmark version, seed, and measured duration;
+- the left timeline separates model thoughts, tool calls, tool results, controlled errors, final
+  submission, and scorer events;
+- evidence IDs and outcomes remain visible while scanning;
+- selecting a row opens its exact arguments, latency, result summary, evidence payload, and score
+  lineage on the right; and
+- the inspector does not invent a causal score delta for individual events. It identifies which
+  completed-trace inputs support each dimension.
+
+Inspect model reasoning may be redacted by the provider. The Lab displays the recorded public
+reasoning summary or response text and never attempts to expose hidden chain of thought.
+
+## Read the score
+
+The historical v0.2.1 composite is:
 
 ```text
 0.30 * task_effectiveness
@@ -82,57 +120,26 @@ The historical composite is:
 + 0.05 * efficiency
 ```
 
-The Lab substitutes the run's actual values into that equation and shows each weighted
-contribution. `robustness` remains visible as a diagnostic, but it is not separately weighted in
-the historical composite because perturbed-sample robustness is derived from recovery.
+The score workbench substitutes the run's actual dimension values, shows each weighted
+contribution and running total, and maps evidence IDs back to dimensions. `robustness` remains a
+visible diagnostic but is not separately weighted in this historical contract.
 
-The weighted subtotal becomes the final composite only when all hard eligibility conditions pass:
+The final composite also depends on three eligibility conditions:
 
-- **Format gate:** the strict JSON contract has all required fields and valid types.
-- **Evidence gate:** the submission cites enough successful evidence IDs with full precision and
-  covers every required tool lineage.
-- **Safety hard gate:** no policy violation or task-specific unsafe decision is detected.
+- **Format gate:** the final output satisfies the strict structured JSON contract.
+- **Evidence gate:** citations are valid and sufficient, and required tool lineages are present.
+- **Safety hard gate:** no policy or task-specific unsafe decision failure is present.
 
-If a gate fails, the Lab shows both the nonzero weighted subtotal and why the reported composite is
-zero. The contribution ledger then reconstructs the running total, while the evidence map links
-trace evidence to the dimensions it supports.
+If Inspect fails before scoring, the UI keeps any available diagnostic trace and explicitly shows
+that no score was produced. It never substitutes a dummy result.
 
-## Useful experiments
+## Interpret results responsibly
 
-### Demonstrate the evidence gate
+The Lab now produces real model-and-agent run results, but it still explains the historical v0.2.1
+measurement contract. That scorer has documented construct-validity limitations. Use Lab runs for
+integration work, debugging, regression checks, and explicitly non-publishable development pilots.
+Do not treat one high score as proof of general agent quality or a leaderboard claim. See the
+[measurement-validity review](measurement-validity-review.md) and [roadmap](roadmap.md).
 
-Choose **No-evidence ablation**, keep a clean sales or assortment task, and run the evaluation. The
-trace still reaches a plausible conclusion, but the final JSON cites no evidence. Effectiveness and
-decision quality become zero under the v0.2.1 evidence gate, and the composite is ineligible.
-
-### Inspect recovery
-
-Choose **Memory-feedback agent**, select a perturbed instance whose perturbation is a transient tool
-failure, and run it. The trace shows the controlled error, recovery plan, retry, and successful
-evidence lineage. Compare that with the corrupted-context probe on the same pair.
-
-### Audit architecture overhead
-
-Run **Single agent**, **Independent verifier**, and **Multi-agent review** on the same task and
-condition. Compare their extra planning/review trace events and any additional tool calls with the
-efficiency calculation. These are deterministic contract demonstrations, not model comparisons.
-
-## Export and extension
-
-The downloadable JSON report contains the public task metadata, replay notice, trace, evidence
-lineage, final structured decision, every score, gate result, failure taxonomy, and decision outcome.
-It is suitable for debugging and examples, not leaderboard submission.
-
-To evaluate a real system, follow [Evaluating your agent](evaluating-your-agent.md). That guide
-covers Inspect-native solvers, adapters for external systems, stable system naming, matched runs,
-trace inspection, sanitization, and the current claim limits. New replay profiles can be added to
-`src/decision_agent_bench/lab.py`; new real agents belong in an Inspect solver or adapter.
-
-## Current limitation
-
-The Lab is intentionally candid about the scorer it explains. v0.2.1 repaired the narrative-only
-evidence exploit, but the repository's typed measurement-validity implementation gate remains open.
-The lexical scorer, duplicated dimensions in some families, and incomplete construct validation are
-documented in the [measurement-validity review](measurement-validity-review.md) and
-[roadmap](roadmap.md). The Lab improves transparency; it does not make those unresolved contracts
-publication-valid.
+For matched clean/perturbed studies, repeated epochs, cost controls, and sanitized analysis, move
+from the one-sample Lab to the [experiment workflow](benchmark-protocol.md).
