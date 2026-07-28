@@ -4,12 +4,23 @@ import json
 
 from decision_agent_bench.demo import (
     QUERY_LIBRARY,
+    _execute_lab_run,
     build_demo,
     default_candidate,
+    launch_demo,
     score_candidate,
+    task_context_html,
     task_view,
     workflow_view,
     world_snapshot,
+)
+from decision_agent_bench.lab import (
+    REPLAY_AGENTS,
+    SCORE_WEIGHTS,
+    score_explainer_html,
+    trace_inspector_html,
+    trace_rows,
+    write_run_report,
 )
 
 
@@ -80,3 +91,87 @@ def test_gradio_blocks_builds_without_launching() -> None:
 
     assert demo is not None
     assert json.loads(default_candidate())["selected_ids"] == ["R03"]
+
+
+def test_lab_replays_agent_trace_and_real_historical_scorer() -> None:
+    run = _execute_lab_run("planner_executor", "DAB-ASS-001-i1", "clean")
+
+    assert run["replay_notice"].startswith("Provider-free deterministic replay")
+    assert run["agent"]["architecture"] == "Plan, then ReAct + tools"
+    assert run["grade"]["values"]["decision_quality"] == 1
+    assert run["grade"]["values"]["composite"] > 0.99
+    assert {row[3] for row in trace_rows(run)} >= {
+        "Evidence plan",
+        "retail_sql",
+        "Final decision",
+    }
+    assert "Exact arguments" in trace_inspector_html(run, 2)
+
+
+def test_lab_no_evidence_ablation_visibly_triggers_hard_gate() -> None:
+    run = _execute_lab_run("no_evidence_prompt", "DAB-SAL-001-i1", "clean")
+    score_html = score_explainer_html(run)
+
+    assert run["evidence_eligible"] is False
+    assert run["grade"]["values"]["task_effectiveness"] == 0
+    assert run["grade"]["values"]["composite"] == 0
+    assert "Evidence gate" in score_html
+    assert "FAIL" in score_html
+    assert "reported as 0.0000" in score_html
+
+
+def test_lab_score_explainer_matches_repository_composite_contract() -> None:
+    run = _execute_lab_run("single_agent", "DAB-SAL-001-i1", "clean")
+    expected = round(
+        sum(
+            weight * run["grade"]["values"][dimension]
+            for dimension, weight in SCORE_WEIGHTS.items()
+        ),
+        6,
+    )
+    score_html = score_explainer_html(run)
+
+    assert run["raw_weighted_score"] == expected
+    assert "0.30" in score_html and "Task effectiveness" in score_html
+    assert "Robustness:" in score_html
+    assert "not separately weighted" in score_html
+    assert "construct-validity implementation gate" in score_html
+
+
+def test_lab_exposes_all_baselines_and_public_task_context_only() -> None:
+    context = task_context_html("DAB-SAF-001-i1", "perturbed")
+
+    assert len(REPLAY_AGENTS) == 8
+    assert "Controlled perturbation" in context
+    assert "expected_concepts" not in context
+    assert "oracle" not in context.lower()
+
+
+def test_lab_report_is_portable_json() -> None:
+    run = _execute_lab_run("memory_feedback", "DAB-REC-001-i1", "perturbed")
+    report_path = write_run_report(run)
+    report = json.loads(open(report_path, encoding="utf-8").read())
+
+    assert report["run_id"] == run["run_id"]
+    assert report["grade"]["values"] == run["grade"]["values"]
+
+
+def test_demo_launch_uses_blocks_level_theme_and_css(monkeypatch) -> None:
+    import gradio as gr
+
+    launch_kwargs: dict[str, object] = {}
+
+    class FakeDemo:
+        def launch(self, **kwargs: object) -> None:
+            launch_kwargs.update(kwargs)
+
+    monkeypatch.setattr("decision_agent_bench.demo.build_demo", FakeDemo)
+    launch_demo(port=7899)
+
+    assert launch_kwargs["server_port"] == 7899
+    if int(str(gr.__version__).split(".", maxsplit=1)[0]) >= 6:
+        assert "css" in launch_kwargs
+        assert "theme" in launch_kwargs
+    else:
+        assert "css" not in launch_kwargs
+        assert "theme" not in launch_kwargs

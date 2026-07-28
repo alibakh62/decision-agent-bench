@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "decision-agent-bench"
-version = "0.5.1"
+version = "0.5.2"
 description = "A benchmark for reliable evidence-grounded business decision agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -64,3 +64,5 @@ select = ["E", "F", "I", "B", "UP", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/decision_agent_bench/evals/cases.py" = ["E501"]
+"src/decision_agent_bench/demo.py" = ["E501"]
+"src/decision_agent_bench/lab.py" = ["E501", "RUF001"]
