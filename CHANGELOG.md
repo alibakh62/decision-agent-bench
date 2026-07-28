@@ -22,6 +22,8 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 - Make Lab styling compatible with both pre-6 and 6.x Gradio placement rules so the supported
   Gradio 6 launch no longer relies on obsolete `Blocks` arguments and older local installs do not
   receive unsupported `launch()` keywords.
+- Validate every client-provided Lab selection at the callback boundary and generate world/report
+  paths independently of client values, preventing path traversal through direct Gradio requests.
 
 ## [0.5.1] - 2026-07-28
 

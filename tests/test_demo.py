@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from decision_agent_bench.demo import (
     QUERY_LIBRARY,
     _execute_lab_run,
@@ -154,6 +156,36 @@ def test_lab_report_is_portable_json() -> None:
 
     assert report["run_id"] == run["run_id"]
     assert report["grade"]["values"] == run["grade"]["values"]
+
+
+@pytest.mark.parametrize(
+    ("agent_key", "instance_id", "variant", "message"),
+    [
+        ("../../agent", "DAB-SAL-001-i1", "clean", "unknown agent architecture"),
+        ("single_agent", "../../task", "clean", "unknown task instance"),
+        (
+            "single_agent",
+            "DAB-SAL-001-i1",
+            "../../outside",
+            "unknown evaluation condition",
+        ),
+    ],
+)
+def test_lab_rejects_untrusted_selection_values(
+    agent_key: str, instance_id: str, variant: str, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        _execute_lab_run(agent_key, instance_id, variant)
+
+
+def test_lab_report_path_does_not_depend_on_payload_run_id() -> None:
+    run = _execute_lab_run("single_agent", "DAB-SAL-001-i1", "clean")
+    run["run_id"] = "../../outside"
+
+    report_path = write_run_report(run)
+
+    assert "outside" not in report_path
+    assert json.loads(open(report_path, encoding="utf-8").read())["run_id"] == "../../outside"
 
 
 def test_demo_launch_uses_blocks_level_theme_and_css(monkeypatch) -> None:

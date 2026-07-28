@@ -313,22 +313,54 @@ def _world_path() -> Path:
     return _WORLD_PATH
 
 
+def _catalog_item(instance_id: str) -> dict[str, Any]:
+    """Return one allow-listed public catalog item."""
+
+    try:
+        return _CATALOG[instance_id]
+    except KeyError as error:
+        raise ValueError(f"unknown task instance: {instance_id!r}") from error
+
+
+def _safe_variant(variant: str) -> str:
+    """Convert an untrusted UI value to one of the two supported constants."""
+
+    if variant == "clean":
+        return "clean"
+    if variant == "perturbed":
+        return "perturbed"
+    raise ValueError(f"unknown evaluation condition: {variant!r}")
+
+
+def _safe_agent_key(agent_key: str) -> str:
+    """Convert an untrusted UI value to an allow-listed replay profile key."""
+
+    for _label, known_key in agent_choices():
+        if agent_key == known_key:
+            return known_key
+    raise ValueError(f"unknown agent architecture: {agent_key!r}")
+
+
 def _run_world_path(instance_id: str, variant: str) -> Path:
     """Return a cached isolated world matching the selected instance and paired variant."""
 
     global _RUN_WORLD_TEMPORARY_DIRECTORY
-    key = (instance_id, variant)
+    item = _catalog_item(instance_id)
+    selected_variant = _safe_variant(variant)
+    catalog_instance_id = str(item["instance_id"])
+    key = (catalog_instance_id, selected_variant)
     if key in _RUN_WORLD_PATHS:
         return _RUN_WORLD_PATHS[key]
     if _RUN_WORLD_TEMPORARY_DIRECTORY is None:
         _RUN_WORLD_TEMPORARY_DIRECTORY = tempfile.TemporaryDirectory(prefix="dab-lab-runs-")
-    item = _CATALOG[instance_id]
-    destination = Path(_RUN_WORLD_TEMPORARY_DIRECTORY.name) / f"{instance_id}-{variant}"
+    destination = Path(
+        tempfile.mkdtemp(prefix="world-", dir=_RUN_WORLD_TEMPORARY_DIRECTORY.name)
+    )
     database_path = generate_world(
         destination,
         GenerationConfig(seed=int(item["scenario_seed"])),
     )
-    if variant == "perturbed":
+    if selected_variant == "perturbed":
         apply_perturbation(database_path, str(item["perturbation"]))
     _RUN_WORLD_PATHS[key] = database_path
     return database_path
@@ -337,11 +369,12 @@ def _run_world_path(instance_id: str, variant: str) -> Path:
 def task_context_html(instance_id: str, variant: str) -> str:
     """Render public task context without exposing hidden grading targets or oracle fields."""
 
-    item = _CATALOG[instance_id]
-    sample_id = item[f"{variant}_sample_id"]
+    item = _catalog_item(instance_id)
+    selected_variant = _safe_variant(variant)
+    sample_id = item[f"{selected_variant}_sample_id"]
     perturbation = (
         "Clean paired sample; no controlled perturbation is applied."
-        if variant == "clean"
+        if selected_variant == "clean"
         else f"Controlled perturbation: {item['perturbation']}"
     )
     return f"""
@@ -363,12 +396,14 @@ def task_context_html(instance_id: str, variant: str) -> str:
 
 
 def _execute_lab_run(agent_key: str, instance_id: str, variant: str) -> dict[str, Any]:
-    item = _CATALOG[instance_id]
+    selected_agent = _safe_agent_key(agent_key)
+    item = _catalog_item(instance_id)
+    selected_variant = _safe_variant(variant)
     run = run_replay(
-        agent_key=agent_key,
+        agent_key=selected_agent,
         instance=item,
-        variant=variant,
-        database_path=_run_world_path(instance_id, variant),
+        variant=selected_variant,
+        database_path=_run_world_path(instance_id, selected_variant),
     )
     return run.as_payload()
 
@@ -376,8 +411,13 @@ def _execute_lab_run(agent_key: str, instance_id: str, variant: str) -> dict[str
 def task_view(instance_id: str, variant: str) -> tuple[str, dict[str, Any], str]:
     """Return prompt, metadata, and perturbation explanation for one catalog entry."""
 
-    item = _CATALOG[instance_id]
-    sample_id = item["clean_sample_id"] if variant == "clean" else item["perturbed_sample_id"]
+    item = _catalog_item(instance_id)
+    selected_variant = _safe_variant(variant)
+    sample_id = (
+        item["clean_sample_id"]
+        if selected_variant == "clean"
+        else item["perturbed_sample_id"]
+    )
     metadata = {
         "sample_id": sample_id,
         "family_id": item["family_id"],
@@ -392,7 +432,7 @@ def task_view(instance_id: str, variant: str) -> tuple[str, dict[str, Any], str]
     }
     perturbation = (
         "No perturbation. This is the clean paired sample."
-        if variant == "clean"
+        if selected_variant == "clean"
         else f"Controlled perturbation: `{item['perturbation']}`"
     )
     return str(item["prompt"]), metadata, perturbation

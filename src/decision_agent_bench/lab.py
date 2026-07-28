@@ -733,6 +733,14 @@ def write_run_report(run_payload: dict[str, Any]) -> str:
 
     report_dir = Path(tempfile.gettempdir()) / "decision-agent-bench-lab"
     report_dir.mkdir(parents=True, exist_ok=True)
-    path = report_dir / f"{str(run_payload['run_id']).lower()}-report.json"
-    path.write_text(json.dumps(run_payload, indent=2, sort_keys=True), encoding="utf-8")
-    return str(path)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        prefix="dab-run-",
+        suffix="-report.json",
+        dir=report_dir,
+        delete=False,
+    ) as report:
+        json.dump(run_payload, report, indent=2, sort_keys=True)
+        report.write("\n")
+        return report.name
