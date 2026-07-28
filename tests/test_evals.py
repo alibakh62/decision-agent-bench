@@ -35,6 +35,7 @@ from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, 
 from decision_agent_bench.simulator.oracle import EconomicOracle
 from decision_agent_bench.simulator.validation import logical_digest
 from decision_agent_bench.specs import load_task_specs
+from examples.custom_solver import custom_agent
 
 
 async def _offline_mock_token_count(_model: object, text: str) -> int:
@@ -165,6 +166,11 @@ def test_all_reference_research_and_ablation_baselines_resolve() -> None:
     }
 
     assert all(baseline_solver(name) is not None for name in names)
+
+
+def test_bring_your_own_agent_example_resolves() -> None:
+    assert custom_agent() is not None
+    assert custom_agent(workflow=True) is not None
 
 
 def test_expanded_seeds_preserve_key_answer_contracts(tmp_path: Path) -> None:
@@ -650,7 +656,11 @@ def test_inspect_end_to_end_executes_setup_tools_scorer_and_cleanup(
     monkeypatch.setattr(
         "inspect_ai._util.appdirs.user_cache_path", lambda _package: tmp_path / "inspect-cache"
     )
-    task = decision_agent_bench(category="sales_diagnosis", variant="clean")
+    task = decision_agent_bench(
+        category="sales_diagnosis",
+        variant="clean",
+        system_name="scripted-grounded-v1",
+    )
     logs = eval(
         task,
         model="mockllm/model",
@@ -666,5 +676,7 @@ def test_inspect_end_to_end_executes_setup_tools_scorer_and_cleanup(
     assert logs[0].results.completed_samples == 1
     records = records_from_eval_log(logs[0])
     assert len(records) == 1
+    assert records[0].baseline == "scripted-grounded-v1"
+    assert task.metadata["evaluated_system"] == "scripted-grounded-v1"
     sanitized = asdict(records[0])
     assert not ({"input", "target", "messages", "store", "output"} & sanitized.keys())

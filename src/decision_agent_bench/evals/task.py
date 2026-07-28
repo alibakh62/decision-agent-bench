@@ -139,7 +139,9 @@ def _benchmark_task(
     baseline: str,
     instances_per_family: int,
     version: str,
+    system_name: str | None = None,
 ) -> Task:
+    evaluated_system = system_name or baseline
     return Task(
         dataset=build_dataset(
             category=category,
@@ -158,6 +160,7 @@ def _benchmark_task(
             "benchmark": "DecisionAgentBench",
             "domain": "synthetic_convenience_retail",
             "deterministic_grading": True,
+            "evaluated_system": evaluated_system,
             "instances_per_family": instances_per_family,
         },
         tags=["agentic", "business-decision", "safety", "tool-use"],
@@ -241,6 +244,7 @@ def decision_agent_bench(
     category: str | None = None,
     variant: str = "clean",
     baseline: str = "single_agent",
+    system_name: str | None = None,
 ) -> Task:
     """Evaluate evidence-grounded business decisions in a synthetic retail environment.
 
@@ -248,6 +252,7 @@ def decision_agent_bench(
         category: Optional task category filter.
         variant: `clean`, `perturbed`, or `both`.
         baseline: `single_agent` or `planner_executor`; may be overridden by Inspect CLI solver.
+        system_name: Optional label for a solver-overridden agent in logs and analysis artifacts.
     """
 
     return _benchmark_task(
@@ -256,6 +261,7 @@ def decision_agent_bench(
         baseline=baseline,
         instances_per_family=1,
         version="0.1.0",
+        system_name=system_name,
     )
 
 
@@ -265,6 +271,7 @@ def decision_agent_bench_v0_2(
     variant: str = "both",
     baseline: str = "single_agent",
     instances_per_family: int = 4,
+    system_name: str | None = None,
 ) -> Task:
     """Expanded benchmark with 25 concepts, 100 seeded instances, and 200 paired samples."""
 
@@ -274,6 +281,7 @@ def decision_agent_bench_v0_2(
         baseline=baseline,
         instances_per_family=instances_per_family,
         version=EXPANDED_VERSION,
+        system_name=system_name,
     )
 
 
@@ -283,6 +291,7 @@ def decision_agent_bench_v0_3(
     variant: str = "both",
     baseline: str = "single_agent",
     instances_per_workflow: int = 4,
+    system_name: str | None = None,
 ) -> Task:
     """Stateful preview with 3 workflows, 12 seeded instances, and 24 paired samples."""
 
@@ -303,6 +312,7 @@ def decision_agent_bench_v0_3(
             "benchmark": "DecisionAgentBench",
             "domain": "synthetic_convenience_retail",
             "deterministic_grading": True,
+            "evaluated_system": system_name or baseline,
             "instances_per_workflow": instances_per_workflow,
             "horizon_claim": "dependency_enforced_preview",
         },
