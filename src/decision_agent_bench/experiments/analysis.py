@@ -133,7 +133,7 @@ def records_from_eval_log(
     )
     task_args = log.eval.task_args or {}
     config = (manifest or {}).get("config", {})
-    baseline = str(task_args.get("baseline", "custom"))
+    baseline = str(task_args.get("system_name") or task_args.get("baseline", "custom"))
     run_id = str((manifest or {}).get("run_id", log.eval.run_id))
     records: list[SampleRecord] = []
     for sample in log.samples or []:

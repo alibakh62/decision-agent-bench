@@ -770,6 +770,7 @@ Before implementation, write the domain's threat model and information boundary:
 | Horizon claims and future acceptance criteria | [Horizon methodology](horizon-methodology.md) |
 | Synthetic data provenance and limitations | [Data card](data-card.md) |
 | Reproducible paid runs | [Experiment guide](experiment-guide.md) |
+| Evaluating a custom agent or external system | [Evaluate your agent](evaluating-your-agent.md) |
 | Uncertainty, pairing, and publication eligibility | [Statistical analysis protocol](statistical-analysis.md) |
 | Failure-code definitions | [Failure taxonomy](failure-taxonomy.md) |
 | Research questions and design rationale | [Research design](research-design.md) |

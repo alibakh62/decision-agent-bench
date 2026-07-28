@@ -49,6 +49,10 @@ criteria.
 for an end-to-end explanation of the simulator, tasks, tools, agent architectures, scoring, result
 interpretation, realistic use cases, code structure, and extension paths.
 
+**Evaluating your own agent?** Follow [Evaluate your agent with DecisionAgentBench](docs/evaluating-your-agent.md)
+for a tested custom-solver example, external-framework adapter contract, trace review, matched
+clean/perturbed runs, and honest result boundaries.
+
 ## Why this benchmark
 
 Task-success rate can conceal costly or unsafe behavior. An agent may reach the nominal goal while destroying margin, violating an approval limit, trusting injected instructions, or citing evidence that does not support its decision. DecisionAgentBench makes those failures measurable.
@@ -95,6 +99,7 @@ decision-agent-bench/
 ├── configs/power/            # Versioned statistical study designs
 ├── data/task_specs/          # Versioned benchmark task contracts
 ├── docs/                     # Protocol, taxonomy, governance, and task catalog
+├── examples/                 # Runnable bring-your-own-agent integration
 ├── report/                   # Technical report source
 ├── results/design/           # Content-addressed planning evidence, not model results
 ├── src/decision_agent_bench/ # Python package
@@ -251,6 +256,7 @@ kappa, majority labels, and three-way confusion comparisons.
 - [Leaderboard governance](docs/leaderboard-governance.md) and [external reproduction](docs/external-reproduction.md)
 - [Inspect Evals registration preflight package](docs/inspect-evals-registration.md)
 - [Measurement-validity audit and roadmap decision](docs/measurement-validity-review.md)
+- [Bring-your-own-agent evaluation guide](docs/evaluating-your-agent.md)
 - [v0.5 power analysis](docs/power-analysis.md) and
   [metric-dependence audit](docs/metric-dependence.md)
 
