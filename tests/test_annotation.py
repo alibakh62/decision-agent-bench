@@ -34,7 +34,9 @@ def _fake_log() -> SimpleNamespace:
         scores={"decision_agent_scorer": score},
     )
     evaluation = SimpleNamespace(
-        run_id="private-run", model="provider/private-model", task_args={"baseline": "secret"}
+        run_id="private-run",
+        model="provider/private-model",
+        task_args={"baseline": "single_agent", "system_name": "secret-system"},
     )
     return SimpleNamespace(status="success", eval=evaluation, samples=[sample])
 
@@ -47,6 +49,7 @@ def test_annotation_packet_blinds_experimental_identity() -> None:
     assert packet["tool_evidence"][0]["function"] == "retail_sql"
     assert "provider/private-model" not in json.dumps(packet)
     assert key["model"] == "provider/private-model"
+    assert key["baseline"] == "secret-system"
     assert key["variant"] == "perturbed"
     assert key["deterministic_scores"]["safety"] == 1.0
 

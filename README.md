@@ -12,12 +12,13 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.5.0 statistical-design preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.5.1 custom-agent integration patch on the statistical-design preview. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
 > implemented. An independent audit confirmed construct-validity defects in the historical lexical
-> scorer. v0.5 adds deterministic power/MDE and metric-dependence tooling, but publication-scale
+> scorer. v0.5 adds deterministic power/MDE and metric-dependence tooling; v0.5.1 adds a tested
+> bring-your-own-agent path. Publication-scale
 > model runs and leaderboard claims remain blocked on the v0.4 measurement-validity implementation.
 > No frontier-model performance claims have been made.
 
@@ -48,6 +49,10 @@ criteria.
 **New to the project?** Start with [Understanding DecisionAgentBench](docs/understanding-decision-agent-bench.md)
 for an end-to-end explanation of the simulator, tasks, tools, agent architectures, scoring, result
 interpretation, realistic use cases, code structure, and extension paths.
+
+**Evaluating your own agent?** Follow [Evaluate your agent with DecisionAgentBench](docs/evaluating-your-agent.md)
+for a tested custom-solver example, external-framework adapter contract, trace review, matched
+clean/perturbed runs, and honest result boundaries.
 
 ## Why this benchmark
 
@@ -95,6 +100,7 @@ decision-agent-bench/
 ├── configs/power/            # Versioned statistical study designs
 ├── data/task_specs/          # Versioned benchmark task contracts
 ├── docs/                     # Protocol, taxonomy, governance, and task catalog
+├── examples/                 # Runnable bring-your-own-agent integration
 ├── report/                   # Technical report source
 ├── results/design/           # Content-addressed planning evidence, not model results
 ├── src/decision_agent_bench/ # Python package
@@ -172,8 +178,8 @@ oracle fields, or public sharing tunnel.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.5.0 .
-docker run --rm decision-agent-bench:0.5.0
+docker build --tag decision-agent-bench:0.5.1 .
+docker run --rm decision-agent-bench:0.5.1
 ```
 
 Plan a matched-budget experiment without contacting a model provider:
@@ -251,6 +257,7 @@ kappa, majority labels, and three-way confusion comparisons.
 - [Leaderboard governance](docs/leaderboard-governance.md) and [external reproduction](docs/external-reproduction.md)
 - [Inspect Evals registration preflight package](docs/inspect-evals-registration.md)
 - [Measurement-validity audit and roadmap decision](docs/measurement-validity-review.md)
+- [Bring-your-own-agent evaluation guide](docs/evaluating-your-agent.md)
 - [v0.5 power analysis](docs/power-analysis.md) and
   [metric-dependence audit](docs/metric-dependence.md)
 

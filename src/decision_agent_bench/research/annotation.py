@@ -78,7 +78,8 @@ def annotation_entries(log: EvalLog) -> list[tuple[dict[str, Any], dict[str, Any
 
     if log.status != "success":
         return []
-    baseline = str((log.eval.task_args or {}).get("baseline", "custom"))
+    task_args = log.eval.task_args or {}
+    baseline = str(task_args.get("system_name") or task_args.get("baseline", "custom"))
     entries = []
     for sample in log.samples or []:
         blind_id = f"DAB-A-{secrets.token_hex(8)}"

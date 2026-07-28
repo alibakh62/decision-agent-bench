@@ -4,6 +4,19 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-07-28
+
+### Added
+
+- Add a tested bring-your-own-agent solver example and an end-to-end guide covering Inspect-native
+  solvers, external-system adapters, matched runs, trace inspection, sanitization, and current
+  research claim limits.
+
+### Changed
+
+- Preserve an explicit custom `system_name` in task logs, sanitized analysis, and blinded
+  annotation keys when an external solver overrides a reference baseline.
+
 ## [0.5.0] - 2026-07-27
 
 ### Added

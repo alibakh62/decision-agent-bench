@@ -115,7 +115,7 @@ It is not a claim of parity with benchmarks that measure days or months of human
 
 Version numbers have different roles:
 
-- the package release may be `0.5.0`;
+- the package release may be `0.5.1`;
 - the v0.2 research contract is `0.2.1`;
 - the stateful workflow contract is `0.3.0`.
 
@@ -770,6 +770,7 @@ Before implementation, write the domain's threat model and information boundary:
 | Horizon claims and future acceptance criteria | [Horizon methodology](horizon-methodology.md) |
 | Synthetic data provenance and limitations | [Data card](data-card.md) |
 | Reproducible paid runs | [Experiment guide](experiment-guide.md) |
+| Evaluating a custom agent or external system | [Evaluate your agent](evaluating-your-agent.md) |
 | Uncertainty, pairing, and publication eligibility | [Statistical analysis protocol](statistical-analysis.md) |
 | Failure-code definitions | [Failure taxonomy](failure-taxonomy.md) |
 | Research questions and design rationale | [Research design](research-design.md) |
