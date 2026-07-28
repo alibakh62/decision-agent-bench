@@ -514,17 +514,17 @@ In the viewer, inspect the final answer, score explanation, failure taxonomy, me
 sample metadata, and usage. Do not publish raw logs without reviewing them. Use the experiment
 analyzer for deliberately sanitized artifacts.
 
-### Use the provider-free interactive lab
+### Use the interactive evaluation lab
 
 ```bash
 decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
-The Lab is a single setup → execute → review workbench. Select a provider-free baseline replay and
-a v0.2 task pair, run it in an isolated seeded world, inspect each trace event and evidence payload,
-then audit the historical scorer's exact weights, substitutions, gates, and evidence mapping. It
-does not call a model provider or expose arbitrary SQL, state-changing tools, or oracle fields. See
-the [Lab guide](lab.md) for the complete interaction model and claim boundary.
+The Lab runs one real Inspect sample with a chosen provider model and either a built-in architecture
+or a trusted custom solver. It shows the actual model/tool timeline, exact event payloads, final
+decision, usage, weighted score substitutions, gates, and evidence mapping. The interface starts
+empty and never presents a scripted run as an empirical result. See the [Lab guide](lab.md) for the
+complete workflow, custom-agent boundary, and claim limits.
 
 ## Run reproducible multi-model experiments
 
@@ -655,7 +655,7 @@ processes where later actions depend on earlier evidence and delayed events.
 | Experiment planning | [`experiments/schema.py`](../src/decision_agent_bench/experiments/schema.py), [`experiments/planning.py`](../src/decision_agent_bench/experiments/planning.py), [`experiments/manifest.py`](../src/decision_agent_bench/experiments/manifest.py) | Configuration validation, grid/cost calculation, and immutable run manifests. |
 | Experiment execution | [`experiments/runner.py`](../src/decision_agent_bench/experiments/runner.py) | Explicit cost gates, isolated runtime, resumable cell execution, redacted reports. |
 | Analysis | [`experiments/analysis.py`](../src/decision_agent_bench/experiments/analysis.py) | Sanitization, uncertainty, paired effects, matrices, leaderboard, and verification. |
-| Interactive lab | [`demo.py`](../src/decision_agent_bench/demo.py) | Provider-free exploration of tasks, scoring, workflows, and public reference data. |
+| Interactive lab | [`demo.py`](../src/decision_agent_bench/demo.py), [`lab_runtime.py`](../src/decision_agent_bench/lab_runtime.py) | One-sample live Inspect execution, custom-solver loading, trace inspection, and transparent score reconstruction. |
 | Tests | [`tests/`](../tests) | Contract, simulator, scorer, Inspect execution, analysis, security, and release checks. |
 
 ## How to extend the benchmark
@@ -781,6 +781,6 @@ Before implementation, write the domain's threat model and information boundary:
 | Result admission and ranking policy | [Leaderboard governance](leaderboard-governance.md) |
 | Independent reproduction | [External reproduction protocol](external-reproduction.md) |
 
-The recommended first path is: run a provider-free demo, inspect one task and its public data, run
-one clean sample, inspect its trace and evidence, run the matched perturbed sample, and only then
-plan a repeated multi-model experiment.
+The recommended first path is: use `mockllm/model` to verify the local integration, run one clean
+sample with the intended provider model, inspect its trace and evidence, run the matched perturbed
+sample, and only then plan a repeated multi-model experiment.

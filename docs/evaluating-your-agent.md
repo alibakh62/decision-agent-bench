@@ -72,6 +72,35 @@ python -m decision_agent_bench verify-reference
 Provider credentials are read by Inspect or by your adapter's normal secret-management workflow.
 Keep API keys out of source files, task arguments, logs, and commits.
 
+## Run your solver in the Lab UI
+
+The command-line workflow below remains the reproducible source of truth, but the Lab is the
+fastest way to inspect one integration interactively:
+
+```bash
+decision-agent-bench demo --host 127.0.0.1 --port 7860
+```
+
+In the Lab:
+
+1. place the trusted solver file under `agents/`, or start with
+   `examples/custom_solver.py@custom_agent`;
+2. set **Agent source** to **Custom Inspect solver**;
+3. enter the `path.py@registered_solver` reference and a stable **System name**;
+4. select or type the Inspect **Model** identifier;
+5. choose a task instance and condition, then run the evaluation; and
+6. inspect the populated trace, evidence payloads, final decision, score equation, gates, report,
+   and original Inspect log.
+
+The UI accepts custom solver files only from `agents/` and `examples/`; it does not accept arbitrary
+uploads or execute a textbox as a shell command. This is a trust boundary, not a sandbox: the solver
+is Python code running with your local permissions. Review it first.
+
+`mockllm/model` checks that the integration executes without a provider call, but its generated
+answer is not a model-quality result. Choose the real provider model you intend to evaluate for a
+meaningful development run. Provider credentials must already be available to the shell that
+started the Lab.
+
 ## 2. Run the included custom-solver example
 
 [`examples/custom_solver.py`](../examples/custom_solver.py) is a working, minimal candidate

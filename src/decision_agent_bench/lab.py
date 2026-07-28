@@ -220,14 +220,14 @@ def agent_choices() -> list[tuple[str, str]]:
 
 
 def agent_description(agent_key: str) -> str:
-    """Render the selected replay architecture and its claim boundary."""
+    """Render the selected built-in Inspect architecture and its claim boundary."""
 
     agent = REPLAY_AGENTS_BY_KEY[agent_key]
     return (
-        '<div class="agent-note"><span class="eyebrow">Selected replay architecture</span>'
+        '<div class="agent-note"><span class="eyebrow">Selected built-in architecture</span>'
         f"<strong>{html.escape(agent.label)}</strong>"
         f"<p>{html.escape(agent.description)}</p>"
-        '<span class="notice-inline">Scripted replay · no model inference</span></div>'
+        '<span class="notice-inline">Real Inspect solver · uses the selected model</span></div>'
     )
 
 
@@ -552,8 +552,166 @@ def trace_rows(run_payload: dict[str, Any]) -> list[list[str]]:
 
 
 def _json_block(value: Any) -> str:
-    encoded = html.escape(json.dumps(value, indent=2, sort_keys=True, default=str))
+    raw = json.dumps(value, indent=2, sort_keys=True, default=str)
+    if len(raw) > 12_000:
+        raw = raw[:12_000] + "\n… payload truncated in the Lab; download the Inspect log for all data."
+    encoded = html.escape(raw)
     return f'<pre class="code-block">{encoded}</pre>'
+
+
+def _event_payload_stats(result: Any) -> tuple[str, str, str]:
+    """Return compact row, column, and serialized-size labels for an event payload."""
+
+    payload = result
+    if isinstance(result, dict) and "result" in result:
+        payload = result["result"]
+    rows = len(payload) if isinstance(payload, list) else (1 if payload not in (None, "") else 0)
+    columns = 0
+    if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+        columns = len(payload[0])
+    elif isinstance(payload, dict):
+        columns = len(payload)
+    size = len(json.dumps(result, default=str).encode("utf-8"))
+    size_label = f"{size / 1024:.1f} KB" if size >= 1024 else f"{size} B"
+    return str(rows), str(columns), size_label
+
+
+def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
+    """Render a screenshot-faithful selectable trace with a payload and score inspector."""
+
+    if not run_payload or not run_payload.get("trace"):
+        return """
+        <section class="trace-empty" aria-live="polite">
+          <div><span class="eyebrow">Agent run trace</span>
+          <h3>No evaluation has run yet</h3>
+          <p>Choose a model, agent, task, and condition, then run one real Inspect sample.
+          Model responses, tool calls, results, errors, evidence IDs, and the final score will
+          appear here as they are finalized.</p></div>
+        </section>
+        """
+    trace = run_payload["trace"]
+    prefix = "trace-" + hashlib.sha256(
+        str(run_payload.get("run_id", "pending")).encode()
+    ).hexdigest()[:10]
+    selector_inputs: list[str] = []
+    rows: list[str] = []
+    inspectors: list[str] = []
+    selection_rules: list[str] = []
+    for index, event in enumerate(trace):
+        selector_id = f"{prefix}-event-{index}"
+        selector_inputs.append(
+            f'<input class="trace-selector" type="radio" name="{prefix}-selection" '
+            f'id="{selector_id}" {"checked" if index == 0 else ""}>'
+        )
+        outcome = str(event.get("outcome", "Success"))
+        outcome_class = outcome.lower().replace(" ", "-")
+        evidence = html.escape(str(event.get("evidence_id") or "—"))
+        rows.append(
+            f"""
+            <label class="trace-event-row {outcome_class}" data-event="{index}"
+              for="{selector_id}">
+              <span class="timeline-cell"><i></i><time>{html.escape(str(event.get('timestamp', '')))}</time></span>
+              <span class="actor-cell">{html.escape(str(event.get('actor', '')))}</span>
+              <span class="event-cell"><strong>{html.escape(str(event.get('event', '')))}</strong>
+                <small>{html.escape(str(event.get('summary', '')))}</small></span>
+              <span class="evidence-cell">{evidence}</span>
+              <span class="outcome-cell"><b>{html.escape(outcome)}</b></span>
+            </label>
+            """
+        )
+        supports = event.get("supports", [])
+        support_badges = "".join(
+            f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
+            for key in supports
+        ) or '<span class="muted">No score dimension directly consumes this event.</span>'
+        rows_count, columns_count, size_label = _event_payload_stats(event.get("result"))
+        evidence_label = html.escape(str(event.get("evidence_id") or "No evidence ID"))
+        latency = event.get("latency_ms")
+        latency_label = f"{int(latency)} ms" if latency is not None else "—"
+        details_tab = f"{prefix}-{index}-details"
+        payload_tab = f"{prefix}-{index}-payload"
+        impact_tab = f"{prefix}-{index}-impact"
+        inspectors.append(
+            f"""
+            <article class="trace-inspector-card" data-event="{index}">
+              <header><div><span class="eyebrow">Inspector</span>
+                <h3>{html.escape(str(event.get('event', 'Event')))}</h3></div>
+                <span class="status-badge {outcome_class}">{html.escape(outcome)}</span></header>
+              <input class="inspector-tab-radio details" type="radio"
+                name="{prefix}-{index}-tabs" id="{details_tab}" checked>
+              <input class="inspector-tab-radio payload" type="radio"
+                name="{prefix}-{index}-tabs" id="{payload_tab}">
+              <input class="inspector-tab-radio impact" type="radio"
+                name="{prefix}-{index}-tabs" id="{impact_tab}">
+              <nav class="inspector-tabs" aria-label="Inspector views">
+                <label class="details" for="{details_tab}">Event details</label>
+                <label class="payload" for="{payload_tab}">Evidence payload</label>
+                <label class="impact" for="{impact_tab}">Score impact</label>
+              </nav>
+              <div class="inspector-tab-panels">
+                <section class="inspector-tab-panel details">
+                  <h4>{'Tool call' if event.get('actor') == 'Tool' else 'Recorded event'}</h4>
+                  <dl class="trace-metadata">
+                    <div><dt>Actor</dt><dd>{html.escape(str(event.get('actor', '')))}</dd></div>
+                    <div><dt>Time</dt><dd>{html.escape(str(event.get('timestamp', '')))}</dd></div>
+                    <div><dt>Latency</dt><dd>{latency_label}</dd></div>
+                    <div><dt>Evidence ID</dt><dd>{evidence_label}</dd></div>
+                    <div><dt>Outcome</dt><dd>{html.escape(outcome)}</dd></div>
+                  </dl>
+                  <p class="event-summary">{html.escape(str(event.get('summary', '')))}</p>
+                  <h4>Arguments</h4>{_json_block(event.get('arguments', {}))}
+                  <h4>Returned evidence summary</h4>
+                  <dl class="payload-summary"><div><dt>Rows</dt><dd>{rows_count}</dd></div>
+                    <div><dt>Columns</dt><dd>{columns_count}</dd></div>
+                    <div><dt>Size</dt><dd>{size_label}</dd></div></dl>
+                </section>
+                <section class="inspector-tab-panel payload">
+                  <h4>Exact recorded payload</h4>{_json_block(event.get('result'))}
+                </section>
+                <section class="inspector-tab-panel impact">
+                  <h4>How this event enters scoring</h4>
+                  <div class="chip-row">{support_badges}</div>
+                  <p class="score-causality-note">DecisionAgentBench scores the completed trace
+                  and final submission. These links identify auditable inputs; they are not
+                  invented per-event point deltas.</p>
+                </section>
+              </div>
+            </article>
+            """
+        )
+        selection_rules.append(
+            f"#{selector_id}:checked ~ .trace-layout .trace-event-row[data-event='{index}']"
+            "{background:#183071;border-color:#456cff;}"
+            f"#{selector_id}:checked ~ .trace-layout .trace-inspector-card[data-event='{index}']"
+            "{display:flex;}"
+        )
+    raw_status = str(run_payload.get("status", "running"))
+    status = {
+        "success": "Run completed",
+        "error": "Run failed",
+        "running": "Building trace",
+    }.get(raw_status, raw_status.capitalize())
+    return f"""
+    <section class="live-trace" aria-label="Inspect evaluation trace">
+      {''.join(selector_inputs)}<style>{''.join(selection_rules)}</style>
+      <div class="trace-run-header"><div><span class="trace-status-dot"></span>
+        <strong>{status}</strong><small>{len(trace)} recorded events</small></div>
+        <dl><div><dt>Agent</dt><dd>{html.escape(str(run_payload['agent']['label']))}</dd></div>
+        <div><dt>Model</dt><dd>{html.escape(str(run_payload.get('model', '—')))}</dd></div>
+        <div><dt>Sample</dt><dd>{html.escape(str(run_payload.get('sample_id', '—')))}</dd></div>
+        <div><dt>Version</dt><dd>v{html.escape(str(run_payload.get('task_version', '—')))}</dd></div>
+        <div><dt>Seed</dt><dd>{html.escape(str(run_payload.get('scenario_seed', '—')))}</dd></div>
+        <div><dt>Duration</dt><dd>{float(run_payload.get('duration_seconds', 0)):.2f}s</dd></div>
+        <div><dt>Run ID</dt><dd>{html.escape(str(run_payload.get('run_id', '—')))}</dd></div></dl>
+      </div>
+      <div class="trace-layout">
+        <div class="trace-event-list"><div class="trace-table-header">
+          <span>Time</span><span>Actor</span><span>Event</span><span>Evidence</span><span>Outcome</span>
+        </div>{''.join(rows)}</div>
+        <aside class="trace-inspectors">{''.join(inspectors)}</aside>
+      </div>
+    </section>
+    """
 
 
 def trace_inspector_html(run_payload: dict[str, Any], row_index: int = 0) -> str:
@@ -608,6 +766,17 @@ def _gate_card(label: str, passed: bool, detail: str) -> str:
 def score_explainer_html(run_payload: dict[str, Any]) -> str:
     """Render exact weights, substitutions, gates, and evidence-to-score lineage."""
 
+    if not run_payload.get("grade", {}).get("available", True):
+        error = run_payload.get("error") or "The Inspect run ended before the scorer returned."
+        return f"""
+        <section class="score-workbench score-unavailable">
+          <span class="eyebrow">Evaluation result</span>
+          <h2>No score was produced</h2>
+          <p>The trace remains available for diagnosis, but DecisionAgentBench does not fabricate
+          dimension values when Inspect or the selected provider fails.</p>
+          {_json_block(error)}
+        </section>
+        """
     values = run_payload["grade"]["values"]
     failures = run_payload["grade"]["failures"]
     composite = float(values["composite"])
@@ -639,16 +808,32 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
     eligible = format_pass and evidence_pass and safety_pass
     gates = "".join(
         (
-            _gate_card("Format gate", format_pass, "Strict JSON fields and value types are valid."),
+            _gate_card(
+                "Format gate",
+                format_pass,
+                (
+                    "Strict JSON fields and value types are valid."
+                    if format_pass
+                    else "The final answer is missing or violates required JSON fields or types."
+                ),
+            ),
             _gate_card(
                 "Evidence gate",
                 evidence_pass,
-                "Minimum valid citations and all required tool lineages are present.",
+                (
+                    "Minimum valid citations and all required tool lineages are present."
+                    if evidence_pass
+                    else "Minimum valid citations or required tool lineages were not satisfied."
+                ),
             ),
             _gate_card(
                 "Safety hard gate",
                 safety_pass,
-                "No policy violation or task-specific unsafe decision was detected.",
+                (
+                    "No policy violation or task-specific unsafe decision was detected."
+                    if safety_pass
+                    else "A policy violation or task-specific unsafe decision was detected."
+                ),
             ),
         )
     )
@@ -682,13 +867,14 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
     )
     return f"""
     <section class="score-workbench">
-      <div class="score-title-row"><div><span class="eyebrow">Review · deterministic grader</span>
+      <div class="score-title-row"><div><span class="eyebrow">Live Inspect result · deterministic grader</span>
         <h2>How DecisionAgentBench calculated this score</h2>
         <p>Every weight, substitution, gate, and evidence link is shown below.</p></div>
         <div class="overall-score"><span>Composite score</span><strong>{composite:.4f}</strong></div></div>
       <div class="validity-warning"><strong>Historical scorer</strong><span>This is the real v0.2.1
       lexical/evidence-gated contract. The repository's construct-validity implementation gate is
-      still open, so this replay is explanatory—not a new model-quality result.</span></div>
+      still open. This is a real run result, but it is not publication-valid evidence of general
+      model quality.</span></div>
       <details class="score-section" open><summary>1 · Weighted composite equation</summary>
         <div class="equation"><code>raw = {formula}</code><code>= {substitutions}</code>
         <code>= {contribution_sum} = {raw_weighted:.4f}</code>
@@ -716,15 +902,50 @@ def run_status_html(run_payload: dict[str, Any]) -> str:
     """Render run identity and completion metadata."""
 
     agent = run_payload["agent"]
+    duration = float(run_payload.get("duration_seconds", 0))
+    model = html.escape(str(run_payload.get("model", "unknown/model")))
+    status = "Run completed" if run_payload.get("status") == "success" else "Run ended with error"
+    status_class = "complete" if run_payload.get("status") == "success" else "error"
     return f"""
-    <div class="run-status">
-      <div><span class="status-dot"></span><strong>Run completed</strong>
-      <small>Provider-free deterministic replay</small></div>
+    <div class="run-phase {status_class}" aria-live="polite">
+      <div><span class="phase-indicator"></span><strong>{status}</strong>
+      <small>Real Inspect evaluation · {duration:.2f}s</small></div>
       <dl><div><dt>Agent</dt><dd>{html.escape(agent['label'])}</dd></div>
+      <div><dt>Model</dt><dd>{model}</dd></div>
       <div><dt>Sample</dt><dd>{html.escape(run_payload['sample_id'])}</dd></div>
-      <div><dt>Seed</dt><dd>{run_payload['scenario_seed']}</dd></div>
       <div><dt>Run ID</dt><dd>{html.escape(run_payload['run_id'])}</dd></div></dl>
     </div>
+    """
+
+
+def idle_status_html() -> str:
+    """Render the meaningful initial state before any model or tool execution."""
+
+    return """
+    <div class="run-phase idle" aria-live="polite"><div><span class="phase-indicator"></span>
+      <strong>Ready to run</strong><small>No result is preloaded. Configure one real evaluation.</small>
+      </div><p>Inspect will create an isolated sample, call the selected model and agent, record
+      tool evidence, and run the DecisionAgentBench scorer.</p></div>
+    """
+
+
+def running_status_html(phase: str, detail: str) -> str:
+    """Render a truthful in-progress phase for a yielding Gradio callback."""
+
+    return f"""
+    <div class="run-phase running" aria-live="polite"><div><span class="phase-indicator"></span>
+      <strong>{html.escape(phase)}</strong><small>{html.escape(detail)}</small></div>
+      <p>Keep this page open. Provider-backed runs may take several minutes.</p></div>
+    """
+
+
+def error_status_html(error: Exception | str) -> str:
+    """Render a concise runtime error without presenting a fabricated benchmark score."""
+
+    return f"""
+    <div class="run-phase error" aria-live="assertive"><div><span class="phase-indicator"></span>
+      <strong>Evaluation failed</strong><small>No score was fabricated.</small></div>
+      <p>{html.escape(str(error))}</p></div>
     """
 
 

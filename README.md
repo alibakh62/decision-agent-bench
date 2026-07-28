@@ -164,20 +164,19 @@ inspect eval src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_3 \
 Review the [v0.3 workflow specification](docs/v0.3-stateful-workflows.md) and
 [claim boundary](docs/horizon-methodology.md) before reporting results.
 
-Launch the local, provider-free research lab:
+Launch the local evaluation lab:
 
 ```bash
 decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
-The Lab now provides one setup → execute → review flow. Choose one of the eight provider-free replay
-architectures and any registered v0.2 task pair, run it in an isolated seeded world, select trace
-events to inspect their exact arguments and evidence, and audit the real historical score through
-its weighted equation, dimension contributions, hard gates, and evidence mapping. Downloadable run
-reports preserve the complete replay and claim boundary. The Lab has no provider calls, arbitrary
-SQL, state-changing actions, exposed oracle fields, or public sharing tunnel. See the
-[Lab guide](docs/lab.md) for the workflow and [agent evaluation guide](docs/evaluating-your-agent.md)
-for real Inspect or external-system runs.
+Choose a model, a built-in architecture or trusted custom Inspect solver, any registered v0.2 task
+instance, and its clean or perturbed condition. The Lab runs one real Inspect evaluation, visibly
+populates the recorded model/tool trace, and reconstructs the historical score through its exact
+weights, dimension contributions, eligibility gates, and evidence mapping. Downloadable Lab and
+Inspect logs preserve the run. Provider credentials are inherited from the launching shell; the
+server stays loopback-only and sharing is disabled. See the [Lab guide](docs/lab.md) and
+[agent evaluation guide](docs/evaluating-your-agent.md).
 
 For a dependency-locked reproduction check:
 
