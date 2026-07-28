@@ -33,7 +33,7 @@ Repository = "https://github.com/alibakh62/decision-agent-bench"
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3,<10",
-  "ruff==0.15.22",
+  "ruff==0.16.0",
 ]
 demo = [
   "gradio>=6,<7",
