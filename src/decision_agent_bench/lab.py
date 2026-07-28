@@ -213,10 +213,7 @@ _SAFE_SQL = {
 def agent_choices() -> list[tuple[str, str]]:
     """Return Gradio-compatible agent labels and stable values."""
 
-    return [
-        (f"{agent.label} — {agent.architecture}", agent.key)
-        for agent in REPLAY_AGENTS
-    ]
+    return [(f"{agent.label} — {agent.architecture}", agent.key) for agent in REPLAY_AGENTS]
 
 
 def agent_description(agent_key: str) -> str:
@@ -269,9 +266,7 @@ def _tool_replay(
         return {"store_id": "S001", "product_id": "P001", "horizon_days": 7}, forecast
     if tool_name == "recommend_inventory":
         with RetailEnvironment(database_path) as environment:
-            recommendation = asdict(
-                environment.recommend_inventory("S001", "P001", cover_days=7)
-            )
+            recommendation = asdict(environment.recommend_inventory("S001", "P001", cover_days=7))
         return {"store_id": "S001", "product_id": "P001", "cover_days": 7}, recommendation
     if tool_name == "request_approval":
         return (
@@ -306,7 +301,9 @@ def _candidate(
         escalation = False
         conclusion = conclusion.replace("verify", "review")
     if agent.behavior == "corrupted" and variant == "perturbed":
-        conclusion = "Retained context appears actionable; proceed without additional provenance review."
+        conclusion = (
+            "Retained context appears actionable; proceed without additional provenance review."
+        )
         data_quality_issues = []
     numeric_values: dict[str, float] = {}
     if case.numeric_decision_key:
@@ -518,9 +515,7 @@ def run_replay(
         and precision == 1.0
         and set(case.required_tools).issubset(successful_tools)
     )
-    raw_weighted = round(
-        sum(SCORE_WEIGHTS[key] * grade.values[key] for key in SCORE_WEIGHTS), 6
-    )
+    raw_weighted = round(sum(SCORE_WEIGHTS[key] * grade.values[key] for key in SCORE_WEIGHTS), 6)
     run_identity = f"{agent_key}:{sample_id}:{instance['scenario_seed']}"
     run_id = "RUN-" + hashlib.sha256(run_identity.encode()).hexdigest()[:8].upper()
     return LabRun(
@@ -554,9 +549,80 @@ def trace_rows(run_payload: dict[str, Any]) -> list[list[str]]:
 def _json_block(value: Any) -> str:
     raw = json.dumps(value, indent=2, sort_keys=True, default=str)
     if len(raw) > 12_000:
-        raw = raw[:12_000] + "\n… payload truncated in the Lab; download the Inspect log for all data."
+        raw = (
+            raw[:12_000]
+            + "\n… payload truncated in the Lab; download the Inspect log for all data."
+        )
     encoded = html.escape(raw)
     return f'<pre class="code-block">{encoded}</pre>'
+
+
+def runtime_error_summary(error: Any) -> dict[str, str]:
+    """Turn provider/runtime failures into concise, actionable, non-sensitive UI copy."""
+
+    raw = json.dumps(error, default=str) if isinstance(error, dict | list) else str(error)
+    normalized = " ".join(raw.replace("\\n", " ").replace('\\"', '"').split())
+    lowered = normalized.lower()
+    if "unsupported parameter" in lowered and "temperature" in lowered:
+        return {
+            "title": "This model rejected a sampling setting",
+            "detail": (
+                "The provider does not accept temperature for this reasoning model. "
+                "DecisionAgentBench built-in agents now use provider-safe defaults."
+            ),
+            "action": "Run again. If this is a custom solver, remove its temperature setting.",
+            "code": "MODEL_PARAMETER_UNSUPPORTED",
+        }
+    if "openai_api_key" in lowered or ("api key" in lowered and "missing" in lowered):
+        return {
+            "title": "OpenAI credentials are not available to the Lab",
+            "detail": "The server process that launched the Lab cannot see OPENAI_API_KEY.",
+            "action": "Export the key in the same terminal, restart the Lab, and run again.",
+            "code": "CREDENTIALS_MISSING",
+        }
+    if any(token in lowered for token in ("invalid_api_key", "incorrect api key", "401")):
+        return {
+            "title": "OpenAI rejected the configured credentials",
+            "detail": "The request reached OpenAI but the API key was not accepted.",
+            "action": "Verify the key and project scope, restart the Lab, and run again.",
+            "code": "AUTHENTICATION_FAILED",
+        }
+    if "insufficient_quota" in lowered or ("quota" in lowered and "429" in lowered):
+        return {
+            "title": "The OpenAI project has no available API quota",
+            "detail": "The request was authenticated, but the project cannot spend more API usage.",
+            "action": "Check API billing or project limits, then retry the evaluation.",
+            "code": "QUOTA_EXHAUSTED",
+        }
+    if "rate_limit" in lowered or "rate limit" in lowered:
+        return {
+            "title": "The provider rate-limited this run",
+            "detail": "The request reached the provider but exceeded a current request or token limit.",
+            "action": "Wait briefly and run again, or use a lower-concurrency model/project.",
+            "code": "RATE_LIMITED",
+        }
+    if any(token in lowered for token in ("model_not_found", "does not exist", "model access")):
+        return {
+            "title": "The selected model is unavailable",
+            "detail": "The model name is invalid for this provider or the API project lacks access.",
+            "action": "Choose a model available to the configured API project and run again.",
+            "code": "MODEL_UNAVAILABLE",
+        }
+    if any(token in lowered for token in ("timeout", "timed out", "connection reset")):
+        return {
+            "title": "The provider request did not complete",
+            "detail": "The model call timed out or its network connection was interrupted.",
+            "action": "Retry the run. The Inspect log retains the diagnostic details.",
+            "code": "PROVIDER_TIMEOUT",
+        }
+    return {
+        "title": "The evaluation stopped before scoring",
+        "detail": (
+            "Inspect returned an unclassified runtime error before the scorer produced a result."
+        ),
+        "action": "Review the downloadable Inspect log, correct the runtime issue, and run again.",
+        "code": "EVALUATION_FAILED",
+    }
 
 
 def _event_payload_stats(result: Any) -> tuple[str, str, str]:
@@ -590,18 +656,31 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
         </section>
         """
     trace = run_payload["trace"]
-    prefix = "trace-" + hashlib.sha256(
-        str(run_payload.get("run_id", "pending")).encode()
-    ).hexdigest()[:10]
+    prefix = (
+        "trace-"
+        + hashlib.sha256(str(run_payload.get("run_id", "pending")).encode()).hexdigest()[:10]
+    )
     selector_inputs: list[str] = []
     rows: list[str] = []
     inspectors: list[str] = []
     selection_rules: list[str] = []
+    selected_index = next(
+        (
+            index
+            for index, event in enumerate(trace)
+            if event.get("actor") == "Tool"
+            and not str(event.get("event", "")).endswith((".results", ".error"))
+        ),
+        next(
+            (index for index, event in enumerate(trace) if event.get("actor") == "Model"),
+            0,
+        ),
+    )
     for index, event in enumerate(trace):
         selector_id = f"{prefix}-event-{index}"
         selector_inputs.append(
             f'<input class="trace-selector" type="radio" name="{prefix}-selection" '
-            f'id="{selector_id}" {"checked" if index == 0 else ""}>'
+            f'id="{selector_id}" {"checked" if index == selected_index else ""}>'
         )
         outcome = str(event.get("outcome", "Success"))
         outcome_class = outcome.lower().replace(" ", "-")
@@ -610,20 +689,23 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
             f"""
             <label class="trace-event-row {outcome_class}" data-event="{index}"
               for="{selector_id}">
-              <span class="timeline-cell"><i></i><time>{html.escape(str(event.get('timestamp', '')))}</time></span>
-              <span class="actor-cell">{html.escape(str(event.get('actor', '')))}</span>
-              <span class="event-cell"><strong>{html.escape(str(event.get('event', '')))}</strong>
-                <small>{html.escape(str(event.get('summary', '')))}</small></span>
+              <span class="timeline-cell"><i></i><time>{html.escape(str(event.get("timestamp", "")))}</time></span>
+              <span class="actor-cell">{html.escape(str(event.get("actor", "")))}</span>
+              <span class="event-cell"><strong>{html.escape(str(event.get("event", "")))}</strong>
+                <small>{html.escape(str(event.get("summary", "")))}</small></span>
               <span class="evidence-cell">{evidence}</span>
               <span class="outcome-cell"><b>{html.escape(outcome)}</b></span>
             </label>
             """
         )
         supports = event.get("supports", [])
-        support_badges = "".join(
-            f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
-            for key in supports
-        ) or '<span class="muted">No score dimension directly consumes this event.</span>'
+        support_badges = (
+            "".join(
+                f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
+                for key in supports
+            )
+            or '<span class="muted">No score dimension directly consumes this event.</span>'
+        )
         rows_count, columns_count, size_label = _event_payload_stats(event.get("result"))
         evidence_label = html.escape(str(event.get("evidence_id") or "No evidence ID"))
         latency = event.get("latency_ms")
@@ -635,7 +717,7 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
             f"""
             <article class="trace-inspector-card" data-event="{index}">
               <header><div><span class="eyebrow">Inspector</span>
-                <h3>{html.escape(str(event.get('event', 'Event')))}</h3></div>
+                <h3>{html.escape(str(event.get("event", "Event")))}</h3></div>
                 <span class="status-badge {outcome_class}">{html.escape(outcome)}</span></header>
               <input class="inspector-tab-radio details" type="radio"
                 name="{prefix}-{index}-tabs" id="{details_tab}" checked>
@@ -650,23 +732,23 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
               </nav>
               <div class="inspector-tab-panels">
                 <section class="inspector-tab-panel details">
-                  <h4>{'Tool call' if event.get('actor') == 'Tool' else 'Recorded event'}</h4>
+                  <h4>{"Tool call" if event.get("actor") == "Tool" else "Recorded event"}</h4>
                   <dl class="trace-metadata">
-                    <div><dt>Actor</dt><dd>{html.escape(str(event.get('actor', '')))}</dd></div>
-                    <div><dt>Time</dt><dd>{html.escape(str(event.get('timestamp', '')))}</dd></div>
+                    <div><dt>Actor</dt><dd>{html.escape(str(event.get("actor", "")))}</dd></div>
+                    <div><dt>Time</dt><dd>{html.escape(str(event.get("timestamp", "")))}</dd></div>
                     <div><dt>Latency</dt><dd>{latency_label}</dd></div>
                     <div><dt>Evidence ID</dt><dd>{evidence_label}</dd></div>
                     <div><dt>Outcome</dt><dd>{html.escape(outcome)}</dd></div>
                   </dl>
-                  <p class="event-summary">{html.escape(str(event.get('summary', '')))}</p>
-                  <h4>Arguments</h4>{_json_block(event.get('arguments', {}))}
+                  <p class="event-summary">{html.escape(str(event.get("summary", "")))}</p>
+                  <h4>Arguments</h4>{_json_block(event.get("arguments", {}))}
                   <h4>Returned evidence summary</h4>
                   <dl class="payload-summary"><div><dt>Rows</dt><dd>{rows_count}</dd></div>
                     <div><dt>Columns</dt><dd>{columns_count}</dd></div>
                     <div><dt>Size</dt><dd>{size_label}</dd></div></dl>
                 </section>
                 <section class="inspector-tab-panel payload">
-                  <h4>Exact recorded payload</h4>{_json_block(event.get('result'))}
+                  <h4>Exact recorded payload</h4>{_json_block(event.get("result"))}
                 </section>
                 <section class="inspector-tab-panel impact">
                   <h4>How this event enters scoring</h4>
@@ -691,24 +773,31 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
         "error": "Run failed",
         "running": "Building trace",
     }.get(raw_status, raw_status.capitalize())
+    trace_state = (
+        "status-error"
+        if raw_status == "error"
+        else "status-running"
+        if raw_status == "running"
+        else "status-success"
+    )
     return f"""
-    <section class="live-trace" aria-label="Inspect evaluation trace">
-      {''.join(selector_inputs)}<style>{''.join(selection_rules)}</style>
+    <section class="live-trace {trace_state}" aria-label="Inspect evaluation trace">
+      {"".join(selector_inputs)}<style>{"".join(selection_rules)}</style>
       <div class="trace-run-header"><div><span class="trace-status-dot"></span>
         <strong>{status}</strong><small>{len(trace)} recorded events</small></div>
-        <dl><div><dt>Agent</dt><dd>{html.escape(str(run_payload['agent']['label']))}</dd></div>
-        <div><dt>Model</dt><dd>{html.escape(str(run_payload.get('model', '—')))}</dd></div>
-        <div><dt>Sample</dt><dd>{html.escape(str(run_payload.get('sample_id', '—')))}</dd></div>
-        <div><dt>Version</dt><dd>v{html.escape(str(run_payload.get('task_version', '—')))}</dd></div>
-        <div><dt>Seed</dt><dd>{html.escape(str(run_payload.get('scenario_seed', '—')))}</dd></div>
-        <div><dt>Duration</dt><dd>{float(run_payload.get('duration_seconds', 0)):.2f}s</dd></div>
-        <div><dt>Run ID</dt><dd>{html.escape(str(run_payload.get('run_id', '—')))}</dd></div></dl>
+        <dl><div><dt>Agent</dt><dd>{html.escape(str(run_payload["agent"]["label"]))}</dd></div>
+        <div><dt>Model</dt><dd>{html.escape(str(run_payload.get("model", "—")))}</dd></div>
+        <div><dt>Sample</dt><dd>{html.escape(str(run_payload.get("sample_id", "—")))}</dd></div>
+        <div><dt>Version</dt><dd>v{html.escape(str(run_payload.get("task_version", "—")))}</dd></div>
+        <div><dt>Seed</dt><dd>{html.escape(str(run_payload.get("scenario_seed", "—")))}</dd></div>
+        <div><dt>Duration</dt><dd>{float(run_payload.get("duration_seconds", 0)):.2f}s</dd></div>
+        <div><dt>Run ID</dt><dd>{html.escape(str(run_payload.get("run_id", "—")))}</dd></div></dl>
       </div>
       <div class="trace-layout">
         <div class="trace-event-list"><div class="trace-table-header">
           <span>Time</span><span>Actor</span><span>Event</span><span>Evidence</span><span>Outcome</span>
-        </div>{''.join(rows)}</div>
-        <aside class="trace-inspectors">{''.join(inspectors)}</aside>
+        </div>{"".join(rows)}</div>
+        <aside class="trace-inspectors">{"".join(inspectors)}</aside>
       </div>
     </section>
     """
@@ -724,26 +813,29 @@ def trace_inspector_html(run_payload: dict[str, Any], row_index: int = 0) -> str
     event = trace[row_index]
     evidence = html.escape(str(event.get("evidence_id") or "No evidence ID"))
     supports = event.get("supports", [])
-    support_badges = "".join(
-        f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
-        for key in supports
-    ) or '<span class="muted">No direct grader input is attached to this event.</span>'
+    support_badges = (
+        "".join(
+            f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
+            for key in supports
+        )
+        or '<span class="muted">No direct grader input is attached to this event.</span>'
+    )
     return f"""
     <section class="inspector-panel">
       <div class="panel-heading">
-        <div><span class="eyebrow">Trace inspector · step {event['step']}</span>
-        <h3>{html.escape(str(event['event']))}</h3></div>
-        <span class="status-badge">{html.escape(str(event['outcome']))}</span>
+        <div><span class="eyebrow">Trace inspector · step {event["step"]}</span>
+        <h3>{html.escape(str(event["event"]))}</h3></div>
+        <span class="status-badge">{html.escape(str(event["outcome"]))}</span>
       </div>
       <div class="inspector-meta">
-        <div><span>Actor</span><strong>{html.escape(str(event['actor']))}</strong></div>
-        <div><span>Time</span><strong>{html.escape(str(event['timestamp']))}</strong></div>
+        <div><span>Actor</span><strong>{html.escape(str(event["actor"]))}</strong></div>
+        <div><span>Time</span><strong>{html.escape(str(event["timestamp"]))}</strong></div>
         <div><span>Evidence</span><strong>{evidence}</strong></div>
       </div>
-      <p class="event-summary">{html.escape(str(event['summary']))}</p>
-      <details open><summary>Exact arguments</summary>{_json_block(event.get('arguments', {}))}</details>
+      <p class="event-summary">{html.escape(str(event["summary"]))}</p>
+      <details open><summary>Exact arguments</summary>{_json_block(event.get("arguments", {}))}</details>
       <details><summary>Returned evidence or event payload</summary>
-        {_json_block(event.get('result'))}
+        {_json_block(event.get("result"))}
       </details>
       <div class="score-lineage"><span class="eyebrow">How this event enters scoring</span>
         <div class="chip-row">{support_badges}</div>
@@ -759,7 +851,7 @@ def _gate_card(label: str, passed: bool, detail: str) -> str:
     state = "pass" if passed else "fail"
     return (
         f'<div class="gate-card {state}"><div><span>{html.escape(label)}</span>'
-        f'<strong>{status}</strong></div><p>{html.escape(detail)}</p></div>'
+        f"<strong>{status}</strong></div><p>{html.escape(detail)}</p></div>"
     )
 
 
@@ -768,13 +860,17 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
 
     if not run_payload.get("grade", {}).get("available", True):
         error = run_payload.get("error") or "The Inspect run ended before the scorer returned."
+        summary = runtime_error_summary(error)
         return f"""
         <section class="score-workbench score-unavailable">
-          <span class="eyebrow">Evaluation result</span>
-          <h2>No score was produced</h2>
-          <p>The trace remains available for diagnosis, but DecisionAgentBench does not fabricate
-          dimension values when Inspect or the selected provider fails.</p>
-          {_json_block(error)}
+          <div class="error-result-heading"><div><span class="eyebrow">Evaluation result</span>
+          <h2>{html.escape(summary["title"])}</h2></div>
+          <span class="error-code">{html.escape(summary["code"])}</span></div>
+          <p>{html.escape(summary["detail"])}</p>
+          <div class="error-next-step"><strong>Next step</strong>
+          <span>{html.escape(summary["action"])}</span></div>
+          <p class="muted">No score was fabricated. The trace and original Inspect log remain
+          available for diagnosis.</p>
         </section>
         """
     values = run_payload["grade"]["values"]
@@ -843,7 +939,7 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
         <td>{weight:.2f} × {float(values[key]):.3f}</td>
         <td><div class="ledger-delta"><span class="{key}" style="width:{max(8.0, contributions[key] / 0.3 * 100):.1f}%"></span>
         <b>+{contributions[key]:.4f}</b></div></td>
-        <td>{sum(list(contributions.values())[:index + 1]):.4f}</td></tr>
+        <td>{sum(list(contributions.values())[: index + 1]):.4f}</td></tr>
         """
         for index, (key, weight) in enumerate(SCORE_WEIGHTS.items())
     )
@@ -855,10 +951,13 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
             continue
         for one_id in str(evidence_id).split(","):
             evidence_mapping.setdefault(one_id, set()).update(event.get("supports", []))
-    mapping_rows = "".join(
-        f'<li><strong>{html.escape(evidence_id)}</strong><span>{html.escape(", ".join(SCORE_LABELS.get(key, key) for key in sorted(keys)))}</span></li>'
-        for evidence_id, keys in evidence_mapping.items()
-    ) or '<li><span>No cited evidence entered this run.</span></li>'
+    mapping_rows = (
+        "".join(
+            f"<li><strong>{html.escape(evidence_id)}</strong><span>{html.escape(', '.join(SCORE_LABELS.get(key, key) for key in sorted(keys)))}</span></li>"
+            for evidence_id, keys in evidence_mapping.items()
+        )
+        or "<li><span>No cited evidence entered this run.</span></li>"
+    )
     failure_text = ", ".join(failures) if failures else "None"
     final_explanation = (
         f"All gates passed, so the final composite equals the weighted subtotal: {composite:.4f}."
@@ -881,7 +980,7 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
         <strong>{html.escape(final_explanation)}</strong></div></details>
       <details class="score-section" open><summary>2 · Dimension scorecards</summary>
         <div class="dimension-grid">{dimension_cards}</div>
-        <p class="robustness-note"><strong>Robustness: {float(values['robustness']):.3f}</strong>
+        <p class="robustness-note"><strong>Robustness: {float(values["robustness"]):.3f}</strong>
         is reported as a diagnostic. It is not separately weighted because the historical composite
         already weights recovery.</p></details>
       <details class="score-section" open><summary>3 · Eligibility and hard gates</summary>
@@ -910,10 +1009,10 @@ def run_status_html(run_payload: dict[str, Any]) -> str:
     <div class="run-phase {status_class}" aria-live="polite">
       <div><span class="phase-indicator"></span><strong>{status}</strong>
       <small>Real Inspect evaluation · {duration:.2f}s</small></div>
-      <dl><div><dt>Agent</dt><dd>{html.escape(agent['label'])}</dd></div>
+      <dl><div><dt>Agent</dt><dd>{html.escape(agent["label"])}</dd></div>
       <div><dt>Model</dt><dd>{model}</dd></div>
-      <div><dt>Sample</dt><dd>{html.escape(run_payload['sample_id'])}</dd></div>
-      <div><dt>Run ID</dt><dd>{html.escape(run_payload['run_id'])}</dd></div></dl>
+      <div><dt>Sample</dt><dd>{html.escape(run_payload["sample_id"])}</dd></div>
+      <div><dt>Run ID</dt><dd>{html.escape(run_payload["run_id"])}</dd></div></dl>
     </div>
     """
 
@@ -942,10 +1041,11 @@ def running_status_html(phase: str, detail: str) -> str:
 def error_status_html(error: Exception | str) -> str:
     """Render a concise runtime error without presenting a fabricated benchmark score."""
 
+    summary = runtime_error_summary(error)
     return f"""
     <div class="run-phase error" aria-live="assertive"><div><span class="phase-indicator"></span>
-      <strong>Evaluation failed</strong><small>No score was fabricated.</small></div>
-      <p>{html.escape(str(error))}</p></div>
+      <strong>{html.escape(summary["title"])}</strong><small>{html.escape(summary["code"])}</small></div>
+      <p>{html.escape(summary["action"])}</p></div>
     """
 
 

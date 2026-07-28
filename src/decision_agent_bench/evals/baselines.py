@@ -65,7 +65,11 @@ def planning_step() -> Solver:
         )
         original_tools = state.tools
         state.tools = []
-        state = await generate(state, tool_calls="none", temperature=0.0)
+        # Sampling controls are intentionally omitted here. Reasoning models such as
+        # OpenAI's GPT-5 family reject ``temperature`` while other providers may
+        # support it. The evaluated model's provider-safe defaults keep this
+        # baseline portable instead of failing before the tool-using stage starts.
+        state = await generate(state, tool_calls="none")
         plan = state.output.completion
         state.store.set("dab.plan", plan)
         state.tools = original_tools

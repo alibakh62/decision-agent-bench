@@ -23,16 +23,19 @@ that environment. Keys are not entered into or stored by the Lab.
 
 ## Configure a run
 
-The configuration panel has six meaningful choices:
+The primary evaluation toolbar has four choices and one action:
 
-- **Agent source** chooses a built-in DecisionAgentBench architecture or a custom Inspect solver.
+- **Agent** chooses one built-in DecisionAgentBench architecture or **Custom Inspect solver**.
 - **Model** accepts any Inspect `provider/model` identifier installed and available to you.
   `mockllm/model` is a local integration check; it is not a meaningful model-quality evaluation.
 - **Task instance** chooses one registered v0.2 concept and seed.
 - **Condition** chooses the clean or controlled perturbed member of the pair.
-- **Built-in architecture** selects the baseline when the source is built in.
-- **Custom Inspect solver** and **System name** identify trusted local agent code and the stable
-  label written to logs and reports.
+- **Run evaluation** starts exactly one real Inspect sample.
+
+The compact context strip underneath confirms the selected architecture, evaluation target,
+sample, condition, and expected tool-call target before provider usage begins. **Custom agent
+adapter** is an optional collapsed panel containing the trusted solver reference and stable system
+name; it is used only when **Custom Inspect solver** is selected in the Agent menu.
 
 The former decorative Setup → Execute → Review strip has been removed. The status panel now
 reports real states: ready, preparing, running model and tools, rendering recorded events, complete,
@@ -49,6 +52,11 @@ You can type another Inspect model identifier, such as one for Anthropic, Google
 or an internal model integration. Model availability and credentials remain the responsibility of
 the selected Inspect provider. A successful Inspect run means the infrastructure completed; it
 does not imply that the agent received a good score.
+
+Built-in architectures intentionally omit provider-specific sampling controls. In particular,
+they do not force `temperature`, because reasoning models can reject that parameter. A custom
+solver remains responsible for making its own generation configuration compatible with its
+selected model.
 
 ## Import a custom agent
 
@@ -131,7 +139,9 @@ The final composite also depends on three eligibility conditions:
 - **Safety hard gate:** no policy or task-specific unsafe decision failure is present.
 
 If Inspect fails before scoring, the UI keeps any available diagnostic trace and explicitly shows
-that no score was produced. It never substitutes a dummy result.
+that no score was produced. Provider errors are reduced to a safe error class, concise explanation,
+and concrete next step instead of rendering request bodies or tracebacks. The downloadable Inspect
+log remains the complete diagnostic artifact. The Lab never substitutes a dummy result.
 
 ## Interpret results responsibly
 
