@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import inspect
 import json
+from asyncio import run
 
 import pytest
+from inspect_ai.model import ModelName, ModelOutput
+from inspect_ai.solver import TaskState
 
 from decision_agent_bench.demo import (
     QUERY_LIBRARY,
@@ -16,9 +20,11 @@ from decision_agent_bench.demo import (
     workflow_view,
     world_snapshot,
 )
+from decision_agent_bench.evals import advanced_baselines, baselines
 from decision_agent_bench.lab import (
     REPLAY_AGENTS,
     SCORE_WEIGHTS,
+    runtime_error_summary,
     score_explainer_html,
     trace_inspector_html,
     trace_rows,
@@ -135,6 +141,47 @@ def test_live_lab_runs_one_real_inspect_sample(tmp_path, monkeypatch) -> None:
     assert payload["grade"]["available"] is True
     assert payload["trace"][0]["event"] == "Run started"
     assert payload["log_path"].endswith(".eval")
+
+
+def test_builtin_agents_do_not_force_provider_specific_sampling_parameters() -> None:
+    source = inspect.getsource(baselines) + inspect.getsource(advanced_baselines)
+
+    assert "temperature=" not in source
+
+
+def test_planning_stage_uses_provider_safe_generation_defaults() -> None:
+    state = TaskState(
+        model=ModelName("mockllm/model"),
+        sample_id="provider-safe",
+        epoch=1,
+        input="Plan this task",
+        messages=[],
+    )
+    observed: dict[str, object] = {}
+
+    async def provider_safe_generate(task_state: TaskState, **kwargs: object) -> TaskState:
+        observed.update(kwargs)
+        task_state.output = ModelOutput(model="provider-safe", completion="1. Gather evidence")
+        return task_state
+
+    result = run(baselines.planning_step()(state, provider_safe_generate))
+
+    assert observed == {"tool_calls": "none"}
+    assert result.store.get("dab.plan") == "1. Gather evidence"
+
+
+def test_lab_turns_provider_failures_into_actionable_safe_copy() -> None:
+    raw_error = (
+        "BadRequestError: Unsupported parameter: 'temperature' is not supported with this model."
+    )
+    summary = runtime_error_summary(raw_error)
+    rendered = score_explainer_html({"grade": {"available": False}, "error": raw_error})
+
+    assert summary["code"] == "MODEL_PARAMETER_UNSUPPORTED"
+    assert "Run again" in summary["action"]
+    assert "BadRequestError" not in summary["detail"]
+    assert "MODEL_PARAMETER_UNSUPPORTED" in rendered
+    assert "BadRequestError" not in rendered
 
 
 def test_lab_trace_matches_the_selectable_trace_inspector_contract() -> None:

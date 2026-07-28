@@ -71,7 +71,7 @@ def verifier_revision() -> Solver:
             auditor_messages,
             tools=[],
             tool_choice="none",
-            config=GenerateConfig(temperature=0.0, max_tokens=1_024),
+            config=GenerateConfig(max_tokens=1_024),
         )
         state.store.set("dab.verifier_audit", audit.completion)
         revision = await get_model().generate(
@@ -88,7 +88,7 @@ def verifier_revision() -> Solver:
             ],
             tools=[],
             tool_choice="none",
-            config=GenerateConfig(temperature=0.0, max_tokens=2_048),
+            config=GenerateConfig(max_tokens=2_048),
         )
         state.output = revision
         return state
@@ -125,7 +125,7 @@ def specialist_brief() -> Solver:
             ],
             tools=[],
             tool_choice="none",
-            config=GenerateConfig(temperature=0.0, max_tokens=1_024),
+            config=GenerateConfig(max_tokens=1_024),
         )
         risk = await model.generate(
             [
@@ -140,7 +140,7 @@ def specialist_brief() -> Solver:
             ],
             tools=[],
             tool_choice="none",
-            config=GenerateConfig(temperature=0.0, max_tokens=1_024),
+            config=GenerateConfig(max_tokens=1_024),
         )
         state.store.set("dab.analyst_brief", analyst.completion)
         state.store.set("dab.risk_brief", risk.completion)
@@ -193,7 +193,7 @@ def feedback_revision() -> Solver:
             ],
             tools=[],
             tool_choice="none",
-            config=GenerateConfig(temperature=0.0, max_tokens=2_048),
+            config=GenerateConfig(max_tokens=2_048),
         )
         state.store.set("dab.initial_answer", candidate)
         state.output = revision

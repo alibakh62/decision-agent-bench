@@ -14,8 +14,8 @@ from decision_agent_bench.evals.instances import expanded_instance_catalog
 from decision_agent_bench.evals.runtime import apply_perturbation, perturbation_kind
 from decision_agent_bench.evals.scorer import grade_submission, parse_submission
 from decision_agent_bench.lab import (
+    REPLAY_AGENTS_BY_KEY,
     agent_choices,
-    agent_description,
     error_status_html,
     idle_status_html,
     run_replay,
@@ -189,7 +189,7 @@ html, body, gradio-app, .gradio-container, .main, main {
 .dimension-chip { border-color: #384d70; color: #b5c4db; padding: 4px 7px; }
 .run-phase {
   align-items: center;
-  background: linear-gradient(90deg, #0c1929, #0a1523);
+  background: #0a1727;
   border: 1px solid var(--lab-border);
   border-radius: 9px;
   display: grid;
@@ -243,7 +243,7 @@ html, body, gradio-app, .gradio-container, .main, main {
 .trace-selector, .inspector-tab-radio { opacity: 0; pointer-events: none; position: absolute; }
 .trace-run-header {
   align-items: center;
-  background: linear-gradient(90deg, #101e2f, #0b1726);
+  background: #0d1b2c;
   border-bottom: 1px solid var(--lab-border);
   display: grid;
   gap: 18px;
@@ -421,6 +421,123 @@ html, body, gradio-app, .gradio-container, .main, main {
 #trace-table td { background: #0c1828 !important; color: #d3ddea !important; }
 #trace-table tr:hover td { background: #142642 !important; }
 footer { display: none !important; }
+
+/* Trace-first evaluation studio polish. */
+html, body, gradio-app, .gradio-container {
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+.gradio-container { padding: 24px 32px 42px !important; }
+.lab-header { align-items: center; margin-bottom: 20px; }
+.lab-header h1 { font-size: 30px; font-weight: 720; letter-spacing: -.035em; }
+.lab-header p { font-size: 14px; margin-top: 5px; }
+.mode-badge { background: #0b1d25; border-radius: 8px; font-size: 12px; padding: 7px 11px; }
+.config-strip {
+  background: #0b1727 !important;
+  border-color: #2b3d54 !important;
+  border-radius: 12px !important;
+  margin-bottom: 12px;
+  padding: 14px 16px 16px !important;
+}
+.config-strip .config-strip {
+  background: transparent !important;
+  border: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.config-strip .block { border-radius: 8px !important; }
+.config-strip label { font-size: 13px !important; font-weight: 700 !important; }
+.config-strip .info { color: #8fa0b5 !important; font-size: 11px !important; line-height: 1.35 !important; }
+.config-strip input, .config-strip button, .config-strip textarea { font-size: 14px !important; }
+.config-strip .wrap:has(input[type="radio"]) {
+  align-items: center !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+}
+.config-strip label:has(input[type="radio"]) { min-width: 0 !important; }
+#run-evaluation {
+  align-self: end;
+  border: 1px solid #667cff !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-size: 14px !important;
+  font-weight: 740 !important;
+  margin-top: 29px;
+  min-height: 48px;
+}
+#run-evaluation:focus-visible { outline: 2px solid #8d9bff !important; outline-offset: 2px; }
+.run-context-bar {
+  align-items: center;
+  background: #091524;
+  border: 1px solid #263950;
+  border-radius: 10px;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(210px, .9fr) minmax(440px, 2.1fr) minmax(330px, 1.2fr);
+  margin: 0 0 10px;
+  padding: 14px 18px;
+}
+.run-context-bar > div { min-width: 0; }
+.run-context-bar strong { color: #edf3fb; display: block; font-size: 14px; margin: 3px 0; }
+.run-context-bar small { color: #96a7bc; display: block; font-size: 12px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-context-task { border-left: 1px solid #263950; padding-left: 20px; }
+.run-context-bar dl { display: grid; grid-template-columns: .8fr 1.25fr .75fr; margin: 0; }
+.run-context-bar dl div { border-left: 1px solid #263950; min-width: 0; padding-left: 13px; }
+.run-context-bar dt { color: #8193aa; font-size: 10px; text-transform: uppercase; }
+.run-context-bar dd { color: #dbe5f2; font-size: 12px; font-weight: 650; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.custom-agent-panel { background: #0b1727 !important; border-color: #263950 !important; margin-bottom: 10px !important; }
+.custom-agent-panel > .label-wrap { font-size: 13px !important; }
+.run-phase { border-radius: 10px; margin: 10px 0; min-height: 58px; padding: 10px 16px; }
+.run-phase strong { font-size: 14px; }
+.run-phase small, .run-phase p { font-size: 12px; }
+.trace-empty { border-radius: 10px; min-height: 340px; }
+.trace-empty.score-empty { min-height: 230px; }
+.trace-empty h3 { font-size: 24px; }
+.trace-empty p { font-size: 14px; }
+.live-trace { border-color: #2a3d55; border-radius: 10px; }
+.trace-run-header { min-height: 82px; padding: 13px 20px; }
+.trace-run-header strong { font-size: 16px; }
+.trace-run-header small { font-size: 12px; margin-top: 2px; }
+.trace-run-header dt { font-size: 11px; }
+.trace-run-header dd { font-size: 13px; margin-top: 4px; }
+.trace-layout { min-height: 560px; }
+.trace-event-list { max-height: 640px; }
+.trace-table-header { font-size: 11px; letter-spacing: .045em; padding: 0 14px; }
+.trace-table-header span { padding: 13px 11px; }
+.trace-event-row { min-height: 66px; padding: 0 14px; }
+.trace-event-row > span { padding: 9px 11px; }
+.timeline-cell { font-size: 12px; }
+.actor-cell { font-size: 14px; }
+.event-cell strong { font-size: 14px; }
+.event-cell small { font-size: 12px; line-height: 1.4; margin-top: 3px; }
+.evidence-cell { font-size: 12px; }
+.outcome-cell b { font-size: 10px; padding: 4px 8px; }
+.trace-inspector-card { min-height: 560px; }
+.trace-inspector-card > header { min-height: 82px; padding: 14px 22px; }
+.trace-inspector-card h3 { font-size: 20px; }
+.inspector-tabs { gap: 30px; padding: 0 22px; }
+.inspector-tabs label { font-size: 13px; padding: 16px 2px 12px; }
+.inspector-tab-panels { padding: 21px 22px 24px; }
+.inspector-tab-panel h4 { font-size: 13px; }
+.trace-metadata dt, .payload-summary dt { font-size: 10px; }
+.trace-metadata dd, .payload-summary dd { font-size: 12px; }
+.event-summary { font-size: 14px; }
+.code-block { font-size: 12px; line-height: 1.55; max-height: 250px; padding: 13px; }
+.live-trace.status-error .trace-layout,
+.live-trace.status-error .trace-inspector-card { min-height: 340px; }
+.live-trace.status-error .trace-event-list { max-height: 340px; }
+.live-trace.status-error .trace-status-dot { background: var(--lab-red); box-shadow: 0 0 0 4px #44202a; }
+.score-shell { border-color: #2a3d55 !important; border-radius: 10px !important; }
+.score-workbench { padding: 22px; }
+.score-title-row h2, .score-unavailable h2 { font-size: 26px; }
+.score-workbench > p { color: #b8c6d8; font-size: 14px; line-height: 1.55; }
+.score-section { padding: 12px 14px; }
+.score-section > summary { font-size: 15px; }
+.error-result-heading { align-items: center; display: flex; gap: 20px; justify-content: space-between; }
+.error-code { background: #281820; border: 1px solid #763f4b; border-radius: 7px; color: #f0a3ae; font-size: 11px; font-weight: 750; padding: 6px 9px; }
+.error-next-step { background: #101f31; border: 1px solid #324a67; border-radius: 8px; display: grid; gap: 4px; margin: 16px 0 10px; padding: 12px 14px; }
+.error-next-step strong { color: #dae6f4; font-size: 12px; }
+.error-next-step span { color: #aebed1; font-size: 13px; }
 @media (max-width: 1050px) {
   .run-status { grid-template-columns: 1fr; }
   .run-status dl { grid-template-columns: repeat(2, 1fr); }
@@ -431,6 +548,8 @@ footer { display: none !important; }
   .trace-event-list { border-bottom: 1px solid var(--lab-border); border-right: 0; max-height: 520px; }
   .dimension-grid { grid-template-columns: repeat(2, 1fr); }
   .ledger-layout { grid-template-columns: 1fr; }
+  .run-context-bar { grid-template-columns: 1fr; }
+  .run-context-task { border-left: 0; border-top: 1px solid #263950; padding: 12px 0 0; }
 }
 @media (max-width: 700px) {
   .gradio-container { padding: 12px !important; }
@@ -493,9 +612,7 @@ def _run_world_path(instance_id: str, variant: str) -> Path:
         return _RUN_WORLD_PATHS[key]
     if _RUN_WORLD_TEMPORARY_DIRECTORY is None:
         _RUN_WORLD_TEMPORARY_DIRECTORY = tempfile.TemporaryDirectory(prefix="dab-lab-runs-")
-    destination = Path(
-        tempfile.mkdtemp(prefix="world-", dir=_RUN_WORLD_TEMPORARY_DIRECTORY.name)
-    )
+    destination = Path(tempfile.mkdtemp(prefix="world-", dir=_RUN_WORLD_TEMPORARY_DIRECTORY.name))
     database_path = generate_world(
         destination,
         GenerationConfig(seed=int(item["scenario_seed"])),
@@ -520,14 +637,14 @@ def task_context_html(instance_id: str, variant: str) -> str:
     return f"""
     <section class="task-context">
       <span class="eyebrow">Selected task</span>
-      <h3>{escape(str(item['family_id']))} · {escape(str(item['category']).replace('_', ' '))}</h3>
-      <p>{escape(str(item['prompt']))}</p>
+      <h3>{escape(str(item["family_id"]))} · {escape(str(item["category"]).replace("_", " "))}</h3>
+      <p>{escape(str(item["prompt"]))}</p>
       <div class="task-meta">
         <span>Sample {escape(str(sample_id))}</span>
-        <span>Difficulty {escape(str(item['difficulty']))}</span>
-        <span>Seed {item['scenario_seed']}</span>
-        <span>Optimal tool calls {item['optimal_tool_calls']}</span>
-        <span>Evidence dependency depth {item['enforced_dependency_depth']}</span>
+        <span>Difficulty {escape(str(item["difficulty"]))}</span>
+        <span>Seed {item["scenario_seed"]}</span>
+        <span>Optimal tool calls {item["optimal_tool_calls"]}</span>
+        <span>Evidence dependency depth {item["enforced_dependency_depth"]}</span>
       </div>
       <p class="historical-note">{escape(perturbation)} The v0.2 catalog is a historical
       evidence-gated contract; it does not establish long-horizon capability.</p>
@@ -554,9 +671,7 @@ def task_view(instance_id: str, variant: str) -> tuple[str, dict[str, Any], str]
     item = _catalog_item(instance_id)
     selected_variant = _safe_variant(variant)
     sample_id = (
-        item["clean_sample_id"]
-        if selected_variant == "clean"
-        else item["perturbed_sample_id"]
+        item["clean_sample_id"] if selected_variant == "clean" else item["perturbed_sample_id"]
     )
     metadata = {
         "sample_id": sample_id,
@@ -706,24 +821,49 @@ def build_demo() -> Any:
     scorer output in the completed Inspect log.</p></div></section>
     """
 
-    def selected_agent_html(
-        source: str,
-        baseline: str,
+    agent_options = [*agent_choices(), ("Custom Inspect solver", "custom")]
+
+    def runtime_selection(agent_key: str) -> tuple[str, str]:
+        if agent_key == "custom":
+            return "Custom Inspect solver", "single_agent"
+        return "Built-in baseline", _safe_agent_key(agent_key)
+
+    def run_context_html(
+        agent_key: str,
         solver_reference: str,
         system_name: str,
+        instance_id: str,
+        variant: str,
     ) -> str:
-        if source == "Custom Inspect solver":
-            return f"""
-            <div class="agent-note"><span class="eyebrow">Selected custom agent</span>
-            <strong>{escape(system_name or 'Unnamed custom system')}</strong>
-            <p>Inspect will load <code>{escape(solver_reference)}</code> from the trusted local
-            <code>agents/</code> or <code>examples/</code> directory and preserve its tool trace.</p>
-            <span class="notice-inline">Trusted local Python code · runs with your permissions</span></div>
-            """
-        return agent_description(baseline)
+        item = _catalog_item(instance_id)
+        selected_variant = _safe_variant(variant)
+        if agent_key == "custom":
+            agent_label = system_name or "Unnamed custom system"
+            architecture = f"Custom solver · {solver_reference}"
+        else:
+            agent = REPLAY_AGENTS_BY_KEY[_safe_agent_key(agent_key)]
+            agent_label = agent.label
+            architecture = agent.architecture
+        condition = (
+            "Clean paired sample"
+            if selected_variant == "clean"
+            else f"Perturbed · {item['perturbation']}"
+        )
+        sample_id = item[f"{selected_variant}_sample_id"]
+        return f"""
+        <section class="run-context-bar">
+          <div><span class="eyebrow">Agent</span><strong>{escape(agent_label)}</strong>
+          <small>{escape(architecture)}</small></div>
+          <div class="run-context-task"><span class="eyebrow">Evaluation target</span>
+          <strong>{escape(str(item["family_id"]))} · {escape(str(item["category"]).replace("_", " "))}</strong>
+          <small>{escape(str(item["prompt"]))}</small></div>
+          <dl><div><dt>Sample</dt><dd>{escape(str(sample_id))}</dd></div>
+          <div><dt>Condition</dt><dd>{escape(condition)}</dd></div>
+          <div><dt>Tool target</dt><dd>{item["optimal_tool_calls"]} calls</dd></div></dl>
+        </section>
+        """
 
     def execute_for_ui(
-        source: str,
         agent_key: str,
         solver_reference: str,
         system_name: str,
@@ -731,6 +871,7 @@ def build_demo() -> Any:
         instance_id: str,
         variant: str,
     ) -> Any:
+        source, baseline = runtime_selection(agent_key)
         context = task_context_html(instance_id, variant)
         yield (
             {},
@@ -763,7 +904,7 @@ def build_demo() -> Any:
             selected_variant = _safe_variant(variant)
             payload = run_live_evaluation(
                 agent_source=source,
-                baseline=_safe_agent_key(agent_key),
+                baseline=baseline,
                 solver_reference=solver_reference,
                 system_name=system_name,
                 model_name=model_name,
@@ -771,12 +912,13 @@ def build_demo() -> Any:
                 variant=selected_variant,
             )
         except Exception as error:
+            failure_payload = {"grade": {"available": False}, "error": str(error)}
             yield (
                 {},
                 error_status_html(error),
-                trace_workbench_html(None),
-                {"error": str(error)},
-                empty_score,
+                "",
+                {},
+                score_explainer_html(failure_payload),
                 context,
                 None,
                 None,
@@ -834,19 +976,20 @@ def build_demo() -> Any:
         )
         with gr.Group(elem_classes="config-strip"):
             with gr.Row():
-                with gr.Column(scale=2, min_width=190):
-                    agent_source = gr.Radio(
-                        ["Built-in baseline", "Custom Inspect solver"],
-                        value="Built-in baseline",
-                        label="Agent source",
+                with gr.Column(scale=3, min_width=230):
+                    selected_agent = gr.Dropdown(
+                        choices=agent_options,
+                        value="planner_executor",
+                        label="Agent",
+                        info="Choose a built-in architecture or your registered Inspect solver.",
                     )
                 with gr.Column(scale=3, min_width=250):
                     selected_model = gr.Dropdown(
                         choices=[
-                            ("Local plumbing check · mockllm/model", "mockllm/model"),
                             ("OpenAI · openai/gpt-5.6-luna", "openai/gpt-5.6-luna"),
+                            ("Local plumbing only · mockllm/model", "mockllm/model"),
                         ],
-                        value="mockllm/model",
+                        value="openai/gpt-5.6-luna",
                         allow_custom_value=True,
                         label="Model",
                         info="Enter any Inspect provider/model identifier available to you.",
@@ -857,21 +1000,30 @@ def build_demo() -> Any:
                         value=default_instance,
                         label="Task instance",
                     )
-                with gr.Column(scale=2, min_width=170):
+                with gr.Column(scale=2, min_width=160):
                     selected_variant = gr.Radio(
                         ["clean", "perturbed"],
                         value="clean",
                         label="Condition",
                     )
-            with gr.Row():
-                with gr.Column(scale=3, min_width=250):
-                    selected_agent = gr.Dropdown(
-                        choices=agent_choices(),
-                        value="planner_executor",
-                        label="Built-in architecture",
-                        info="Used when Agent source is Built-in baseline.",
+                with gr.Column(scale=2, min_width=180):
+                    run_button = gr.Button(
+                        "Run evaluation",
+                        variant="primary",
+                        elem_id="run-evaluation",
                     )
-                with gr.Column(scale=4, min_width=330):
+        selected_run_context = gr.HTML(
+            run_context_html(
+                "planner_executor",
+                "examples/custom_solver.py@custom_agent",
+                "decision-agent-bench-lab",
+                default_instance,
+                "clean",
+            )
+        )
+        with gr.Accordion("Custom agent adapter", open=False, elem_classes="custom-agent-panel"):
+            with gr.Row():
+                with gr.Column(scale=5, min_width=330):
                     custom_solver = gr.Textbox(
                         value="examples/custom_solver.py@custom_agent",
                         label="Custom Inspect solver",
@@ -883,30 +1035,13 @@ def build_demo() -> Any:
                         label="System name",
                         info="Stable label recorded in the Inspect log and report.",
                     )
-                with gr.Column(scale=2, min_width=190):
-                    run_button = gr.Button(
-                        "Run evaluation",
-                        variant="primary",
-                        elem_id="run-evaluation",
-                    )
-        with gr.Accordion("Agent and task context", open=False):
-            with gr.Row():
-                with gr.Column(scale=4, elem_classes="task-shell"):
-                    selected_agent_note = gr.HTML(agent_description("planner_executor"))
-                with gr.Column(scale=8, elem_classes="task-shell"):
-                    selected_task_context = gr.HTML(task_context_html(default_instance, "clean"))
-        with gr.Accordion("Import a custom agent", open=False):
             gr.Markdown(
-                """
-Place a trusted Inspect solver in `agents/` (or use `examples/custom_solver.py`), register it with
-Inspect's `@solver` decorator, and enter `agents/your_agent.py@your_solver` above. Choose **Custom
-Inspect solver**, select its model, and run. The Lab invokes the solver inside the real benchmark
-task, so benchmark tools, evidence IDs, errors, final JSON, usage, and scoring remain auditable.
-
-Only load code you trust: a custom solver is Python code executed with your local user permissions.
-See [`docs/evaluating-your-agent.md`](file/docs/evaluating-your-agent.md) for the adapter contract.
-                """
+                "Select **Custom Inspect solver** in the Agent menu to use these fields. "
+                "Only repository files under `agents/` or `examples/` are loadable. "
+                "See [`docs/evaluating-your-agent.md`](file/docs/evaluating-your-agent.md)."
             )
+
+        selected_task_context = gr.HTML(task_context_html(default_instance, "clean"), visible=False)
 
         status = gr.HTML(idle_status_html())
         trace_surface = gr.HTML(trace_workbench_html(None))
@@ -932,11 +1067,23 @@ See [`docs/evaluating-your-agent.md`](file/docs/evaluating-your-agent.md) for th
                         variant="secondary",
                     )
 
-        for control in (agent_source, selected_agent, custom_solver, system_name):
+        for control in (
+            selected_agent,
+            custom_solver,
+            system_name,
+            selected_task,
+            selected_variant,
+        ):
             control.change(
-                selected_agent_html,
-                inputs=[agent_source, selected_agent, custom_solver, system_name],
-                outputs=selected_agent_note,
+                run_context_html,
+                inputs=[
+                    selected_agent,
+                    custom_solver,
+                    system_name,
+                    selected_task,
+                    selected_variant,
+                ],
+                outputs=selected_run_context,
                 show_progress="hidden",
                 api_name=False,
             )
@@ -957,7 +1104,6 @@ See [`docs/evaluating-your-agent.md`](file/docs/evaluating-your-agent.md) for th
         run_button.click(
             execute_for_ui,
             inputs=[
-                agent_source,
                 selected_agent,
                 custom_solver,
                 system_name,

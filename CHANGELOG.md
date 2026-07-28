@@ -4,6 +4,17 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+### Fixed
+
+- Stop forcing `temperature=0.0` in every built-in planning, verifier, specialist, and feedback
+  generation. Reasoning models that reject sampling controls now run with provider-safe defaults
+  instead of failing before tool execution.
+- Replace the Lab's dense two-row setup form with a single evaluation toolbar and compact context
+  strip, increase trace and inspector legibility, select the first useful model/tool event by
+  default, and keep failed traces proportional to the events that were actually recorded.
+- Replace raw provider exception and traceback dumps with classified, actionable error cards while
+  retaining the original Inspect log for complete diagnostics.
+
 ## [0.5.2] - 2026-07-28
 
 ### Added
