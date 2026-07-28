@@ -12,13 +12,14 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.5.1 custom-agent integration patch on the statistical-design preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.5.2 interactive-lab patch on the statistical-design preview. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
 > implemented. An independent audit confirmed construct-validity defects in the historical lexical
 > scorer. v0.5 adds deterministic power/MDE and metric-dependence tooling; v0.5.1 adds a tested
-> bring-your-own-agent path. Publication-scale
+> bring-your-own-agent path, and v0.5.2 adds a trace-first replay and score-audit workbench.
+> Publication-scale
 > model runs and leaderboard claims remain blocked on the v0.4 measurement-validity implementation.
 > No frontier-model performance claims have been made.
 
@@ -169,17 +170,20 @@ Launch the local, provider-free research lab:
 decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
-The task explorer shows the v0.2 registered pairs, and the stateful-workflow tab exposes the exact
-v0.3 transition, span, time, and stress-event contracts. The decision scorer uses the real
-deterministic grader with simulated evidence lineage, and the reference-world tab exposes only
-allow-listed read-only views. The demo has no provider calls, arbitrary SQL, state-changing actions,
-oracle fields, or public sharing tunnel.
+The Lab now provides one setup → execute → review flow. Choose one of the eight provider-free replay
+architectures and any registered v0.2 task pair, run it in an isolated seeded world, select trace
+events to inspect their exact arguments and evidence, and audit the real historical score through
+its weighted equation, dimension contributions, hard gates, and evidence mapping. Downloadable run
+reports preserve the complete replay and claim boundary. The Lab has no provider calls, arbitrary
+SQL, state-changing actions, exposed oracle fields, or public sharing tunnel. See the
+[Lab guide](docs/lab.md) for the workflow and [agent evaluation guide](docs/evaluating-your-agent.md)
+for real Inspect or external-system runs.
 
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.5.1 .
-docker run --rm decision-agent-bench:0.5.1
+docker build --tag decision-agent-bench:0.5.2 .
+docker run --rm decision-agent-bench:0.5.2
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

@@ -115,7 +115,7 @@ It is not a claim of parity with benchmarks that measure days or months of human
 
 Version numbers have different roles:
 
-- the package release may be `0.5.1`;
+- the package release may be `0.5.2`;
 - the v0.2 research contract is `0.2.1`;
 - the stateful workflow contract is `0.3.0`.
 
@@ -520,8 +520,11 @@ analyzer for deliberately sanitized artifacts.
 decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
-The demo explores task pairs, workflow contracts, deterministic scoring, and allow-listed reference
-data. It does not call a model provider or expose arbitrary SQL and state-changing tools.
+The Lab is a single setup → execute → review workbench. Select a provider-free baseline replay and
+a v0.2 task pair, run it in an isolated seeded world, inspect each trace event and evidence payload,
+then audit the historical scorer's exact weights, substitutions, gates, and evidence mapping. It
+does not call a model provider or expose arbitrary SQL, state-changing tools, or oracle fields. See
+the [Lab guide](lab.md) for the complete interaction model and claim boundary.
 
 ## Run reproducible multi-model experiments
 

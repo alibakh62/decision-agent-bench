@@ -4,6 +4,27 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-07-28
+
+### Added
+
+- Rebuild DecisionAgentBench Lab as one setup-to-review evaluation studio with eight selectable
+  provider-free baseline replays, all registered v0.2 task pairs, isolated seeded worlds, ordered
+  traces, row-level argument/result inspection, final structured decisions, and portable reports.
+- Add a transparent score workbench that reconstructs the historical weighted equation, dimension
+  contributions, format/evidence/safety gates, failure effects, robustness diagnostic, contribution
+  ledger, and evidence-to-dimension lineage.
+- Add a dedicated Lab guide with realistic experiments, replay-versus-empirical boundaries, score
+  interpretation, export behavior, and extension points.
+
+### Fixed
+
+- Make Lab styling compatible with both pre-6 and 6.x Gradio placement rules so the supported
+  Gradio 6 launch no longer relies on obsolete `Blocks` arguments and older local installs do not
+  receive unsupported `launch()` keywords.
+- Validate every client-provided Lab selection at the callback boundary and generate world/report
+  paths independently of client values, preventing path traversal through direct Gradio requests.
+
 ## [0.5.1] - 2026-07-28
 
 ### Added
