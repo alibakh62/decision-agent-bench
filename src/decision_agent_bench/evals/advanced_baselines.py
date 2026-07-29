@@ -7,14 +7,11 @@ from inspect_ai.solver import (
     Generate,
     Solver,
     TaskState,
-    basic_agent,
     chain,
     solver,
-    system_message,
 )
 
-from decision_agent_bench.evals.baselines import SYSTEM_PROMPT
-from decision_agent_bench.evals.tools import benchmark_tools
+from decision_agent_bench.evals.baselines import SYSTEM_PROMPT, evidence_agent
 
 MEMORY = """
 Prior benchmark feedback:
@@ -40,12 +37,10 @@ respect company policies. Submit one JSON object with `conclusion`, `confidence`
 
 
 def _agent(system_prompt_text: str, *, message_limit: int = 42, workflow: bool = False) -> Solver:
-    return basic_agent(
-        init=system_message(system_prompt_text),
-        tools=benchmark_tools(include_workflow=workflow),
-        max_attempts=1,
-        message_limit=message_limit,
-        submit_description="Submit the required DecisionAgentBench JSON object.",
+    return evidence_agent(
+        system_prompt_text,
+        workflow=workflow,
+        max_tool_turns=32 if workflow else max(8, message_limit // 6),
     )
 
 

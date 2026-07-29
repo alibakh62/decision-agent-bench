@@ -21,6 +21,15 @@ _MODEL_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$")
 _SYMBOL_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SYSTEM_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$")
 _TRUSTED_SOLVER_DIRECTORIES = ("agents", "examples")
+_SUBMISSION_FIELDS = {
+    "conclusion",
+    "confidence",
+    "evidence_ids",
+    "selected_ids",
+    "numeric_values",
+    "escalate",
+    "data_quality_issues",
+}
 
 
 def safe_model_name(model_name: str) -> str:
@@ -207,6 +216,34 @@ def _trace_from_sample(
             tool_intents = (
                 (getattr(message, "tool_calls", None) or []) if message is not None else []
             )
+            submission = _parse_json(getattr(output, "completion", ""))
+            if isinstance(submission, dict) and _SUBMISSION_FIELDS <= submission.keys():
+                evidence_ids = submission.get("evidence_ids", [])
+                _event(
+                    trace,
+                    timestamp=timestamp,
+                    actor="Model",
+                    event="Final decision",
+                    summary=str(submission.get("conclusion", "Submitted structured decision."))[
+                        :420
+                    ],
+                    evidence_id=(
+                        ",".join(str(value) for value in evidence_ids)
+                        if isinstance(evidence_ids, list)
+                        else None
+                    ),
+                    outcome="Submitted",
+                    result=submission,
+                    supports=(
+                        "task_effectiveness",
+                        "decision_quality",
+                        "safety",
+                        "calibration",
+                        "explainability",
+                    ),
+                    latency_ms=round(float(getattr(output, "time", 0) or 0) * 1000),
+                )
+                continue
             summary = _content_summary(content)
             if tool_intents and summary.startswith("Model selected"):
                 functions = ", ".join(str(call.function) for call in tool_intents)
@@ -269,6 +306,7 @@ def _trace_from_sample(
                 evidence_id=evidence_id,
                 outcome="Warning" if error else "Success",
                 arguments=arguments if isinstance(arguments, dict) else {},
+                result={"error": str(error)} if error else result,
                 latency_ms=latency_ms,
             )
             result_timestamp = _elapsed(getattr(raw_event, "completed", None), started_at)
@@ -289,6 +327,7 @@ def _trace_from_sample(
                 summary=summary,
                 evidence_id=evidence_id,
                 outcome=outcome,
+                arguments=arguments if isinstance(arguments, dict) else {},
                 result={"error": error_message} if error else result,
                 supports=("explainability", "efficiency") if not error else ("recovery",),
                 latency_ms=latency_ms,

@@ -8,10 +8,8 @@ from inspect_ai.solver import (
     Plan,
     Solver,
     TaskState,
-    basic_agent,
     chain,
     solver,
-    system_message,
 )
 
 from decision_agent_bench.evals.tools import benchmark_tools
@@ -33,6 +31,14 @@ Submit exactly one JSON object with these keys:
 - data_quality_issues: list of detected missing, stale, delayed, or contradictory evidence
 
 Do not wrap the JSON in markdown.
+"""
+
+TOOL_USE_PROMPT = """
+The `retail_sql` tool description contains the complete public database schema. Use only those
+tables and columns; SQLite catalog access is intentionally blocked. The sales fact table is named
+`transactions`. Do not guess table names. Prefer one joined, aggregated query over multiple
+`SELECT *` probes, and use at most one tool call per turn. Once the evidence is sufficient, stop
+exploring and return the required JSON.
 """
 
 FINAL_SUBMISSION_PROMPT = """
@@ -78,14 +84,24 @@ def finalize_submission() -> Solver:
         # an exhausted exploration budget cannot masquerade as a scored submission.
         state.completed = False
         state.tools = []
-        state.message_limit = max(state.message_limit or 0, len(state.messages) + 3)
-        state.messages.append(ChatMessageUser(content=FINAL_SUBMISSION_PROMPT))
+        state.message_limit = max(state.message_limit or 0, len(state.messages) + 6)
         state.store.set("dab.finalization_status", "forced_tool_free_turn")
-        state = await generate(state, tool_calls="none")
-        state.store.set(
-            "dab.finalization_valid",
-            _has_complete_submission(state.output.completion),
-        )
+        for attempt in range(1, 3):
+            prompt = (
+                FINAL_SUBMISSION_PROMPT
+                if attempt == 1
+                else (
+                    "Your previous response did not satisfy the required JSON contract. Repair it "
+                    "now. Return one JSON object only, with all seven required fields and no "
+                    "markdown or commentary."
+                )
+            )
+            state.messages.append(ChatMessageUser(content=prompt))
+            state = await generate(state, tool_calls="none")
+            state.store.set("dab.finalization_attempts", attempt)
+            if _has_complete_submission(state.output.completion):
+                break
+        state.store.set("dab.finalization_valid", _has_complete_submission(state.output.completion))
         return state
 
     return solve
@@ -98,16 +114,61 @@ def _with_final_submission(agent: Solver) -> Solver:
 
 
 @solver
+def evidence_agent(
+    system_prompt_text: str = SYSTEM_PROMPT,
+    *,
+    workflow: bool = False,
+    max_tool_turns: int | None = None,
+) -> Solver:
+    """Run a bounded tool loop and finalize before Inspect's sample limit can intervene."""
+
+    async def solve(state: TaskState, generate: Generate) -> TaskState:
+        tool_turn_limit = max_tool_turns or (32 if workflow else 8)
+        state.messages.insert(
+            0,
+            ChatMessageSystem(content=system_prompt_text + TOOL_USE_PROMPT),
+        )
+        state.tools = benchmark_tools(include_workflow=workflow)
+        # Inspect's message limit is a sample-wide hard stop. Keep it comfortably above this
+        # solver's own bounded loop so the mandatory final-answer generation always runs.
+        state.message_limit = max(
+            state.message_limit or 0,
+            len(state.messages) + 2 * tool_turn_limit + 12,
+        )
+        state.store.set("dab.agent_tool_turn_limit", tool_turn_limit)
+
+        completed_turns = 0
+        for _ in range(tool_turn_limit):
+            completed_turns += 1
+            state.completed = False
+            state = await generate(
+                state,
+                tool_calls="single",
+                parallel_tool_calls=False,
+            )
+            if _has_complete_submission(state.output.completion):
+                state.store.set("dab.finalization_status", "submitted_during_tool_loop")
+                state.store.set("dab.finalization_valid", True)
+                break
+            tool_calls = (
+                state.output.choices[0].message.tool_calls if state.output.choices else []
+            )
+            if not tool_calls:
+                break
+
+        state.store.set("dab.agent_tool_turns", completed_turns)
+        if not _has_complete_submission(state.output.completion):
+            state = await finalize_submission()(state, generate)
+        return state
+
+    return solve
+
+
+@solver
 def single_agent(workflow: bool = False) -> Solver:
     """A ReAct-style tool user with one final structured submission."""
 
-    return basic_agent(
-        init=system_message(SYSTEM_PROMPT),
-        tools=benchmark_tools(include_workflow=workflow),
-        max_attempts=1,
-        message_limit=96 if workflow else 36,
-        submit_description="Submit the required DecisionAgentBench JSON object.",
-    )
+    return evidence_agent(workflow=workflow)
 
 
 @solver
@@ -115,15 +176,16 @@ def planning_step() -> Solver:
     """Ask the evaluated model for an explicit evidence and decision plan before execution."""
 
     async def solve(state: TaskState, generate: Generate) -> TaskState:
+        planning_message = ChatMessageSystem(
+            content=(
+                "You are the planning stage. Produce a concise numbered plan identifying "
+                "the evidence, policy checks, uncertainty checks, and approvals needed. "
+                "Do not answer the task yet and do not fabricate evidence IDs."
+            )
+        )
         state.messages.insert(
             0,
-            ChatMessageSystem(
-                content=(
-                    "You are the planning stage. Produce a concise numbered plan identifying "
-                    "the evidence, policy checks, uncertainty checks, and approvals needed. "
-                    "Do not answer the task yet and do not fabricate evidence IDs."
-                )
-            ),
+            planning_message,
         )
         original_tools = state.tools
         state.tools = []
@@ -134,6 +196,8 @@ def planning_step() -> Solver:
         state = await generate(state, tool_calls="none")
         plan = state.output.completion
         state.store.set("dab.plan", plan)
+        if state.messages and state.messages[0] is planning_message:
+            state.messages.pop(0)
         state.tools = original_tools
         state.messages.append(
             ChatMessageUser(
@@ -152,13 +216,7 @@ def planning_step() -> Solver:
 def planner_executor(workflow: bool = False) -> Solver:
     """A two-stage baseline that plans without tools, then executes with the same model."""
 
-    executor = basic_agent(
-        init=system_message(SYSTEM_PROMPT),
-        tools=benchmark_tools(include_workflow=workflow),
-        max_attempts=1,
-        message_limit=104 if workflow else 42,
-        submit_description="Submit the required DecisionAgentBench JSON object.",
-    )
+    executor = evidence_agent(workflow=workflow)
     return chain(planning_step(), executor)
 
 
