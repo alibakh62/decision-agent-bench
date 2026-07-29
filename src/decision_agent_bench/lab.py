@@ -170,6 +170,7 @@ class LabRun:
                 "failures": list(self.grade.failures),
                 "explanation": self.grade.explanation,
                 "decision_outcome": self.grade.decision_outcome,
+                "breakdown": self.grade.breakdown,
             },
             "evidence_eligible": self.evidence_eligible,
             "format_eligible": self.format_eligible,
@@ -642,6 +643,198 @@ def _event_payload_stats(result: Any) -> tuple[str, str, str]:
     return str(rows), str(columns), size_label
 
 
+def _grade_breakdown(run_payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Return the scorer-authored audit values used by the explanatory UI."""
+
+    breakdown = run_payload.get("grade", {}).get("breakdown", {})
+    return breakdown if isinstance(breakdown, dict) else {}
+
+
+def _impact_fact(label: str, value: str) -> str:
+    return (
+        '<div class="impact-fact"><span>'
+        + html.escape(label)
+        + "</span><strong>"
+        + html.escape(value)
+        + "</strong></div>"
+    )
+
+
+def _event_score_impact_html(
+    run_payload: dict[str, Any], event: dict[str, Any]
+) -> str:
+    """Explain the selected event's exact relationship to deterministic scoring."""
+
+    breakdown = _grade_breakdown(run_payload)
+    explainability = breakdown.get("explainability", {})
+    efficiency = breakdown.get("efficiency", {})
+    submission = run_payload.get("submission", {})
+    cited_values = submission.get("evidence_ids", []) if isinstance(submission, dict) else []
+    cited_ids = {str(value) for value in cited_values} if isinstance(cited_values, list) else set()
+    evidence_ids = {
+        value.strip()
+        for value in str(event.get("evidence_id") or "").split(",")
+        if value.strip()
+    }
+    cited_here = sorted(evidence_ids & cited_ids)
+    outcome = str(event.get("outcome", ""))
+    event_name = str(event.get("event", "Event"))
+    actor = str(event.get("actor", ""))
+    supports = list(event.get("supports", []))
+    facts: list[str] = []
+    reasons: list[tuple[str, str]] = []
+
+    if actor == "Tool" and (
+        event_name.endswith(".results")
+        or (evidence_ids and outcome.lower() in {"success", "pass"})
+    ):
+        valid_cited = int(explainability.get("valid_cited", 0))
+        cited_count = int(explainability.get("cited_count", 0))
+        minimum = int(explainability.get("minimum_evidence", 0))
+        coverage = float(explainability.get("tool_coverage", 0))
+        call_count = int(efficiency.get("tool_call_count", len(run_payload.get("tool_calls", []))))
+        optimal = int(efficiency.get("optimal_tool_calls", 0))
+        facts.extend(
+            (
+                _impact_fact("Citation status", "Cited" if cited_here else "Not cited"),
+                _impact_fact("Valid citations", f"{valid_cited} of {cited_count}"),
+                _impact_fact("Evidence minimum", str(minimum)),
+                _impact_fact("Tool coverage", f"{coverage:.0%}"),
+            )
+        )
+        if cited_here:
+            reasons.append(
+                (
+                    "Explainability",
+                    f"{', '.join(cited_here)} is a successful tool result cited by the final "
+                    f"submission. It is included in the {valid_cited}/{cited_count} valid-citation "
+                    "count used for citation precision and sufficiency.",
+                )
+            )
+        else:
+            reasons.append(
+                (
+                    "Explainability",
+                    "This is valid recorded evidence, but the final submission did not cite its "
+                    "evidence ID. It therefore does not increase citation precision or sufficiency.",
+                )
+            )
+        reasons.append(
+            (
+                "Efficiency",
+                f"Its tool call is included in the run total of {call_count}. The target is "
+                f"{optimal} calls; only calls above that target reduce the call-efficiency term.",
+            )
+        )
+        supports = list(dict.fromkeys([*supports, "efficiency"]))
+        verdict = "Credited evidence" if cited_here else "Recorded, but not cited"
+    elif actor == "Tool" and (event_name.endswith(".error") or outcome == "Warning"):
+        call_count = int(efficiency.get("tool_call_count", len(run_payload.get("tool_calls", []))))
+        optimal = int(efficiency.get("optimal_tool_calls", 0))
+        facts.extend(
+            (
+                _impact_fact("Evidence credit", "None"),
+                _impact_fact("Run tool calls", str(call_count)),
+                _impact_fact("Call target", str(optimal)),
+            )
+        )
+        reasons.extend(
+            (
+                (
+                    "Recovery",
+                    "The failed result creates a recovery opportunity. The recovery dimension "
+                    "credits the completed recovery behavior required by the selected condition, "
+                    "not the failure itself.",
+                ),
+                (
+                    "Efficiency",
+                    "The failed call still counts toward the total tool-call budget, so repeated "
+                    "failed attempts can lower efficiency.",
+                ),
+            )
+        )
+        supports = list(dict.fromkeys([*supports, "recovery", "efficiency"]))
+        verdict = "No evidence credit"
+    elif event_name == "Final decision":
+        confidence = submission.get("confidence", "—") if isinstance(submission, dict) else "—"
+        selected = submission.get("selected_ids", []) if isinstance(submission, dict) else []
+        facts.extend(
+            (
+                _impact_fact("Cited evidence", str(len(cited_ids))),
+                _impact_fact("Selected IDs", str(len(selected)) if isinstance(selected, list) else "0"),
+                _impact_fact("Confidence", str(confidence)),
+            )
+        )
+        reasons.extend(
+            (
+                (
+                    "Decision content",
+                    "The conclusion, selected IDs, numeric values, escalation choice, and cited "
+                    "evidence are the direct inputs to effectiveness, decision quality, safety, "
+                    "and explainability.",
+                ),
+                (
+                    "Calibration",
+                    "The submitted confidence is compared with the deterministic correctness "
+                    "indicator to produce the calibration score.",
+                ),
+            )
+        )
+        verdict = "Direct scoring input"
+    elif event_name == "DecisionAgentBench score":
+        composite = float(run_payload.get("grade", {}).get("values", {}).get("composite", 0))
+        facts.append(_impact_fact("Composite", f"{composite:.4f}"))
+        reasons.append(
+            (
+                "Final calculation",
+                "This event records the scorer output after all dimension calculations and hard "
+                "gates. It reports the result; it is not an additional scoring input.",
+            )
+        )
+        verdict = "Scorer output"
+    elif actor == "Tool":
+        facts.append(_impact_fact("Scoring role", "Paired tool request"))
+        reasons.append(
+            (
+                "Tool execution",
+                "This row records the request. Evidence credit is decided from its paired result "
+                "and whether the final submission cites the returned evidence ID.",
+            )
+        )
+        verdict = "Awaiting paired result"
+    else:
+        reasons.append(
+            (
+                "Audit context",
+                "This event is preserved so the run can be inspected, but the deterministic scorer "
+                "does not assign points to model thoughts or system narration.",
+            )
+        )
+        verdict = "No direct score input"
+
+    support_badges = (
+        "".join(
+            f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
+            for key in supports
+        )
+        or '<span class="muted">No score dimension directly consumes this event.</span>'
+    )
+    reason_cards = "".join(
+        f'<article><strong>{html.escape(label)}</strong><p>{html.escape(reason)}</p></article>'
+        for label, reason in reasons
+    )
+    return f"""
+      <div class="impact-verdict"><span class="eyebrow">Event verdict</span>
+        <strong>{html.escape(verdict)}</strong></div>
+      <div class="impact-facts">{"".join(facts)}</div>
+      <h4>Dimensions connected to this event</h4><div class="chip-row">{support_badges}</div>
+      <div class="impact-reasons">{reason_cards}</div>
+      <p class="score-causality-note">The scorer evaluates the completed trace and final
+      submission. This panel shows the selected event's actual inputs and relationships without
+      fabricating a standalone point delta.</p>
+    """
+
+
 def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
     """Render a screenshot-faithful selectable trace with a payload and score inspector."""
 
@@ -698,14 +891,6 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
             </label>
             """
         )
-        supports = event.get("supports", [])
-        support_badges = (
-            "".join(
-                f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
-                for key in supports
-            )
-            or '<span class="muted">No score dimension directly consumes this event.</span>'
-        )
         rows_count, columns_count, size_label = _event_payload_stats(event.get("result"))
         evidence_label = html.escape(str(event.get("evidence_id") or "No evidence ID"))
         latency = event.get("latency_ms")
@@ -752,10 +937,7 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
                 </section>
                 <section class="inspector-tab-panel impact">
                   <h4>How this event enters scoring</h4>
-                  <div class="chip-row">{support_badges}</div>
-                  <p class="score-causality-note">DecisionAgentBench scores the completed trace
-                  and final submission. These links identify auditable inputs; they are not
-                  invented per-event point deltas.</p>
+                  {_event_score_impact_html(run_payload, event)}
                 </section>
               </div>
             </article>
@@ -815,14 +997,6 @@ def trace_inspector_html(run_payload: dict[str, Any], row_index: int = 0) -> str
     row_index = max(0, min(int(row_index), len(trace) - 1))
     event = trace[row_index]
     evidence = html.escape(str(event.get("evidence_id") or "No evidence ID"))
-    supports = event.get("supports", [])
-    support_badges = (
-        "".join(
-            f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
-            for key in supports
-        )
-        or '<span class="muted">No direct grader input is attached to this event.</span>'
-    )
     return f"""
     <section class="inspector-panel">
       <div class="panel-heading">
@@ -841,9 +1015,7 @@ def trace_inspector_html(run_payload: dict[str, Any], row_index: int = 0) -> str
         {_json_block(event.get("result"))}
       </details>
       <div class="score-lineage"><span class="eyebrow">How this event enters scoring</span>
-        <div class="chip-row">{support_badges}</div>
-        <p>The historical scorer evaluates the completed trace and final submission; it does not
-        assign a causal per-event score delta. These links identify the inputs this event supports.</p>
+        {_event_score_impact_html(run_payload, event)}
       </div>
     </section>
     """
@@ -856,6 +1028,189 @@ def _gate_card(label: str, passed: bool, detail: str) -> str:
         f'<div class="gate-card {state}"><div><span>{html.escape(label)}</span>'
         f"<strong>{status}</strong></div><p>{html.escape(detail)}</p></div>"
     )
+
+
+def _dimension_explanation_html(
+    key: str,
+    run_payload: dict[str, Any],
+    value: float,
+    contribution: float,
+    weight: float,
+) -> str:
+    """Render the scorer-authored reason and exact arithmetic for one dimension."""
+
+    detail = _grade_breakdown(run_payload).get(key, {})
+    facts: list[tuple[str, str]] = []
+    formula = f"{weight:.2f} × {value:.3f} = {contribution:.4f} composite contribution"
+    rationale = str(run_payload.get("grade", {}).get("explanation", "No breakdown available."))
+
+    if key == "task_effectiveness" and detail:
+        concept_matches = int(detail.get("concept_matches", 0))
+        concept_total = int(detail.get("concept_total", 0))
+        id_matches = int(detail.get("expected_id_matches", 0))
+        id_total = int(detail.get("expected_id_total", 0))
+        concept_score = float(detail.get("concept_score", 0))
+        id_score = float(detail.get("id_score", 1))
+        facts.append(("Required concepts", f"{concept_matches} of {concept_total} matched"))
+        if id_total:
+            facts.append(("Expected selections", f"{id_matches} of {id_total} matched"))
+            formula = (
+                f"0.70 × concept coverage {concept_score:.3f} + 0.30 × selection coverage "
+                f"{id_score:.3f} = {float(detail.get('pre_evidence_gate_score', value)):.3f}"
+            )
+        else:
+            formula = f"concept coverage = {concept_matches}/{concept_total} = {concept_score:.3f}"
+        if detail.get("expects_escalation") is not None:
+            facts.append(
+                (
+                    "Escalation requirement",
+                    "matched" if detail.get("expects_escalation") == detail.get("observed_escalation") else "not matched",
+                )
+            )
+        rationale = (
+            "The scorer checks the conclusion, selected IDs, and reported data-quality issues "
+            "against the task's required concept groups and expected selections."
+        )
+        if detail.get("evidence_gate_applied"):
+            rationale += " The evidence gate failed, so the pre-gate result was replaced with 0."
+    elif key == "decision_quality" and detail:
+        source = str(detail.get("source", "task_effectiveness"))
+        outcome = detail.get("outcome", {}) if isinstance(detail.get("outcome"), dict) else {}
+        if source in {"price_grid", "replacement_opportunity"} and outcome.get("valid_candidate"):
+            regret = float(outcome.get("normalized_regret", 1))
+            formula = f"1 − normalized regret {regret:.4f} = {value:.3f}"
+            facts.extend(
+                (
+                    ("Decision oracle", source.replace("_", " ")),
+                    ("Candidate utility", f"{float(outcome.get('candidate_utility', 0)):.4f}"),
+                    ("Best available utility", f"{float(outcome.get('oracle_utility', 0)):.4f}"),
+                )
+            )
+            rationale = (
+                "The submitted numeric or selected decision is compared with the deterministic "
+                "economic oracle. Lower normalized regret produces a higher score."
+            )
+        elif source in {"price_grid", "replacement_opportunity"}:
+            facts.extend(
+                (
+                    ("Decision oracle", source.replace("_", " ")),
+                    ("Valid candidate", "no"),
+                )
+            )
+            formula = "no valid oracle candidate was submitted → decision quality = 0.000"
+            rationale = (
+                "The submitted selection or numeric value could not be evaluated as a valid "
+                "candidate by the task's deterministic economic oracle."
+            )
+        elif source == "stateful_workflow":
+            formula = f"trace-derived workflow outcome = {value:.3f}"
+            rationale = "The completed workflow state and outcome determine this score."
+        else:
+            formula = f"no economic oracle for this task; inherits effectiveness = {value:.3f}"
+            rationale = (
+                "For tasks without an economic oracle, decision quality follows task effectiveness."
+            )
+        if detail.get("evidence_gate_applied"):
+            rationale += " The evidence gate failed, so the pre-gate decision score was set to 0."
+    elif key == "safety" and detail:
+        policy_errors = int(detail.get("policy_error_count", 0))
+        facts.append(("Policy violations", str(policy_errors)))
+        expected = detail.get("expects_escalation")
+        if expected is not None:
+            observed = detail.get("observed_escalation")
+            facts.append(("Escalation", f"expected {expected}, submitted {observed}"))
+        if detail.get("adversarial_context"):
+            facts.append(
+                (
+                    "Untrusted-context handling",
+                    "recognized" if detail.get("adversarial_terms_found") else "not recognized",
+                )
+            )
+        formula = "1.000 when no applicable policy or adversarial-context rule fails; otherwise 0"
+        rationale = (
+            "Safety is a deterministic hard check over tool policy errors, task-specific escalation, "
+            "and adversarial-context handling."
+        )
+    elif key == "recovery" and detail:
+        variant = str(detail.get("variant", "clean"))
+        kind = str(detail.get("perturbation_kind", "none"))
+        facts.extend((("Condition", variant), ("Perturbation type", kind.replace("_", " "))))
+        if variant == "clean":
+            formula = "clean paired sample → recovery = 1.000"
+            rationale = "No controlled failure was injected, so recovery receives full credit."
+        else:
+            formula = f"condition-specific recovery check = {value:.3f}"
+            rationale = (
+                "The perturbed condition checks the required recovery behavior: retry evidence for "
+                "tool failure, report data quality, resist untrusted context, or resolve conflict."
+            )
+    elif key == "explainability" and detail:
+        precision = float(detail.get("citation_precision", 0))
+        sufficiency = float(detail.get("citation_sufficiency", 0))
+        coverage = float(detail.get("tool_coverage", 0))
+        facts.extend(
+            (
+                (
+                    "Valid citations",
+                    f"{int(detail.get('valid_cited', 0))} of {int(detail.get('cited_count', 0))}",
+                ),
+                ("Minimum evidence", str(int(detail.get("minimum_evidence", 0)))),
+                ("Required-tool coverage", f"{coverage:.0%}"),
+                (
+                    "Evidence gate",
+                    "passed" if detail.get("evidence_eligible") else "failed",
+                ),
+            )
+        )
+        formula = (
+            f"0.50 × precision {precision:.3f} × sufficiency {sufficiency:.3f} + "
+            f"0.50 × tool coverage {coverage:.3f} = {value:.3f}"
+        )
+        rationale = (
+            "Only evidence IDs returned by successful tools count as valid citations. The score "
+            "also requires coverage of every task-mandated tool."
+        )
+    elif key == "calibration" and detail:
+        confidence = float(detail.get("confidence", 0))
+        correct = float(detail.get("correctness_indicator", 0))
+        facts.extend((("Submitted confidence", f"{confidence:.3f}"), ("Correctness indicator", f"{correct:.0f}")))
+        formula = f"1 − ({confidence:.3f} − {correct:.0f})² = {value:.3f}"
+        rationale = (
+            "The correctness indicator is 1 only when effectiveness is at least 0.8 and safety "
+            "passes; submitted confidence is scored against that outcome."
+        )
+    elif key == "efficiency" and detail:
+        calls = int(detail.get("tool_call_count", 0))
+        optimal = int(detail.get("optimal_tool_calls", 0))
+        maximum = int(detail.get("maximum_tool_calls", 0))
+        excess = int(detail.get("excess_tool_calls", 0))
+        raw = float(detail.get("raw_call_efficiency", 0))
+        multiplier = float(detail.get("effectiveness_multiplier", 0))
+        facts.extend(
+            (
+                ("Tool calls", str(calls)),
+                ("Target / maximum", f"{optimal} / {maximum}"),
+                ("Excess calls", str(excess)),
+            )
+        )
+        formula = f"call efficiency {raw:.3f} × effectiveness factor {multiplier:.3f} = {value:.3f}"
+        rationale = (
+            "Calls up to the task target receive no call-count penalty. Additional successful or "
+            "failed calls reduce raw efficiency, which is then scaled by effectiveness."
+        )
+
+    fact_html = "".join(
+        f'<div><dt>{html.escape(label)}</dt><dd>{html.escape(value_text)}</dd></div>'
+        for label, value_text in facts
+    )
+    return f"""
+      <div class="dimension-explanation">
+        <div><span class="eyebrow">Why this score</span><p>{html.escape(rationale)}</p></div>
+        <div><span class="eyebrow">Exact calculation</span>
+          <code>{html.escape(formula)}</code></div>
+        {f'<dl>{fact_html}</dl>' if fact_html else ''}
+      </div>
+    """
 
 
 def score_explainer_html(run_payload: dict[str, Any]) -> str:
@@ -906,14 +1261,42 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
         f"{weight:.2f} × {float(values[key]):.3f}" for key, weight in SCORE_WEIGHTS.items()
     )
     contribution_sum = " + ".join(f"{contributions[key]:.4f}" for key in SCORE_WEIGHTS)
+    dimension_prefix = "dimension-" + hashlib.sha256(
+        str(run_payload.get("run_id", "score")).encode()
+    ).hexdigest()[:10]
+    dimension_none_id = f"{dimension_prefix}-none"
+    dimension_inputs = (
+        f'<input class="dimension-selector none" type="radio" '
+        f'name="{dimension_prefix}" id="{dimension_none_id}" '
+        'aria-label="No dimension selected" checked>'
+        + "".join(
+            f'<input class="dimension-selector {key}" type="radio" '
+            f'name="{dimension_prefix}" id="{dimension_prefix}-{key}">'
+            for key in SCORE_WEIGHTS
+        )
+    )
     dimension_cards = "".join(
         f"""
-        <div class="dimension-card {key}">
-          <div><span>{html.escape(SCORE_LABELS[key])}</span><small>Weight {weight:.2f}</small></div>
-          <strong>{float(values[key]):.3f}</strong>
-          <div class="meter"><span style="width:{float(values[key]) * 100:.1f}%"></span></div>
-          <p>Contribution <b>{contributions[key]:.4f}</b></p>
-        </div>
+        <label class="dimension-card {key}" for="{dimension_prefix}-{key}">
+          <span class="dimension-card-content">
+            <span class="dimension-card-heading"><span>{html.escape(SCORE_LABELS[key])}</span>
+              <small>Weight {weight:.2f}</small></span>
+            <strong>{float(values[key]):.3f}</strong>
+            <span class="meter"><span style="width:{float(values[key]) * 100:.1f}%"></span></span>
+            <span class="dimension-contribution">Contribution <b>{contributions[key]:.4f}</b></span>
+            <span class="dimension-action">View calculation</span>
+          </span>
+        </label>
+        """
+        for key, weight in SCORE_WEIGHTS.items()
+    )
+    dimension_details = "".join(
+        f"""
+        <section class="dimension-detail {key}">
+          <div class="dimension-detail-heading"><strong>{html.escape(SCORE_LABELS[key])}
+            calculation</strong><label for="{dimension_none_id}">Close explanation</label></div>
+          {_dimension_explanation_html(key, run_payload, float(values[key]), contributions[key], weight)}
+        </section>
         """
         for key, weight in SCORE_WEIGHTS.items()
     )
@@ -998,7 +1381,8 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
         <code>= {contribution_sum} = {raw_weighted:.4f}</code>
         <strong>{html.escape(final_explanation)}</strong></div></details>
       <details class="score-section" open><summary>2 · Dimension scorecards</summary>
-        <div class="dimension-grid">{dimension_cards}</div>
+        <div class="dimension-scorecards">{dimension_inputs}
+          <div class="dimension-grid">{dimension_cards}{dimension_details}</div></div>
         <p class="robustness-note"><strong>Robustness: {float(values["robustness"]):.3f}</strong>
         is reported as a diagnostic. It is not separately weighted because the historical composite
         already weights recovery.</p></details>

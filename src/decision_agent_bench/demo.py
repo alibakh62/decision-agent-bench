@@ -337,6 +337,21 @@ html, body, gradio-app, .gradio-container, .main, main {
 .payload-summary { background: #0d1d2f; border: 1px solid var(--lab-border); border-radius: 6px; display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; }
 .payload-summary div { border-right: 1px solid var(--lab-border); padding: 9px 12px; }
 .payload-summary div:last-child { border-right: 0; }
+.impact-verdict {
+  background: #0d1d2f;
+  border: 1px solid #304866;
+  border-radius: 7px;
+  padding: 12px 13px;
+}
+.impact-verdict strong { color: #dce8f6; display: block; font-size: 15px; margin-top: 4px; }
+.impact-facts { display: grid; gap: 8px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; }
+.impact-fact { background: #091524; border: 1px solid var(--lab-border); border-radius: 6px; padding: 9px; }
+.impact-fact span { color: var(--lab-muted); display: block; font-size: 9px; }
+.impact-fact strong { color: #dce5f1; display: block; font-size: 11px; margin-top: 3px; }
+.impact-reasons { display: grid; gap: 8px; margin-top: 12px; }
+.impact-reasons article { background: #0d1d2f; border-left: 3px solid #5d75e8; border-radius: 5px; padding: 10px 12px; }
+.impact-reasons strong { color: #dfe7f3; font-size: 12px; }
+.impact-reasons p { color: #a8b7ca; font-size: 11px; line-height: 1.55; margin: 4px 0 0; }
 .score-causality-note { border-top: 1px solid var(--lab-border); color: var(--lab-muted); font-size: 11px; line-height: 1.55; margin-top: 18px; padding-top: 14px; }
 .score-shell { margin-top: 12px; padding: 0 !important; }
 .score-workbench { background: var(--lab-panel); padding: 18px; }
@@ -363,8 +378,10 @@ html, body, gradio-app, .gradio-container, .main, main {
 .equation { display: grid; gap: 8px; padding: 12px 4px 4px; }
 .equation code { color: #c7d2e2; font-size: 12px; overflow-wrap: anywhere; }
 .equation strong { color: #82d99a; font-size: 12px; }
+.dimension-selector { opacity: 0; pointer-events: none; position: absolute; }
 .dimension-grid { display: grid; gap: 8px; grid-template-columns: repeat(7, minmax(125px, 1fr)); margin-top: 10px; }
-.dimension-card { background: var(--lab-panel-raised); border: 1px solid var(--lab-border-strong); border-radius: 7px; padding: 11px; }
+.dimension-card { background: var(--lab-panel-raised); border: 1px solid var(--lab-border-strong); border-radius: 7px; cursor: pointer; min-width: 0; padding: 11px; transition: background .12s ease, box-shadow .12s ease; }
+.dimension-card:hover { background: #15243a; }
 .dimension-card.task_effectiveness { border-color: #3c70a5; }
 .dimension-card.decision_quality { border-color: #7059a8; }
 .dimension-card.safety { border-color: #3e7b55; }
@@ -372,12 +389,44 @@ html, body, gradio-app, .gradio-container, .main, main {
 .dimension-card.explainability { border-color: #376f88; }
 .dimension-card.calibration { border-color: #5b7399; }
 .dimension-card.efficiency { border-color: #3c8390; }
-.dimension-card > div:first-child { min-height: 39px; }
-.dimension-card span, .dimension-card small { display: block; }
-.dimension-card span { font-size: 12px; font-weight: 650; }
-.dimension-card small { color: var(--lab-muted); font-size: 10px; }
-.dimension-card > strong { display: block; font-size: 23px; margin: 8px 0; }
-.dimension-card p { color: var(--lab-muted); font-size: 10px; margin: 8px 0 0; }
+.dimension-scorecards:has(.dimension-selector.task_effectiveness:checked) .dimension-card.task_effectiveness,
+.dimension-scorecards:has(.dimension-selector.decision_quality:checked) .dimension-card.decision_quality,
+.dimension-scorecards:has(.dimension-selector.safety:checked) .dimension-card.safety,
+.dimension-scorecards:has(.dimension-selector.recovery:checked) .dimension-card.recovery,
+.dimension-scorecards:has(.dimension-selector.explainability:checked) .dimension-card.explainability,
+.dimension-scorecards:has(.dimension-selector.calibration:checked) .dimension-card.calibration,
+.dimension-scorecards:has(.dimension-selector.efficiency:checked) .dimension-card.efficiency { background: #182943; box-shadow: inset 0 0 0 1px #7182ff; }
+.dimension-card-content { display: block; }
+.dimension-card-heading { min-height: 39px; }
+.dimension-card-heading > span, .dimension-card-heading small { display: block; }
+.dimension-card-heading > span { font-size: 12px; font-weight: 650; }
+.dimension-card-heading small { color: var(--lab-muted); font-size: 10px; }
+.dimension-card-content > strong { display: block; font-size: 23px; margin: 8px 0; }
+.dimension-contribution { color: var(--lab-muted); display: block; font-size: 10px; margin: 8px 0 0; }
+.dimension-action { color: #a9b9ff; display: block; font-size: 10px; font-weight: 650; margin-top: 9px; }
+.dimension-detail { background: #101f31; border: 1px solid #415a7a; border-radius: 7px; display: none; grid-column: 1 / -1; }
+.dimension-scorecards:has(.dimension-selector.task_effectiveness:checked) .dimension-detail.task_effectiveness,
+.dimension-scorecards:has(.dimension-selector.decision_quality:checked) .dimension-detail.decision_quality,
+.dimension-scorecards:has(.dimension-selector.safety:checked) .dimension-detail.safety,
+.dimension-scorecards:has(.dimension-selector.recovery:checked) .dimension-detail.recovery,
+.dimension-scorecards:has(.dimension-selector.explainability:checked) .dimension-detail.explainability,
+.dimension-scorecards:has(.dimension-selector.calibration:checked) .dimension-detail.calibration,
+.dimension-scorecards:has(.dimension-selector.efficiency:checked) .dimension-detail.efficiency { display: block; }
+.dimension-detail-heading { align-items: center; background: #15243a; border-bottom: 1px solid var(--lab-border); display: flex; justify-content: space-between; padding: 10px 16px; }
+.dimension-detail-heading strong { color: #e1e9f5; font-size: 13px; }
+.dimension-detail-heading label { color: #a9b9ff; cursor: pointer; font-size: 11px; font-weight: 650; }
+.dimension-explanation {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(240px, 1.25fr) minmax(260px, 1fr) minmax(300px, 1.4fr);
+  padding: 15px 17px 17px;
+}
+.dimension-explanation p { color: #b5c3d5; font-size: 12px; line-height: 1.55; margin: 6px 0 0; }
+.dimension-explanation code { color: #dce7f6; display: block; font-size: 11px; line-height: 1.55; margin-top: 6px; overflow-wrap: anywhere; }
+.dimension-explanation dl { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+.dimension-explanation dl div { background: #0b1727; border: 1px solid var(--lab-border); border-radius: 6px; padding: 8px 9px; }
+.dimension-explanation dt { color: var(--lab-muted); font-size: 9px; }
+.dimension-explanation dd { color: #dce5f1; font-size: 11px; font-weight: 650; margin: 3px 0 0; }
 .meter { background: #26364b; border-radius: 4px; height: 4px; overflow: hidden; }
 .meter span { background: var(--lab-cyan); height: 100%; }
 .gate-grid { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); margin-top: 10px; }
@@ -477,7 +526,7 @@ html, body, gradio-app, .gradio-container {
 }
 #run-evaluation:focus-visible { outline: 2px solid #8d9bff !important; outline-offset: 2px; }
 .run-context-bar {
-  align-items: center;
+  align-items: start;
   background: #091524;
   border: 1px solid #263950;
   border-radius: 10px;
@@ -489,7 +538,9 @@ html, body, gradio-app, .gradio-container {
 }
 .run-context-bar > div { min-width: 0; }
 .run-context-bar strong { color: #edf3fb; display: block; font-size: 14px; margin: 3px 0; }
-.run-context-bar small { color: #96a7bc; display: block; font-size: 12px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-context-bar small { color: #96a7bc; display: block; font-size: 12px; line-height: 1.4; }
+.run-context-bar > div:first-child small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-context-task small { color: #b5c3d5; line-height: 1.55; margin-top: 5px; overflow: visible; white-space: normal; }
 .run-context-task { border-left: 1px solid #263950; padding-left: 20px; }
 .run-context-bar dl { display: grid; grid-template-columns: .8fr 1.25fr .75fr; margin: 0; }
 .run-context-bar dl div { border-left: 1px solid #263950; min-width: 0; padding-left: 13px; }
@@ -561,6 +612,8 @@ html, body, gradio-app, .gradio-container {
   .trace-layout { grid-template-columns: 1fr; }
   .trace-event-list { border-bottom: 1px solid var(--lab-border); border-right: 0; max-height: 520px; }
   .dimension-grid { grid-template-columns: repeat(2, 1fr); }
+  .dimension-explanation { grid-template-columns: 1fr; }
+  .impact-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ledger-layout { grid-template-columns: 1fr; }
   .run-context-bar { grid-template-columns: 1fr; }
   .run-context-task { border-left: 0; border-top: 1px solid #263950; padding: 12px 0 0; }
@@ -574,6 +627,7 @@ html, body, gradio-app, .gradio-container {
   .trace-table-header span:nth-child(4), .trace-table-header span:nth-child(5),
   .evidence-cell, .outcome-cell { display: none; }
   .dimension-grid { grid-template-columns: 1fr; }
+  .impact-facts { grid-template-columns: 1fr; }
 }
 """
 
@@ -870,7 +924,7 @@ def build_demo() -> Any:
           <small>{escape(architecture)}</small></div>
           <div class="run-context-task"><span class="eyebrow">Evaluation target</span>
           <strong>{escape(str(item["family_id"]))} · {escape(str(item["category"]).replace("_", " "))}</strong>
-          <small>{escape(str(item["prompt"]))}</small></div>
+          <small class="target-prompt">{escape(str(item["prompt"]))}</small></div>
           <dl><div><dt>Sample</dt><dd>{escape(str(sample_id))}</dd></div>
           <div><dt>Condition</dt><dd>{escape(condition)}</dd></div>
           <div><dt>Tool target</dt><dd>{item["optimal_tool_calls"]} calls</dd></div></dl>

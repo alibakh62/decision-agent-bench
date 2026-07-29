@@ -1,7 +1,7 @@
 # DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.5.4 agent-loop reliability patch, 29 July 2026
-**Benchmark software:** `0.5.4` (historical v0.1-v0.3 task contracts)
+**Status:** v0.5.5 score-explanation usability patch, 29 July 2026
+**Benchmark software:** `0.5.5` (historical v0.1-v0.3 task contracts)
 **Task protocols:** `0.1` confirmatory suite; `0.2` research expansion; `0.3` stateful preview
 
 > **Measurement hold:** an independent audit reproduced lexical grader gaming, paraphrase

@@ -10,6 +10,7 @@ from inspect_ai.model import ModelName, ModelOutput
 from inspect_ai.solver import Plan, TaskState
 
 from decision_agent_bench.demo import (
+    _DEMO_CSS,
     QUERY_LIBRARY,
     _execute_lab_run,
     build_demo,
@@ -382,6 +383,18 @@ def test_lab_trace_matches_the_selectable_trace_inspector_contract() -> None:
     assert "openai/example-model" in rendered
 
 
+def test_lab_trace_explains_the_selected_events_actual_score_relationship() -> None:
+    run = _execute_lab_run("single_agent", "DAB-PRO-001-i1", "clean")
+
+    rendered = trace_workbench_html(run)
+
+    assert "Event verdict" in rendered
+    assert "Credited evidence" in rendered
+    assert "is a successful tool result cited by the final submission" in rendered
+    assert "only calls above that target reduce the call-efficiency term" in rendered
+    assert "fabricating a standalone point delta" in rendered
+
+
 def test_custom_solver_is_limited_to_trusted_project_agent_directories() -> None:
     spec = trusted_solver_spec("examples/custom_solver.py@custom_agent")
 
@@ -435,6 +448,32 @@ def test_lab_score_explainer_matches_repository_composite_contract() -> None:
     assert "Robustness:" in score_html
     assert "not separately weighted" in score_html
     assert "construct-validity implementation gate" in score_html
+
+
+def test_lab_dimension_cards_open_into_exact_scorer_breakdowns() -> None:
+    run = _execute_lab_run("single_agent", "DAB-ASS-001-i1", "clean")
+    score_html = score_explainer_html(run)
+
+    assert score_html.count('<label class="dimension-card') == len(SCORE_WEIGHTS)
+    assert "View calculation" in score_html
+    assert "Close explanation" in score_html
+    assert "Why this score" in score_html
+    assert "normalized regret" in score_html
+    assert "precision" in score_html and "tool coverage" in score_html
+    assert "call efficiency" in score_html
+    assert run["grade"]["breakdown"]["efficiency"]["tool_call_count"] == len(
+        run["tool_calls"]
+    )
+
+
+def test_lab_evaluation_target_wraps_the_full_prompt() -> None:
+    assert ".run-context-task small" in _DEMO_CSS
+    target_rule = _DEMO_CSS.split(".run-context-task small", maxsplit=1)[1].split(
+        "}", maxsplit=1
+    )[0]
+
+    assert "white-space: normal" in target_rule
+    assert "overflow: visible" in target_rule
 
 
 def test_lab_exposes_all_baselines_and_public_task_context_only() -> None:
