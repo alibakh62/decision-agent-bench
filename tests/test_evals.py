@@ -7,7 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from inspect_ai import eval
-from inspect_ai.model import ModelOutput
+from inspect_ai.model import ModelOutput, get_model
 from inspect_ai.scorer import Target
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from pytest import MonkeyPatch
@@ -64,6 +64,15 @@ def _successful_call(tool_name: str, evidence_id: str, index: int) -> dict[str, 
         "evidence_id": evidence_id,
         "result_sha256": "0" * 64,
     }
+
+
+def test_retail_sql_publishes_the_queryable_schema_to_agents() -> None:
+    description = retail_sql().__doc__ or ""
+
+    assert "transactions: transaction_id" in description
+    assert "There is no `sales`" in description
+    assert "sqlite_master" in description
+    assert "(net_sales - cogs) / units" in description
 
 
 def test_every_contract_has_clean_and_perturbed_inspect_samples() -> None:
@@ -243,6 +252,91 @@ def test_advanced_architectures_execute_under_inspect(
         )
         assert len(logs) == 1
         assert logs[0].status == "success", f"{baseline}: {logs[0].error}"
+
+
+def test_planner_recovers_from_bad_sql_and_finalizes_before_sample_limit(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    _patch_mock_token_count(monkeypatch)
+    monkeypatch.setattr(
+        "inspect_ai._util.appdirs.user_data_path", lambda _package: tmp_path / "inspect-data"
+    )
+    monkeypatch.setattr(
+        "inspect_ai._util.appdirs.user_cache_path", lambda _package: tmp_path / "inspect-cache"
+    )
+    final_answer = json.dumps(
+        {
+            "conclusion": (
+                "Replace P005 with P021 because it has the strongest observed margin "
+                "opportunity and its vendor capacity constraints are acceptable."
+            ),
+            "confidence": 0.82,
+            "evidence_ids": ["E002", "E003"],
+            "selected_ids": ["P021"],
+            "numeric_values": {},
+            "escalate": False,
+            "data_quality_issues": [],
+        }
+    )
+    model = get_model(
+        "mockllm/model",
+        memoize=False,
+        custom_outputs=[
+            ModelOutput.from_content("mockllm/model", "1. Query evidence. 2. Decide."),
+            ModelOutput.for_tool_call(
+                "mockllm/model",
+                "retail_sql",
+                {"sql": "SELECT * FROM sales", "parameters": []},
+            ),
+            ModelOutput.for_tool_call(
+                "mockllm/model",
+                "retail_sql",
+                {
+                    "sql": (
+                        "SELECT p.product_id, p.vendor_id, v.capacity_cases_per_week, "
+                        "SUM(t.net_sales-t.cogs)/SUM(t.units) AS observed_unit_margin "
+                        "FROM products p JOIN vendors v USING(vendor_id) "
+                        "JOIN transactions t USING(product_id) "
+                        "WHERE t.store_id='S001' AND p.category='beverage' AND p.active=1 "
+                        "GROUP BY p.product_id, p.vendor_id, v.capacity_cases_per_week "
+                        "ORDER BY observed_unit_margin DESC"
+                    ),
+                    "parameters": [],
+                },
+            ),
+            ModelOutput.for_tool_call(
+                "mockllm/model",
+                "search_documents",
+                {"query": "vendor capacity and inventory policy", "limit": 5},
+            ),
+            ModelOutput.from_content("mockllm/model", "Evidence collection is complete."),
+            ModelOutput.from_content("mockllm/model", final_answer),
+        ],
+    )
+
+    logs = eval(
+        decision_agent_bench(
+            category="assortment",
+            variant="clean",
+            baseline="planner_executor",
+        ),
+        model=model,
+        limit=1,
+        log_dir=str(tmp_path / "bounded-agent"),
+        display="none",
+    )
+
+    assert len(logs) == 1
+    assert logs[0].status == "success"
+    sample = logs[0].samples[0]
+    calls = sample.store["dab.tool_calls"]
+    assert [call["status"] for call in calls] == ["error", "success", "success"]
+    assert "Public tables:" in calls[0]["error"]
+    assert sample.store["dab.agent_tool_turns"] == 4
+    assert sample.store["dab.finalization_attempts"] == 1
+    assert sample.store["dab.finalization_valid"] is True
+    assert sample.output.completion == final_answer
+    assert sample.scores["decision_agent_scorer"].value["composite"] > 0
 
 
 def test_every_named_perturbation_is_executable_and_observable(tmp_path: Path) -> None:

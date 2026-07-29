@@ -58,10 +58,13 @@ they do not force `temperature`, because reasoning models can reject that parame
 solver remains responsible for making its own generation configuration compatible with its
 selected model.
 
-Built-in architectures also reserve one final, tool-free model turn after evidence collection.
-This turn asks for the required JSON decision even when the exploratory agent loop ended at its
-message boundary. It may use only evidence already present in the transcript; it cannot call more
-tools or fabricate missing evidence.
+Built-in architectures use a bounded tool loop with parallel tool bursts disabled. The SQL tool
+publishes the complete public table/column catalog and identifies `transactions` as the sales fact
+table, so agents can construct valid queries without probing blocked SQLite metadata or guessing
+table names. After the bounded evidence phase, finalization happens *inside* the agent loop, before
+Inspect's sample-wide message limit can intervene. The model gets one tool-free JSON submission
+attempt and one contract-repair attempt when necessary. Both attempts may use only evidence already
+present in the transcript; they cannot call more tools or fabricate missing evidence.
 
 ## Import a custom agent
 

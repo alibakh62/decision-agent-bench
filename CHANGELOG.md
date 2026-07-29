@@ -4,6 +4,20 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-07-29
+
+### Fixed
+
+- Replace the sample-limit-driven built-in ReAct loop with an explicitly bounded tool loop that
+  disables parallel tool bursts, then performs up to two internal tool-free JSON finalization
+  attempts before Inspect can terminate the sample.
+- Publish the complete queryable retail schema in the SQL tool contract and return actionable
+  public-table guidance after unknown-table or blocked-catalog queries, preventing repeated guesses
+  such as `sales`, `shelf`, `product_metrics`, and `sqlite_master`.
+- Preserve exact SQL arguments and returned payloads on both tool-call and tool-result trace rows,
+  so the Lab inspector no longer displays an empty payload for a successful call or hides the query
+  that caused a warning.
+
 ## [0.5.3] - 2026-07-28
 
 ### Fixed

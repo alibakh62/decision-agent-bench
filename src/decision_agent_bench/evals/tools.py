@@ -19,6 +19,7 @@ from decision_agent_bench.simulator.environment import (
 from decision_agent_bench.simulator.environment import (
     ToolError as SimulatorToolError,
 )
+from decision_agent_bench.simulator.schema import PUBLIC_TABLES
 from decision_agent_bench.simulator.workflow import (
     WorkflowError,
     advance_time,
@@ -107,12 +108,59 @@ def _evidence_tools(evidence_ids: list[str]) -> set[str]:
     return {successful[evidence_id] for evidence_id in evidence_ids}
 
 
+def _actionable_sql_error(error: SimulatorToolError) -> str:
+    """Add public schema recovery guidance to avoid repeated table-name guessing."""
+
+    message = str(error)
+    if "no such table" in message or "sqlite_master" in message:
+        tables = ", ".join(sorted(PUBLIC_TABLES))
+        return (
+            f"{message}. Public tables: {tables}. Sales facts are in transactions; "
+            "schema-catalog queries are intentionally unavailable."
+        )
+    return message
+
+
 @tool
 def retail_sql() -> Tool:
     """Query the synthetic company with bounded, read-only SQLite SQL."""
 
     async def execute(sql: str, parameters: list[str | int | float] | None = None) -> str:
         """Run one read-only query and return rows with an evidence ID.
+
+        Public schema (table: columns):
+        regions: region_id, name;
+        stores: store_id, region_id, name, format, square_feet;
+        vendors: vendor_id, name, lead_time_days, min_order_cases,
+        capacity_cases_per_week, active;
+        products: product_id, vendor_id, category, name, unit_cost, case_pack,
+        shelf_life_days, active;
+        prices: store_id, product_id, unit_price, effective_date;
+        customers: customer_id, segment, home_store_id;
+        promotions: promo_id, product_id, start_date, end_date, discount_pct,
+        vendor_funding_pct, status;
+        inventory: store_id, product_id, on_hand_units, reorder_point, last_updated;
+        inventory_lots: store_id, product_id, lot_id, on_hand_units, expires_on, quarantined;
+        transactions: transaction_id, store_id, customer_id, product_id, sold_at, units,
+        gross_sales, discount_amount, net_sales, cogs;
+        refunds: refund_id, original_transaction_id, store_id, customer_id, refunded_at,
+        amount, reason, receipt_present, status;
+        payment_events: event_id, transaction_id, terminal_id, processor_reference,
+        event_type, event_at, amount;
+        data_feed_status: feed_name, scope, last_complete_at, status,
+        expected_frequency_minutes;
+        competitor_prices: observation_id, store_id, product_id, observed_price,
+        observed_at, source, verified;
+        recall_notices: notice_id, product_id, affected_lot_id, issued_at, status, instructions;
+        documents: document_id, kind, trust_level, version, effective_date, title, body, checksum;
+        approvals: approval_id, action_type, requested_by, amount, justification, status,
+        requested_at, resolved_at;
+        action_ledger: action_id, action_type, actor, status, payload_json, approval_id, created_at.
+
+        There is no `sales`, `sales_history`, `product_metrics`, `shelf`, or
+        `vendor_constraints` table. Use `transactions` joined to `products`, `prices`, `vendors`,
+        and `inventory`. For observed unit margin, aggregate `(net_sales - cogs) / units` from
+        `transactions`. SQLite catalog access (`sqlite_master`) is intentionally blocked.
 
         Args:
             sql: A single SELECT or read-only WITH statement. Aggregate or filter to 500 rows.
@@ -128,8 +176,9 @@ def retail_sql() -> Tool:
             with RetailEnvironment(_database_path()) as environment:
                 rows = environment.query_sql(sql, parameters or [])
         except SimulatorToolError as error:
-            _record_error("retail_sql", arguments, str(error))
-            raise ToolError(str(error)) from error
+            message = _actionable_sql_error(error)
+            _record_error("retail_sql", arguments, message)
+            raise ToolError(message) from error
         return _json_result(_record_success("retail_sql", arguments, rows))
 
     return execute

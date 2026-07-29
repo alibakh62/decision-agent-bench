@@ -33,6 +33,7 @@ from decision_agent_bench.lab import (
     write_run_report,
 )
 from decision_agent_bench.lab_runtime import (
+    _trace_from_sample,
     payload_from_eval_log,
     run_live_evaluation,
     safe_model_name,
@@ -213,6 +214,76 @@ def test_built_in_baselines_reserve_a_tool_free_final_submission_turn() -> None:
     assert "Evidence collection is now over" in str(observed["prompt"])
     assert result.output.completion == final_answer
     assert result.store.get("dab.finalization_valid") is True
+
+
+def test_evidence_agent_finalizes_inside_its_bounded_tool_loop() -> None:
+    state = TaskState(
+        model=ModelName("mockllm/model"),
+        sample_id="bounded-finalization",
+        epoch=1,
+        input="Make a decision",
+        messages=[],
+    )
+    calls: list[dict[str, object]] = []
+    final_answer = json.dumps(
+        {
+            "conclusion": "Escalate because the available evidence is incomplete.",
+            "confidence": 0.4,
+            "evidence_ids": [],
+            "selected_ids": [],
+            "numeric_values": {},
+            "escalate": True,
+            "data_quality_issues": ["Missing required economic evidence"],
+        }
+    )
+
+    async def bounded_generate(task_state: TaskState, **kwargs: object) -> TaskState:
+        calls.append(dict(kwargs))
+        completion = "Need more context" if len(calls) == 1 else final_answer
+        task_state.output = ModelOutput(model="provider-safe", completion=completion)
+        return task_state
+
+    result = run(baselines.evidence_agent(max_tool_turns=8)(state, bounded_generate))
+
+    assert calls == [
+        {"tool_calls": "single", "parallel_tool_calls": False},
+        {"tool_calls": "none"},
+    ]
+    assert result.output.completion == final_answer
+    assert result.store.get("dab.agent_tool_turns") == 1
+    assert result.store.get("dab.finalization_attempts") == 1
+    assert result.store.get("dab.finalization_valid") is True
+
+
+def test_lab_trace_recognizes_direct_json_as_the_final_decision() -> None:
+    final_answer = {
+        "conclusion": "Replace P005 with P021.",
+        "confidence": 0.8,
+        "evidence_ids": ["E002", "E003"],
+        "selected_ids": ["P021"],
+        "numeric_values": {},
+        "escalate": False,
+        "data_quality_issues": [],
+    }
+    model_event_type = type("ModelEvent", (), {})
+    model_event = model_event_type()
+    model_event.timestamp = "2026-07-29T13:28:45+00:00"
+    model_event.model = "openai/gpt-5.6-luna"
+    model_event.output = ModelOutput.from_content(
+        "openai/gpt-5.6-luna", json.dumps(final_answer)
+    )
+    sample = SimpleNamespace(
+        id="DAB-ASS-001-i1-clean",
+        started_at="2026-07-29T13:28:40+00:00",
+        events=[model_event],
+    )
+
+    trace, _ = _trace_from_sample(sample, "openai/gpt-5.6-luna")
+
+    assert trace[-1]["event"] == "Final decision"
+    assert trace[-1]["outcome"] == "Submitted"
+    assert trace[-1]["evidence_id"] == "E002,E003"
+    assert trace[-1]["result"] == final_answer
 
 
 def test_lab_does_not_present_a_missing_submission_as_a_zero_score() -> None:
