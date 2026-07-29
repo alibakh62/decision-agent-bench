@@ -80,7 +80,7 @@ regression tests rather than by bypassing that browser restriction.
 - The Inspect scorer test verifies that missing output produces the canonical NaN unscored sentinel
   plus `submission_status=missing`.
 - Existing structured, evidence-gated, provider-error, live-run, trace, and score-explainer tests
-  remain in the full project check; the v0.5.4 suite contains 143 passing tests.
+  remain in the full project check; the v0.5.4 suite contains 144 passing tests.
 
 ## Residual notes
 
