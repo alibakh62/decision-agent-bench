@@ -415,6 +415,11 @@ def payload_from_eval_log(
         if score is not None
         else []
     )
+    score_breakdown = (
+        (getattr(score, "metadata", None) or {}).get("score_breakdown", {})
+        if score is not None
+        else {}
+    )
     answer = getattr(score, "answer", None) if score is not None else None
     completion = getattr(getattr(sample, "output", None), "completion", "")
     submission = _parse_json(answer or completion)
@@ -496,6 +501,7 @@ def payload_from_eval_log(
             "raw_scorer_values": raw_values if not grade_available else None,
             "failures": failures,
             "explanation": str(getattr(score, "explanation", "")) if score is not None else "",
+            "breakdown": _as_json(score_breakdown),
             "decision_outcome": (
                 (getattr(score, "metadata", None) or {}).get("decision_outcome")
                 if score is not None

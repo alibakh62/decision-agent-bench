@@ -36,6 +36,8 @@ The compact context strip underneath confirms the selected architecture, evaluat
 sample, condition, and expected tool-call target before provider usage begins. **Custom agent
 adapter** is an optional collapsed panel containing the trusted solver reference and stable system
 name; it is used only when **Custom Inspect solver** is selected in the Agent menu.
+The evaluation-target prompt wraps to its full length so the decision request can be reviewed
+before spending provider credits.
 
 The former decorative Setup → Execute → Review strip has been removed. The status panel now
 reports real states: ready, preparing, running model and tools, rendering recorded events, complete,
@@ -116,8 +118,13 @@ The trace workbench mirrors the selected evaluation-studio design:
 - evidence IDs and outcomes remain visible while scanning;
 - selecting a row opens its exact arguments, latency, result summary, evidence payload, and score
   lineage on the right; and
-- the inspector does not invent a causal score delta for individual events. It identifies which
-  completed-trace inputs support each dimension.
+- **Score impact** explains whether that exact event was cited, whether it earned evidence credit,
+  how it enters required-tool coverage or the call budget, and which dimensions consume it.
+
+The inspector does not invent a causal per-event point delta because the historical scorer grades
+the completed trace and final submission. Instead, it exposes each event's actual deterministic
+relationship to the calculation and clearly distinguishes direct inputs, recorded-but-uncited
+evidence, recovery opportunities, and scorer outputs.
 
 Inspect model reasoning may be redacted by the provider. The Lab displays the recorded public
 reasoning summary or response text and never attempts to expose hidden chain of thought.
@@ -139,6 +146,12 @@ The historical v0.2.1 composite is:
 The score workbench substitutes the run's actual dimension values, shows each weighted
 contribution and running total, and maps evidence IDs back to dimensions. `robustness` remains a
 visible diagnostic but is not separately weighted in this historical contract.
+
+Each dimension card is clickable. Opening it shows the run-specific reason, exact formula, and the
+inputs that produced the displayed value—for example matched concept groups and selections,
+normalized economic regret, policy checks, recovery condition, valid citation counts, confidence
+error, or actual versus target tool calls. These explanations come from audit metadata emitted by
+the deterministic scorer, so the UI and downloadable report use the same calculation source.
 
 The final composite also depends on three eligibility conditions:
 

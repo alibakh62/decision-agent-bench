@@ -4,6 +4,23 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-07-29
+
+### Added
+
+- Add scorer-authored audit metadata for every weighted dimension, including concept and selection
+  coverage, oracle regret, policy checks, recovery conditions, citation precision and sufficiency,
+  calibration arithmetic, and the tool-call efficiency budget.
+- Make every dimension scorecard interactive so a user can open the exact formula, run-specific
+  inputs, and plain-language reason for its score without leaving the score workbench.
+- Replace the generic trace score-impact note with event-specific citation status, evidence credit,
+  tool-budget impact, recovery role, and final-submission lineage.
+
+### Changed
+
+- Allow the complete evaluation-target prompt to wrap in the context strip instead of truncating it
+  to a single line.
+
 ## [0.5.4] - 2026-07-29
 
 ### Fixed

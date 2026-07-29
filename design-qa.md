@@ -2,92 +2,69 @@
 
 ## Review target
 
-- Version: v0.5.4 schema-aware agent-loop reliability pass
-- Route: `http://127.0.0.1:7875`
-- Runtime: Gradio 6.20.0 with real Inspect execution
-- Desktop verification viewport: 1280 × 720 CSS pixels, device pixel ratio 2
-- Evaluation state: ready toolbar and a replay of the reported Luna `.eval` log
+- Version: v0.5.5 score-explanation usability pass
+- Route: `http://127.0.0.1:7877`
+- Runtime: Gradio 6.20.0 with the production Lab CSS and real Inspect execution path
+- Verification viewport: 2048 × 1200 CSS pixels, device pixel ratio 2
+- States reviewed: ready Lab, selected trace event with Score impact open, and Decision quality scorecard expanded
 
-## References and captures
+## Source truth and implementation evidence
 
-- User toolbar reference:
-  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-b8d11ce2-5f39-4289-b550-db3d60f58f64.png`
-- Reported Luna result:
-  `/Users/abakh005/Downloads/screencapture-127-0-0-1-7860-2026-07-28-16_33_33.png`
-- Reported v0.5.3 incomplete trace:
-  `/Users/abakh005/Downloads/screencapture-127-0-0-1-7860-2026-07-29-08_29_37.png`
-- Reported SQL warning detail:
-  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-11337ed4-af52-4dca-90d0-e746a4e4127e.png`
-- Initial 1280-pixel implementation capture: `/private/tmp/dab-lab-v053-toolbar.png`
-- Normalized reference/implementation comparison:
-  `/private/tmp/dab-lab-v053-toolbar-comparison.png`
+- Evaluation-target reference:
+  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-8ed4f0a4-60fb-4b04-ae1f-a051c7eaaa99.png`
+- Evaluation-target implementation:
+  `artifacts/design-qa/v0.5.5/evaluation-target-full.png`
+- Score-impact reference:
+  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-6e9912ab-928d-4fe1-b22d-e3f35ffb2d0c.png`
+- Score-impact implementation:
+  `artifacts/design-qa/v0.5.5/event-score-impact.png`
+- Dimension-scorecard reference:
+  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-44c9de09-9349-47d0-b8ce-37948e17e60d.png`
+- Expanded scorecard implementation:
+  `artifacts/design-qa/v0.5.5/dimension-score-explanation.png`
 
-The reference and implementation toolbar were placed in one 1812-pixel-wide comparison input.
-That comparison exposed the remaining narrow-condition overflow before the final width rebalance.
-Loopback navigation was subsequently denied by the user's in-app browser policy, so the last pass
-was verified from the measured pre-fix geometry, final CSS constraints, Gradio structure, and UI
-regression tests rather than by bypassing that browser restriction.
+All three reference/implementation pairs were opened together in one comparison input. The final
+captures preserve the existing dark Lab visual language, spacing, borders, typography, and state
+colors while adding the requested information density and interactions.
 
-## Initial audit
+## Findings and corrections
 
-- P1: Agent and Model helper text made their inputs start lower than Task, Condition, and Run.
-- P1: the Condition field received only 159.7 CSS pixels at the 1280-pixel viewport and overflowed,
-  exposing a horizontal scrollbar.
-- P0: the Luna agent reached Inspect's 42-message boundary while still requesting tools. It never
-  submitted a final JSON decision, but the Lab presented the scorer's format-gate diagnostic as a
-  genuine 0.0000 model-quality score.
-- P1: the built-in loop had no protected final-answer turn after evidence exploration.
-- P0: v0.5.3 placed finalization in `Plan.finish`, but Inspect stopped the sample while the inner
-  agent was appending tool results at the message limit. The finish solver therefore never ran.
-- P1: the SQL tool did not publish its public schema, while SQLite catalog access was intentionally
-  blocked. Luna guessed 17 nonexistent or prohibited table queries in a 33-call trace.
-- P2: the call row omitted its returned payload and the result row omitted its SQL arguments,
-  making a successful query look empty and a failed query harder to diagnose.
+- The Evaluation target prompt previously used a single-line ellipsis. It now wraps normally in a
+  top-aligned context bar, so the complete task request remains readable without hover or expansion.
+- The Score impact tab previously showed the same causality disclaimer for most events. It now
+  derives a selected-event verdict, citation status, evidence counts, tool coverage, and relevant
+  dimension explanations from the completed trace and scorer metadata.
+- The implementation does not invent per-event point deltas. It explains whether an event supplied
+  credited evidence, consumed call budget, created a recovery opportunity, supplied the final
+  decision, or served only as unscored model reasoning.
+- Dimension cards were initially implemented as independent disclosure blocks. That caused the
+  remaining cards to move into a sparse second row when one card opened. The final interaction keeps
+  all seven cards visible in one row and opens one shared, full-width calculation panel beneath them.
+- Each calculation panel reports the run-specific formula, plain-language reason, and the exact
+  scorer inputs behind that dimension. The selected card receives a stronger outline and the panel
+  has an explicit Close explanation action.
 
-## Final findings
+## Interaction checks
 
-- The five toolbar cells now share an equal-height row and bottom alignment. Agent and Model helper
-  text was removed from the dense toolbar, eliminating the staggered input baselines.
-- The primary button has one explicit 48-pixel height and a one-pixel optical bottom adjustment.
-- Responsive minimums were rebalanced to 210 / 210 / 280 / 180 / 140 pixels. The Condition cell now
-  remains wide enough for both options at the tested viewport without forcing a second row.
-- Every built-in architecture now executes an explicitly bounded tool loop below the sample-wide
-  message ceiling. Parallel tool bursts are disabled, and one JSON attempt plus one repair attempt
-  execute inside that loop before control can reach Inspect's hard limit.
-- The SQL tool contract publishes all public tables and columns, identifies `transactions` as the
-  sales fact table, and returns the same catalog after unknown-table or blocked-catalog errors.
-- Tool-call rows carry their real returned payload and tool-result rows carry the original query,
-  so both halves of the trace remain independently inspectable.
-- A run with no JSON submission is now `incomplete`, not `success`. The Lab preserves its trace and
-  evidence but reports **No score was reported** and suppresses the provisional zero scorecard.
-- The Inspect scorer returns `Score.unscored()` for a missing submission, so the sample is excluded
-  from aggregate metrics. A submitted, contract-valid decision that genuinely earns zero remains a
-  valid zero and is still shown normally.
-- Reprocessing the exact reported Luna log produces `Run incomplete`, an unavailable grade, and a
-  final `Submission incomplete / Not scored` trace event.
+- Selected a successful `retail_sql` evidence event and opened Score impact.
+- Verified the event was identified as Credited evidence with `2 of 2` valid citations, the minimum
+  evidence threshold, 100% tool coverage, and separate Explainability and Efficiency reasoning.
+- Opened Decision quality and verified the normalized-regret equation, oracle name, candidate
+  utility, and best available utility appeared while all seven cards remained visible.
+- Closed the dimension explanation and verified the shared panel returned to its neutral state.
+- Reloaded the production Lab and verified the complete evaluation prompt was present in the DOM and
+  visible across two lines.
+- Checked both the production Lab and the component QA fixture for browser console errors; none were
+  reported.
 
-## Interaction and regression checks
+## Regression evidence
 
-- All built-in baselines retain `Plan.finish` as a secondary safety net, while the primary
-  finalization now runs inside the bounded agent loop.
-- A scripted Inspect integration deliberately queries nonexistent `sales`, verifies the actionable
-  schema response, recovers with a joined `transactions` query, collects two evidence records,
-  finalizes internally, and produces a nonzero composite.
-- The finalizer test verifies that tools are empty, `tool_calls="none"` is sent, the final contract
-  prompt is present, and a conforming JSON response is accepted.
-- The missing-submission adapter test verifies that historical all-zero/safety-one diagnostics are
-  retained only as raw audit data and never rendered as a composite score.
-- The Inspect scorer test verifies that missing output produces the canonical NaN unscored sentinel
-  plus `submission_status=missing`.
-- Existing structured, evidence-gated, provider-error, live-run, trace, and score-explainer tests
-  remain in the full project check; the v0.5.4 suite contains 144 passing tests.
+- Ruff passed.
+- Full pytest suite: 147 passed.
+- Specification validation: 25 task families.
+- Generated world validation: 15,297 transactions across 20 tables.
+- Reference and benchmark power-design verification passed.
 
-## Residual notes
-
-- A real provider rerun requires the user's exported API key and therefore must be performed from
-  the same key-bearing shell that launches the Lab.
-- The v0.2.1 scorer remains a historical development contract with documented construct-validity
-  limitations. This pass corrects run completeness semantics; it does not expand publication claims.
-- No P0, P1, or P2 issue remains in the implementation or regression surface reviewed here.
+No P0, P1, or P2 issue remains in the three requested surfaces.
 
 final result: passed
