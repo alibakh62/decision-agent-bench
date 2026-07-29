@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import math
+from asyncio import run
 from dataclasses import asdict
 from pathlib import Path
 
 from inspect_ai import eval
 from inspect_ai.model import ModelOutput
+from inspect_ai.scorer import Target
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 from pytest import MonkeyPatch
 
@@ -19,6 +22,7 @@ from decision_agent_bench.evals.runtime import (
 )
 from decision_agent_bench.evals.scorer import (
     DeterministicGrade,
+    decision_agent_scorer,
     grade_submission,
     parse_submission,
 )
@@ -287,6 +291,26 @@ def test_v021_keyword_answer_without_evidence_is_ineligible() -> None:
     assert grade.values["composite"] == 0
     assert "F-EVID" in grade.failures
     assert "evidence_eligible=false" in grade.explanation
+
+
+def test_inspect_scorer_excludes_missing_submission_from_metrics() -> None:
+    state = TaskState(
+        model="mockllm/model",
+        sample_id="missing-submission",
+        epoch=1,
+        input="Make a decision",
+        messages=[],
+    )
+    state.output = ModelOutput(model="mockllm/model", completion="")
+
+    score = run(
+        decision_agent_scorer()(state, Target(json.dumps(CASES_BY_ID["DAB-ASS-001"].target())))
+    )
+
+    assert isinstance(score.value, float)
+    assert math.isnan(score.value)
+    assert score.metadata["submission_status"] == "missing"
+    assert "incomplete" in score.explanation.lower()
 
 
 def test_v021_requires_valid_citations_and_required_tool_coverage() -> None:

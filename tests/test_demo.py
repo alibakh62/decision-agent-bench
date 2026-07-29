@@ -3,10 +3,11 @@ from __future__ import annotations
 import inspect
 import json
 from asyncio import run
+from types import SimpleNamespace
 
 import pytest
 from inspect_ai.model import ModelName, ModelOutput
-from inspect_ai.solver import TaskState
+from inspect_ai.solver import Plan, TaskState
 
 from decision_agent_bench.demo import (
     QUERY_LIBRARY,
@@ -32,6 +33,7 @@ from decision_agent_bench.lab import (
     write_run_report,
 )
 from decision_agent_bench.lab_runtime import (
+    payload_from_eval_log,
     run_live_evaluation,
     safe_model_name,
     trusted_solver_spec,
@@ -135,10 +137,12 @@ def test_live_lab_runs_one_real_inspect_sample(tmp_path, monkeypatch) -> None:
         variant="clean",
     )
 
-    assert payload["status"] == "success"
+    assert payload["status"] == "incomplete"
     assert payload["model"] == "mockllm/model"
     assert payload["sample_id"] == "DAB-ASS-001-i1-clean"
-    assert payload["grade"]["available"] is True
+    assert payload["grade"]["available"] is False
+    assert payload["grade"]["availability_reason"]
+    assert payload["trace"][-1]["event"] == "Submission incomplete"
     assert payload["trace"][0]["event"] == "Run started"
     assert payload["log_path"].endswith(".eval")
 
@@ -168,6 +172,109 @@ def test_planning_stage_uses_provider_safe_generation_defaults() -> None:
 
     assert observed == {"tool_calls": "none"}
     assert result.store.get("dab.plan") == "1. Gather evidence"
+
+
+def test_built_in_baselines_reserve_a_tool_free_final_submission_turn() -> None:
+    wrapped = baselines.baseline_solver("planner_executor")
+    state = TaskState(
+        model=ModelName("mockllm/model"),
+        sample_id="finalization",
+        epoch=1,
+        input="Make a decision",
+        messages=[],
+    )
+    state.output = ModelOutput(model="provider-safe", completion="")
+    observed: dict[str, object] = {}
+    final_answer = json.dumps(
+        {
+            "conclusion": "Evidence is insufficient; escalate for review.",
+            "confidence": 0.3,
+            "evidence_ids": ["E001"],
+            "selected_ids": [],
+            "numeric_values": {},
+            "escalate": True,
+            "data_quality_issues": ["Missing shelf-capacity evidence"],
+        }
+    )
+
+    async def final_generate(task_state: TaskState, **kwargs: object) -> TaskState:
+        observed.update(kwargs)
+        observed["tools"] = list(task_state.tools)
+        observed["prompt"] = task_state.messages[-1].text
+        task_state.output = ModelOutput(model="provider-safe", completion=final_answer)
+        return task_state
+
+    result = run(baselines.finalize_submission()(state, final_generate))
+
+    assert isinstance(wrapped, Plan)
+    assert wrapped.finish is not None
+    assert observed["tool_calls"] == "none"
+    assert observed["tools"] == []
+    assert "Evidence collection is now over" in str(observed["prompt"])
+    assert result.output.completion == final_answer
+    assert result.store.get("dab.finalization_valid") is True
+
+
+def test_lab_does_not_present_a_missing_submission_as_a_zero_score() -> None:
+    score = SimpleNamespace(
+        value={
+            "task_effectiveness": 0.0,
+            "decision_quality": 0.0,
+            "safety": 1.0,
+            "robustness": 0.0,
+            "calibration": 0.0,
+            "efficiency": 0.0,
+            "recovery": 0.0,
+            "explainability": 0.0,
+            "composite": 0.0,
+        },
+        answer="",
+        explanation="Submission was not a JSON object.",
+        metadata={"failure_taxonomy": ["F-FORMAT"]},
+    )
+    sample = SimpleNamespace(
+        id="DAB-ASS-001-i1-clean",
+        started_at="2026-07-28T21:32:40+00:00",
+        completed_at="2026-07-28T21:33:05+00:00",
+        total_time=25.0,
+        events=[],
+        scores={"decision_agent_scorer": score},
+        output=ModelOutput(model="gpt-5.6-luna", completion=""),
+        error=None,
+        limit=SimpleNamespace(type="message", limit=42),
+        model_usage={},
+    )
+    log = SimpleNamespace(
+        samples=[sample],
+        status="success",
+        error=None,
+        location="logs/example.eval",
+        eval=SimpleNamespace(
+            model="openai/gpt-5.6-luna",
+            run_id="test-run",
+            task_version="0.2.1",
+        ),
+    )
+    from decision_agent_bench.demo import _CATALOG
+
+    payload = payload_from_eval_log(
+        log,
+        agent_source="Built-in baseline",
+        baseline="planner_executor",
+        solver_reference="examples/custom_solver.py@custom_agent",
+        system_name="lab-test",
+        instance=_CATALOG["DAB-ASS-001-i1"],
+        variant="clean",
+    )
+    rendered = score_explainer_html(payload)
+
+    assert payload["status"] == "incomplete"
+    assert payload["grade"]["available"] is False
+    assert payload["grade"]["raw_scorer_values"]["safety"] == 1.0
+    assert payload["trace"][-1]["outcome"] == "Not scored"
+    assert "No score was reported" in rendered
+    assert "SUBMISSION_INCOMPLETE" in rendered
+    assert "Composite score" not in rendered
 
 
 def test_lab_turns_provider_failures_into_actionable_safe_copy() -> None:

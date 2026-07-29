@@ -5,6 +5,7 @@ from __future__ import annotations
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser
 from inspect_ai.solver import (
     Generate,
+    Plan,
     Solver,
     TaskState,
     basic_agent,
@@ -33,6 +34,67 @@ Submit exactly one JSON object with these keys:
 
 Do not wrap the JSON in markdown.
 """
+
+FINAL_SUBMISSION_PROMPT = """
+Evidence collection is now over. Do not call any more tools. Based only on the task and successful
+tool results already in the transcript, return exactly one JSON object with these keys:
+`conclusion`, `confidence`, `evidence_ids`, `selected_ids`, `numeric_values`, `escalate`, and
+`data_quality_issues`. Cite only evidence IDs already returned by successful tool calls. If the
+evidence is insufficient, say so in `conclusion`, lower `confidence`, set `escalate` to true when
+appropriate, and record the gap in `data_quality_issues`. Do not wrap the JSON in markdown.
+"""
+
+_SUBMISSION_FIELDS = {
+    "conclusion",
+    "confidence",
+    "evidence_ids",
+    "selected_ids",
+    "numeric_values",
+    "escalate",
+    "data_quality_issues",
+}
+
+
+def _has_complete_submission(completion: str) -> bool:
+    """Return whether a completion satisfies the top-level submission shape."""
+
+    from decision_agent_bench.evals.scorer import parse_submission
+
+    submission = parse_submission(completion, strict=True)
+    return submission is not None and _SUBMISSION_FIELDS <= submission.keys()
+
+
+@solver
+def finalize_submission() -> Solver:
+    """Guarantee one tool-free final-answer opportunity after an agent loop ends."""
+
+    async def solve(state: TaskState, generate: Generate) -> TaskState:
+        if _has_complete_submission(state.output.completion):
+            state.store.set("dab.finalization_status", "submitted_in_agent_loop")
+            return state
+
+        # A BasicAgent can end at its message boundary immediately after requesting
+        # more tools. Reserve a separate, provider-safe generation for the answer so
+        # an exhausted exploration budget cannot masquerade as a scored submission.
+        state.completed = False
+        state.tools = []
+        state.message_limit = max(state.message_limit or 0, len(state.messages) + 3)
+        state.messages.append(ChatMessageUser(content=FINAL_SUBMISSION_PROMPT))
+        state.store.set("dab.finalization_status", "forced_tool_free_turn")
+        state = await generate(state, tool_calls="none")
+        state.store.set(
+            "dab.finalization_valid",
+            _has_complete_submission(state.output.completion),
+        )
+        return state
+
+    return solve
+
+
+def _with_final_submission(agent: Solver) -> Solver:
+    """Run a finalizer even when Inspect ends an agent early at a limit."""
+
+    return Plan(steps=agent, finish=finalize_submission(), internal=True)
 
 
 @solver
@@ -104,9 +166,11 @@ def baseline_solver(name: str, *, workflow: bool = False) -> Solver:
     """Resolve a stable CLI-facing baseline name."""
 
     if name == "single_agent":
-        return single_agent(workflow=workflow)
+        agent = single_agent(workflow=workflow)
+        return _with_final_submission(agent)
     if name == "planner_executor":
-        return planner_executor(workflow=workflow)
+        agent = planner_executor(workflow=workflow)
+        return _with_final_submission(agent)
     if name in {
         "independent_verifier",
         "multi_agent",
@@ -117,5 +181,6 @@ def baseline_solver(name: str, *, workflow: bool = False) -> Solver:
     }:
         from decision_agent_bench.evals.advanced_baselines import advanced_baseline_solver
 
-        return advanced_baseline_solver(name, workflow=workflow)
+        agent = advanced_baseline_solver(name, workflow=workflow)
+        return _with_final_submission(agent)
     raise ValueError(f"unknown baseline {name!r}")

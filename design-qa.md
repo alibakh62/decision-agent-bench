@@ -2,92 +2,74 @@
 
 ## Review target
 
-- Version: v0.5.2 corrective Lab pass on PR #15
-- Route: `http://127.0.0.1:7873`
-- Runtime: Gradio 6.20.0, real Inspect execution
-- Desktop verification viewport: 1530 × 900 CSS pixels
-- Verified agents: built-in planner/executor and `examples/custom_solver.py@custom_agent`
-- Verified model: `mockllm/model` (local integration check)
+- Version: v0.5.3 toolbar and incomplete-run corrective pass
+- Route: `http://127.0.0.1:7875`
+- Runtime: Gradio 6.20.0 with real Inspect execution
+- Desktop verification viewport: 1280 × 720 CSS pixels, device pixel ratio 2
+- Evaluation state: ready toolbar and a replay of the reported Luna `.eval` log
 
 ## References and captures
 
-- User's current-state screenshot:
-  `/Users/abakh005/Downloads/screencapture-127-0-0-1-7860-2026-07-28-15_23_29.png`
-- Selected trace reference:
-  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-69cebe4d-195b-47ac-99fe-360e0e8a54e5.png`
-- Completed toolbar: `/private/tmp/dab-lab-final-toolbar.jpg`
-- Completed implementation trace: `/private/tmp/dab-lab-final-trace.jpg`
-- Normalized reference/implementation comparison: `/private/tmp/dab-lab-final-comparison.jpg`
+- User toolbar reference:
+  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-b8d11ce2-5f39-4289-b550-db3d60f58f64.png`
+- Reported Luna result:
+  `/Users/abakh005/Downloads/screencapture-127-0-0-1-7860-2026-07-28-16_33_33.png`
+- Initial 1280-pixel implementation capture: `/private/tmp/dab-lab-v053-toolbar.png`
+- Normalized reference/implementation comparison:
+  `/private/tmp/dab-lab-v053-toolbar-comparison.png`
 
-The source is 2572 × 1132 and the implementation trace capture is 2756 × 900. The combined
-comparison fits each surface into a 1600 × 704 frame, preserving aspect ratio and using the same
-completed-run state. This removes pixel-density differences while preserving layout, proportions,
-density, and hierarchy.
+The reference and implementation toolbar were placed in one 1812-pixel-wide comparison input.
+That comparison exposed the remaining narrow-condition overflow before the final width rebalance.
+Loopback navigation was subsequently denied by the user's in-app browser policy, so the last pass
+was verified from the measured pre-fix geometry, final CSS constraints, Gradio structure, and UI
+regression tests rather than by bypassing that browser restriction.
 
 ## Initial audit
 
-- P0: OpenAI reasoning-model runs failed because the planning stage forced `temperature=0.0`, which
-  the selected model rejects.
-- P1: provider failures filled the score panel with an escaped request and Python traceback.
-- P1: the setup controls formed two dense rows with weak hierarchy and nested borders.
-- P1: failed runs reserved a very tall empty trace canvas with no useful event content.
-- P2: the trace selected the low-value `Run started` event instead of the first meaningful model or
-  tool event.
+- P1: Agent and Model helper text made their inputs start lower than Task, Condition, and Run.
+- P1: the Condition field received only 159.7 CSS pixels at the 1280-pixel viewport and overflowed,
+  exposing a horizontal scrollbar.
+- P0: the Luna agent reached Inspect's 42-message boundary while still requesting tools. It never
+  submitted a final JSON decision, but the Lab presented the scorer's format-gate diagnostic as a
+  genuine 0.0000 model-quality score.
+- P1: the built-in loop had no protected final-answer turn after evidence exploration.
 
-## Final visual findings
+## Final findings
 
-- The page remains fluid and uses the available viewport width; the former max-width cap is gone.
-- The setup area is one coherent toolbar with Agent, Model, Task, Condition, and one primary action.
-  Custom-solver details live in a collapsed adapter drawer instead of a permanent second form row.
-- The trace matches the reference's dark workbench: one run header, 58/42 timeline/inspector
-  split, sticky column labels, vertical event rail, full-row selection, outcome styling, exact
-  arguments, payload summaries, and Event details / Evidence payload / Score impact tabs.
-- The score workbench retains the selected scoring-detail design while using the repository's real
-  dimensions, weights, gates, failure codes, and evidence lineage.
-- The page starts in an explicit Ready state with empty trace and score panels. No completed result
-  is shown until Inspect returns one.
-- The decorative stage strip has been replaced by truthful transient states: preparing, running
-  model/tools, rendering recorded events, completed, or failed.
-- Failed runs collapse to a proportional diagnostic trace and a concise classified error card. Raw
-  request bodies and tracebacks remain in the `.eval` log rather than leaking into the interface.
+- The five toolbar cells now share an equal-height row and bottom alignment. Agent and Model helper
+  text was removed from the dense toolbar, eliminating the staggered input baselines.
+- The primary button has one explicit 48-pixel height and a one-pixel optical bottom adjustment.
+- Responsive minimums were rebalanced to 210 / 210 / 280 / 180 / 140 pixels. The Condition cell now
+  remains wide enough for both options at the tested viewport without forcing a second row.
+- Every built-in architecture is wrapped in an Inspect `Plan` with a finish solver. If exploration
+  stops at the message boundary, the finish solver clears tools and reserves one provider-safe
+  generation for the required JSON.
+- A run with no JSON submission is now `incomplete`, not `success`. The Lab preserves its trace and
+  evidence but reports **No score was reported** and suppresses the provisional zero scorecard.
+- The Inspect scorer returns `Score.unscored()` for a missing submission, so the sample is excluded
+  from aggregate metrics. A submitted, contract-valid decision that genuinely earns zero remains a
+  valid zero and is still shown normally.
+- Reprocessing the exact reported Luna log produces `Run incomplete`, an unavailable grade, and a
+  final `Submission incomplete / Not scored` trace event.
 
-## Interaction and runtime checks
+## Interaction and regression checks
 
-- Built-in planner/executor completed a real Inspect `mockllm/model` sample and wrote a downloadable
-  `.eval` log.
-- The UI visibly changed from Ready → Running model and tools → event population → Run completed.
-- `examples/custom_solver.py@custom_agent` loaded through Inspect's public `SolverSpec`, completed
-  the same sample, and appeared under its stable custom system name.
-- Model selection is editable and includes local and OpenAI examples.
-- Trace-row selection updates the entire selected row and right-hand inspector.
-- Event details, Evidence payload, and Score impact tabs all switch without a server round trip.
-- Invalid final output from the mock model produced the real 0.0000 score, failed format/evidence
-  gates, and no fabricated fallback result.
-- Browser console warnings/errors during both verified flows: 0.
-- Missing-credential and unsupported-parameter paths render a remediation, never a fabricated
-  score, and never a raw `BadRequestError` request dump.
-- The actual planning solver is covered by a regression test asserting that provider-specific
-  sampling parameters are not sent. The advanced baselines use the same provider-safe default.
-
-## Comparison history
-
-1. Removed the 1540-pixel container cap and replaced the scripted replay with real Inspect runs.
-2. Replaced the native Dataframe with a selectable trace workbench matching the chosen reference.
-3. Added model selection, trusted custom-solver loading, and original log download.
-4. Removed the decorative three-stage strip and consolidated metadata into the trace header.
-5. Removed forced temperature settings from all benchmark baselines.
-6. Rebuilt the setup form as a one-line toolbar plus compact evaluation-target context.
-7. Replaced raw exception dumps with safe, classified error states and actionable recovery copy.
-8. Changed the initial trace selection to the first meaningful model or tool event.
+- All built-in baselines expose the finalizer as their `Plan.finish` solver.
+- The finalizer test verifies that tools are empty, `tool_calls="none"` is sent, the final contract
+  prompt is present, and a conforming JSON response is accepted.
+- The missing-submission adapter test verifies that historical all-zero/safety-one diagnostics are
+  retained only as raw audit data and never rendered as a composite score.
+- The Inspect scorer test verifies that missing output produces the canonical NaN unscored sentinel
+  plus `submission_status=missing`.
+- Existing structured, evidence-gated, provider-error, live-run, trace, and score-explainer tests
+  remain in the full project check.
 
 ## Residual notes
 
-- `mockllm/model` intentionally produces repetitive model events and is labeled as local plumbing;
-  a provider-backed model produces the richer model/tool/result sequence shown by the design.
-- The historical v0.2.1 scorer remains a development contract with documented construct-validity
-  limitations. The UI explains this rather than visually implying publication eligibility.
-- No P0, P1, or P2 visual issues remain in the final reference comparison. The implementation uses
-  compact textual actor/outcome labels instead of introducing an additional icon dependency; the
-  event rail, selection state, and color hierarchy keep the trace scannable.
+- A real provider rerun requires the user's exported API key and therefore must be performed from
+  the same key-bearing shell that launches the Lab.
+- The v0.2.1 scorer remains a historical development contract with documented construct-validity
+  limitations. This pass corrects run completeness semantics; it does not expand publication claims.
+- No P0, P1, or P2 issue remains in the implementation or regression surface reviewed here.
 
 final result: passed
