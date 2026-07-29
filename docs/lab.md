@@ -58,6 +58,11 @@ they do not force `temperature`, because reasoning models can reject that parame
 solver remains responsible for making its own generation configuration compatible with its
 selected model.
 
+Built-in architectures also reserve one final, tool-free model turn after evidence collection.
+This turn asks for the required JSON decision even when the exploratory agent loop ended at its
+message boundary. It may use only evidence already present in the transcript; it cannot call more
+tools or fabricate missing evidence.
+
 ## Import a custom agent
 
 The Lab uses the same public integration boundary as the benchmark: an Inspect `Solver`.
@@ -142,6 +147,18 @@ If Inspect fails before scoring, the UI keeps any available diagnostic trace and
 that no score was produced. Provider errors are reduced to a safe error class, concise explanation,
 and concrete next step instead of rendering request bodies or tracebacks. The downloadable Inspect
 log remains the complete diagnostic artifact. The Lab never substitutes a dummy result.
+
+A run can also finish its model/tool loop without submitting the required final JSON. That state is
+shown as **Run incomplete — not scored**, not as a zero-quality decision. DecisionAgentBench keeps
+the trace and evidence for diagnosis, records `F-FORMAT` as the reason, and excludes the sample from
+Inspect score aggregates. This distinction matters:
+
+- a **valid zero** is a submitted decision that the deterministic contract evaluated and rejected;
+- **not scored** means no decision existed for the scorer to evaluate.
+
+Custom solvers should budget a final generation step, clear their tools for that step, and return
+the complete JSON contract before their message or token limit is exhausted. Built-in solvers do
+this automatically.
 
 ## Interpret results responsibly
 

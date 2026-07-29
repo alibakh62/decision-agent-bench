@@ -4,8 +4,17 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-07-28
+
 ### Fixed
 
+- Reserve a separate tool-free finalization turn for every built-in agent after its exploration
+  loop, so reaching the message boundary cannot silently discard an otherwise recoverable decision.
+- Treat a run with no final JSON decision as incomplete and unscored instead of reporting a
+  misleading all-zero composite. Inspect now excludes that sample from score aggregates while the
+  Lab preserves its trace, evidence, and provisional scorer diagnostics for troubleshooting.
+- Bottom-align the Agent, Model, Task, Condition, and Run controls in one equal-height toolbar and
+  rebalance their responsive widths so labels and inputs no longer form staggered rows.
 - Stop forcing `temperature=0.0` in every built-in planning, verifier, specialist, and feedback
   generation. Reasoning models that reject sampling controls now run with provider-safe defaults
   instead of failing before tool execution.

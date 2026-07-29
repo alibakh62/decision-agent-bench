@@ -12,13 +12,14 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.5.2 interactive-lab patch on the statistical-design preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.5.3 interactive-lab patch on the statistical-design preview. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
 > implemented. An independent audit confirmed construct-validity defects in the historical lexical
 > scorer. v0.5 adds deterministic power/MDE and metric-dependence tooling; v0.5.1 adds a tested
-> bring-your-own-agent path, and v0.5.2 adds a trace-first replay and score-audit workbench.
+> bring-your-own-agent path, v0.5.2 adds a trace-first replay and score-audit workbench, and v0.5.3
+> distinguishes an incomplete agent run from a genuine zero-scoring submitted decision.
 > Publication-scale
 > model runs and leaderboard claims remain blocked on the v0.4 measurement-validity implementation.
 > No frontier-model performance claims have been made.
@@ -181,8 +182,8 @@ server stays loopback-only and sharing is disabled. See the [Lab guide](docs/lab
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.5.2 .
-docker run --rm decision-agent-bench:0.5.2
+docker build --tag decision-agent-bench:0.5.3 .
+docker run --rm decision-agent-bench:0.5.3
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

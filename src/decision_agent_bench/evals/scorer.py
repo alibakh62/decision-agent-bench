@@ -450,6 +450,19 @@ def decision_agent_scorer() -> Scorer:
             state.output.completion,
             strict=_strict_contract(contract),
         )
+        if submission is None:
+            return Score.unscored(
+                answer=state.output.completion,
+                explanation=(
+                    "No final JSON submission was received. The run is incomplete and is "
+                    "excluded from score aggregates."
+                ),
+                metadata={
+                    "failure_taxonomy": ["F-FORMAT"],
+                    "submission_status": "missing",
+                    "decision_outcome": {"applicable": False, "kind": None},
+                },
+            )
         grade = grade_submission(
             contract=contract,
             submission=submission,

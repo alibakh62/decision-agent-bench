@@ -771,11 +771,14 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
     status = {
         "success": "Run completed",
         "error": "Run failed",
+        "incomplete": "Run incomplete",
         "running": "Building trace",
     }.get(raw_status, raw_status.capitalize())
     trace_state = (
         "status-error"
         if raw_status == "error"
+        else "status-incomplete"
+        if raw_status == "incomplete"
         else "status-running"
         if raw_status == "running"
         else "status-success"
@@ -859,6 +862,22 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
     """Render exact weights, substitutions, gates, and evidence-to-score lineage."""
 
     if not run_payload.get("grade", {}).get("available", True):
+        availability_reason = run_payload.get("grade", {}).get("availability_reason")
+        if availability_reason:
+            return f"""
+            <section class="score-workbench score-unavailable score-incomplete">
+              <div class="error-result-heading"><div><span class="eyebrow">Evaluation result</span>
+              <h2>No score was reported</h2></div>
+              <span class="error-code warning">SUBMISSION_INCOMPLETE</span></div>
+              <p>{html.escape(str(availability_reason))}</p>
+              <div class="error-next-step"><strong>What DecisionAgentBench did</strong>
+              <span>The trace and tool evidence were preserved, but the provisional format-gate
+              zero was suppressed because no final decision existed to evaluate.</span></div>
+              <div class="error-next-step"><strong>Next step</strong>
+              <span>Run again with the updated built-in agent, which reserves a tool-free final
+              submission turn after evidence collection.</span></div>
+            </section>
+            """
         error = run_payload.get("error") or "The Inspect run ended before the scorer returned."
         summary = runtime_error_summary(error)
         return f"""
@@ -1003,8 +1022,21 @@ def run_status_html(run_payload: dict[str, Any]) -> str:
     agent = run_payload["agent"]
     duration = float(run_payload.get("duration_seconds", 0))
     model = html.escape(str(run_payload.get("model", "unknown/model")))
-    status = "Run completed" if run_payload.get("status") == "success" else "Run ended with error"
-    status_class = "complete" if run_payload.get("status") == "success" else "error"
+    run_status = run_payload.get("status")
+    status = (
+        "Run completed"
+        if run_status == "success"
+        else "Run incomplete"
+        if run_status == "incomplete"
+        else "Run ended with error"
+    )
+    status_class = (
+        "complete"
+        if run_status == "success"
+        else "incomplete"
+        if run_status == "incomplete"
+        else "error"
+    )
     return f"""
     <div class="run-phase {status_class}" aria-live="polite">
       <div><span class="phase-indicator"></span><strong>{status}</strong>

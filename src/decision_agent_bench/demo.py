@@ -448,6 +448,13 @@ html, body, gradio-app, .gradio-container {
 .config-strip label { font-size: 13px !important; font-weight: 700 !important; }
 .config-strip .info { color: #8fa0b5 !important; font-size: 11px !important; line-height: 1.35 !important; }
 .config-strip input, .config-strip button, .config-strip textarea { font-size: 14px !important; }
+#evaluation-toolbar { align-items: flex-end !important; gap: 0 !important; }
+#evaluation-toolbar > .column {
+  align-self: stretch !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+#evaluation-toolbar .block { margin-bottom: 0 !important; width: 100% !important; }
 .config-strip .wrap:has(input[type="radio"]) {
   align-items: center !important;
   flex-direction: row !important;
@@ -462,7 +469,10 @@ html, body, gradio-app, .gradio-container {
   box-shadow: none !important;
   font-size: 14px !important;
   font-weight: 740 !important;
-  margin-top: 29px;
+  flex: 0 0 48px !important;
+  height: 48px !important;
+  margin: 0 0 1px !important;
+  max-height: 48px !important;
   min-height: 48px;
 }
 #run-evaluation:focus-visible { outline: 2px solid #8d9bff !important; outline-offset: 2px; }
@@ -527,6 +537,10 @@ html, body, gradio-app, .gradio-container {
 .live-trace.status-error .trace-inspector-card { min-height: 340px; }
 .live-trace.status-error .trace-event-list { max-height: 340px; }
 .live-trace.status-error .trace-status-dot { background: var(--lab-red); box-shadow: 0 0 0 4px #44202a; }
+.live-trace.status-incomplete .trace-status-dot { background: var(--lab-amber); box-shadow: 0 0 0 4px #47351f; }
+.live-trace.status-incomplete .trace-layout,
+.live-trace.status-incomplete .trace-inspector-card { min-height: 420px; }
+.error-code.warning { background: #2a2113; border-color: #765b2f; color: #f3c576; }
 .score-shell { border-color: #2a3d55 !important; border-radius: 10px !important; }
 .score-workbench { padding: 22px; }
 .score-title-row h2, .score-unavailable h2 { font-size: 26px; }
@@ -975,15 +989,14 @@ def build_demo() -> Any:
             """
         )
         with gr.Group(elem_classes="config-strip"):
-            with gr.Row():
-                with gr.Column(scale=3, min_width=230):
+            with gr.Row(equal_height=True, elem_id="evaluation-toolbar"):
+                with gr.Column(scale=3, min_width=210):
                     selected_agent = gr.Dropdown(
                         choices=agent_options,
                         value="planner_executor",
                         label="Agent",
-                        info="Choose a built-in architecture or your registered Inspect solver.",
                     )
-                with gr.Column(scale=3, min_width=250):
+                with gr.Column(scale=3, min_width=210):
                     selected_model = gr.Dropdown(
                         choices=[
                             ("OpenAI · openai/gpt-5.6-luna", "openai/gpt-5.6-luna"),
@@ -992,21 +1005,20 @@ def build_demo() -> Any:
                         value="openai/gpt-5.6-luna",
                         allow_custom_value=True,
                         label="Model",
-                        info="Enter any Inspect provider/model identifier available to you.",
                     )
-                with gr.Column(scale=4, min_width=320):
+                with gr.Column(scale=4, min_width=280):
                     selected_task = gr.Dropdown(
                         choices=task_choices,
                         value=default_instance,
                         label="Task instance",
                     )
-                with gr.Column(scale=2, min_width=160):
+                with gr.Column(scale=3, min_width=180):
                     selected_variant = gr.Radio(
                         ["clean", "perturbed"],
                         value="clean",
                         label="Condition",
                     )
-                with gr.Column(scale=2, min_width=180):
+                with gr.Column(scale=2, min_width=140):
                     run_button = gr.Button(
                         "Run evaluation",
                         variant="primary",

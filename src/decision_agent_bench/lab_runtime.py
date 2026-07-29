@@ -307,6 +307,8 @@ def _trace_from_sample(
         elif event_type == "ScoreEvent":
             score = getattr(raw_event, "score", None)
             values = _as_json(getattr(score, "value", {})) if score is not None else {}
+            if not isinstance(values, dict):
+                continue
             _event(
                 trace,
                 timestamp=timestamp,
@@ -368,17 +370,19 @@ def payload_from_eval_log(
     trace, tool_calls = _trace_from_sample(sample, model_name)
     scores = getattr(sample, "scores", None) or {}
     score = scores.get("decision_agent_scorer")
-    values = _as_json(getattr(score, "value", {})) if score is not None else {}
+    raw_values = _as_json(getattr(score, "value", {})) if score is not None else {}
     failures = (
         list((getattr(score, "metadata", None) or {}).get("failure_taxonomy", []))
         if score is not None
         else []
     )
     answer = getattr(score, "answer", None) if score is not None else None
-    submission = _parse_json(answer)
+    completion = getattr(getattr(sample, "output", None), "completion", "")
+    submission = _parse_json(answer or completion)
     if not isinstance(submission, dict):
         submission = {}
-    grade_available = bool(values)
+    grade_available = bool(raw_values) and bool(submission)
+    values = raw_values
     if not grade_available:
         values = {
             **{key: 0.0 for key in SCORE_WEIGHTS},
@@ -391,6 +395,32 @@ def payload_from_eval_log(
     )
     status = str(getattr(log, "status", "error"))
     error = getattr(sample, "error", None) or getattr(log, "error", None)
+    availability_reason: str | None = None
+    if status == "success" and not error and not submission:
+        status = "incomplete"
+        limit = getattr(sample, "limit", None)
+        limit_type = getattr(limit, "type", None)
+        availability_reason = (
+            f"The agent reached its {limit_type} limit before submitting the required JSON."
+            if limit_type
+            else "The agent ended without submitting the required JSON."
+        )
+        trace = [event for event in trace if event.get("event") != "DecisionAgentBench score"]
+        _event(
+            trace,
+            timestamp=_elapsed(getattr(sample, "completed_at", None), sample.started_at),
+            actor="Evaluator",
+            event="Submission incomplete",
+            summary=(
+                "No final structured decision was received. DecisionAgentBench did not report "
+                "dimension scores for this incomplete run."
+            ),
+            outcome="Not scored",
+            result={
+                "reason": availability_reason,
+                "scorer_failures": failures,
+            },
+        )
     sample_id = str(getattr(sample, "id", instance[f"{variant}_sample_id"]))
     run_identity = f"{getattr(log.eval, 'run_id', '')}:{sample_id}:{model_name}"
     run_id = "RUN-" + hashlib.sha256(run_identity.encode()).hexdigest()[:8].upper()
@@ -422,7 +452,9 @@ def payload_from_eval_log(
         "recoveries": [],
         "grade": {
             "available": grade_available,
+            "availability_reason": availability_reason,
             "values": values,
+            "raw_scorer_values": raw_values if not grade_available else None,
             "failures": failures,
             "explanation": str(getattr(score, "explanation", "")) if score is not None else "",
             "decision_outcome": (
