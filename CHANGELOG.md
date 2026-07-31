@@ -4,6 +4,25 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-07-31
+
+### Added
+
+- Add a complete in-process LangGraph store assistant that runs independently on a simulated daily
+  store snapshot and uploads directly into the Lab through a LangChain-tool/Inspect adapter.
+- Add a complete FastAPI-based remote LangGraph replenishment service with a bounded HTTP tool
+  broker that keeps every benchmark tool call inside the active Inspect sample.
+- Add simulated recall and replenishment datasets, standalone CLIs, service endpoints, two detailed
+  integration guides, direct Lab downloads, and end-to-end scoring tests for both examples.
+- Add an optional `agents` dependency extra for LangGraph, LangChain Core, FastAPI, Uvicorn, and
+  HTTPX, and exercise it in CI and release verification.
+
+### Changed
+
+- Expand the main agent-evaluation and Lab guides from placeholder adapter patterns to two runnable
+  convenience-retail reference integrations with explicit trust, usage-accounting, and production
+  hardening boundaries.
+
 ## [0.5.6] - 2026-07-31
 
 ### Added

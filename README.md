@@ -12,7 +12,7 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.5.6 custom-agent Lab patch on the statistical-design preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.5.7 runnable agent-integration examples on the statistical-design preview. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
@@ -22,7 +22,9 @@ The first domain is a fully synthetic convenience-retail company. No proprietary
 > distinguishes an incomplete agent run from a genuine zero-scoring submitted decision. v0.5.4
 > adds schema-aware bounded tool execution and an internal final-answer repair step. v0.5.5 adds
 > full evaluation-target text, event-specific score lineage, and expandable dimension calculations.
-> v0.5.6 adds guided custom-agent upload and a fully legible light-theme contract.
+> v0.5.6 adds guided custom-agent upload and a fully legible light-theme contract. v0.5.7 adds
+> standalone and directly uploadable LangGraph examples for an in-process store assistant and a
+> remote replenishment service with an auditable benchmark tool broker.
 > Publication-scale
 > model runs and leaderboard claims remain blocked on the v0.4 measurement-validity implementation.
 > No frontier-model performance claims have been made.
@@ -58,6 +60,12 @@ interpretation, realistic use cases, code structure, and extension paths.
 **Evaluating your own agent?** Follow [Evaluate your agent with DecisionAgentBench](docs/evaluating-your-agent.md)
 for a tested custom-solver example, external-framework adapter contract, trace review, matched
 clean/perturbed runs, and honest result boundaries.
+
+**Want complete working integrations?** Run the
+[LangGraph store assistant](docs/examples/langgraph-store-assistant.md) or the
+[remote LangGraph replenishment service](docs/examples/langgraph-remote-replenishment.md). Both do
+real convenience-retail work on included simulated data, can run independently, and expose a
+single-file adapter that can be uploaded directly into the Lab.
 
 ## Why this benchmark
 
@@ -120,7 +128,7 @@ Create an isolated Python 3.11+ environment before installing the benchmark:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev,demo]"
+python -m pip install -e ".[dev,demo,agents]"
 python -m pytest
 python -m decision_agent_bench validate-specs
 python -m decision_agent_bench verify-reference
@@ -182,13 +190,14 @@ Inspect logs preserve the run. Provider credentials are inherited from the launc
 server stays loopback-only and sharing is disabled. The custom-agent workbench accepts a reviewed
 single-file Python adapter, detects its registered solver entrypoints without importing it, and
 provides a starter adapter plus a trusted-local reference option. See the [Lab guide](docs/lab.md) and
-[agent evaluation guide](docs/evaluating-your-agent.md).
+[agent evaluation guide](docs/evaluating-your-agent.md). The onboarding panel also provides direct
+downloads for the complete in-process and remote LangGraph examples.
 
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.5.6 .
-docker run --rm decision-agent-bench:0.5.6
+docker build --tag decision-agent-bench:0.5.7 .
+docker run --rm decision-agent-bench:0.5.7
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

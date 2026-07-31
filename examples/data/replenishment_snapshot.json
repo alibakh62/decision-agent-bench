@@ -1,0 +1,47 @@
+{
+  "store_id": "S001",
+  "business_date": "2026-07-31",
+  "products": [
+    {
+      "product_id": "P021",
+      "name": "Sparkling Citrus Water",
+      "category": "beverage",
+      "on_hand_units": 9,
+      "average_daily_units": 6.4,
+      "case_pack": 12,
+      "min_order_cases": 2,
+      "vendor_capacity_cases": 20,
+      "lead_time_days": 2,
+      "unit_margin": 1.19
+    },
+    {
+      "product_id": "P008",
+      "name": "Cold Brew Coffee",
+      "category": "beverage",
+      "on_hand_units": 21,
+      "average_daily_units": 5.1,
+      "case_pack": 6,
+      "min_order_cases": 3,
+      "vendor_capacity_cases": 12,
+      "lead_time_days": 3,
+      "unit_margin": 1.48
+    },
+    {
+      "product_id": "P014",
+      "name": "Turkey Club Sandwich",
+      "category": "fresh_food",
+      "on_hand_units": 5,
+      "average_daily_units": 3.8,
+      "case_pack": 4,
+      "min_order_cases": 1,
+      "vendor_capacity_cases": 8,
+      "lead_time_days": 1,
+      "unit_margin": 2.05
+    }
+  ],
+  "constraints": {
+    "target_cover_days": 7,
+    "max_total_cases": 10,
+    "fresh_food_max_cover_days": 3
+  }
+}

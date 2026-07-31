@@ -64,13 +64,17 @@ From the repository root:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,demo,agents]"
 python -m decision_agent_bench validate-specs
 python -m decision_agent_bench verify-reference
 ```
 
 Provider credentials are read by Inspect or by your adapter's normal secret-management workflow.
 Keep API keys out of source files, task arguments, logs, and commits.
+
+The `demo` extra installs the Lab. The `agents` extra installs the LangGraph, LangChain Core,
+FastAPI, Uvicorn, and HTTPX dependencies used by the two complete examples below. If you only need
+the minimal Inspect-native adapter, `.[dev]` remains sufficient.
 
 ## Run your solver in the Lab UI
 
@@ -138,6 +142,28 @@ identifier.
 The command proves that the integration executes. It does not by itself establish agent quality.
 In particular, an Inspect log with `status: success` means the sample ran without an infrastructure
 error; the agent can still receive zero scores or a failure code.
+
+### Complete LangGraph examples
+
+The minimal solver above is intentionally small. Two complete convenience-retail agents show the
+next level of integration, including standalone business behavior, simulated inputs, Lab upload,
+real benchmark tools, and deterministic scoring:
+
+| Example | Agent work | Integration route | Guide |
+| --- | --- | --- | --- |
+| `examples/langgraph_store_assistant.py` | Recall containment, policy lookup, substitute selection, and a store-manager opening brief | Python agent built with another framework | [In-process LangGraph store assistant](examples/langgraph-store-assistant.md) |
+| `examples/langgraph_replenishment_service.py` | Replenishment planning plus a vendor-constrained replacement decision | Remote LangGraph service with an Inspect tool broker | [Remote LangGraph replenishment service](examples/langgraph-remote-replenishment.md) |
+
+Install their optional dependencies with:
+
+```bash
+python -m pip install -e ".[agents,demo]"
+```
+
+Both `.py` files are directly uploadable in the Lab and expose one detected `@solver` entrypoint.
+The in-process example wraps DecisionAgentBench's original tool callables as LangChain tools. The
+remote example keeps those callables in the Inspect adapter and sends only tool requests and
+observations across HTTP. Both patterns preserve evidence IDs and the auditable trace.
 
 ## 3. Replace the example with your architecture
 
