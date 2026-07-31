@@ -14,8 +14,11 @@ from decision_agent_bench.demo import (
     QUERY_LIBRARY,
     _execute_lab_run,
     build_demo,
+    custom_agent_intro_html,
+    custom_agent_status_html,
     default_candidate,
     launch_demo,
+    resolve_custom_solver_reference,
     score_candidate,
     task_context_html,
     task_view,
@@ -38,7 +41,9 @@ from decision_agent_bench.lab_runtime import (
     payload_from_eval_log,
     run_live_evaluation,
     safe_model_name,
+    stage_uploaded_solver,
     trusted_solver_spec,
+    uploaded_solver_reference,
 )
 
 
@@ -270,9 +275,7 @@ def test_lab_trace_recognizes_direct_json_as_the_final_decision() -> None:
     model_event = model_event_type()
     model_event.timestamp = "2026-07-29T13:28:45+00:00"
     model_event.model = "openai/gpt-5.6-luna"
-    model_event.output = ModelOutput.from_content(
-        "openai/gpt-5.6-luna", json.dumps(final_answer)
-    )
+    model_event.output = ModelOutput.from_content("openai/gpt-5.6-luna", json.dumps(final_answer))
     sample = SimpleNamespace(
         id="DAB-ASS-001-i1-clean",
         started_at="2026-07-29T13:28:40+00:00",
@@ -405,6 +408,81 @@ def test_custom_solver_is_limited_to_trusted_project_agent_directories() -> None
         safe_model_name("$(unsafe)")
 
 
+def test_lab_stages_an_uploaded_adapter_without_importing_it(tmp_path) -> None:
+    marker = tmp_path / "must-not-exist"
+    adapter = tmp_path / "uploaded_agent.py"
+    adapter.write_text(
+        "from inspect_ai.solver import solver\n"
+        f"open({str(marker)!r}, 'w').write('executed')\n"
+        "@solver\n"
+        "def uploaded_agent():\n"
+        "    raise RuntimeError('only runs during an evaluation')\n",
+        encoding="utf-8",
+    )
+
+    registration = stage_uploaded_solver(adapter)
+    reference = uploaded_solver_reference(registration.token, "uploaded_agent")
+    spec = trusted_solver_spec(reference)
+
+    assert registration.filename == "uploaded_agent.py"
+    assert registration.entrypoints == ("uploaded_agent",)
+    assert registration.size_bytes == adapter.stat().st_size
+    assert registration.token.startswith("uploaded:")
+    assert spec.solver.endswith("@uploaded_agent")
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize(
+    ("filename", "source", "message"),
+    [
+        ("agent.txt", "@solver\ndef agent(): pass\n", "single .py file"),
+        ("agent.py", "def agent(:\n", "not valid Python"),
+        ("agent.py", "def agent():\n    pass\n", "no top-level @solver"),
+    ],
+)
+def test_lab_rejects_invalid_uploaded_adapters(
+    tmp_path, filename: str, source: str, message: str
+) -> None:
+    adapter = tmp_path / filename
+    adapter.write_text(source, encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        stage_uploaded_solver(adapter)
+
+
+def test_custom_agent_onboarding_copy_and_reference_modes(tmp_path) -> None:
+    adapter = tmp_path / "adapter.py"
+    adapter.write_text("from inspect_ai.solver import solver\n@solver\ndef agent(): pass\n")
+    registration = stage_uploaded_solver(adapter)
+
+    uploaded = resolve_custom_solver_reference(
+        "upload", registration.token, "agent", "examples/custom_solver.py@custom_agent"
+    )
+    local = resolve_custom_solver_reference(
+        "local", "", "", "examples/custom_solver.py@custom_agent"
+    )
+    intro = custom_agent_intro_html()
+    status = custom_agent_status_html(
+        "ready", "Adapter ready", "Validated without importing it.", facts=("adapter.py",)
+    )
+
+    assert uploaded.startswith("uploaded:")
+    assert local == "examples/custom_solver.py@custom_agent"
+    assert "Connect an agent in three steps" in intro
+    assert "same trace, gates, and score explanation" in intro
+    assert "Adapter ready" in status and "adapter.py" in status
+
+
+def test_lab_css_defines_readable_light_and_dark_theme_contracts() -> None:
+    assert "body:not(.dark)" in _DEMO_CSS
+    assert "html:not(:has(body.dark))" in _DEMO_CSS
+    assert "--lab-text: #0f172a" in _DEMO_CSS
+    assert ".custom-agent-workbench .info" in _DEMO_CSS
+    assert ":host-context(body.dark)" in _DEMO_CSS
+    assert "--lab-text: #e8eef7" in _DEMO_CSS
+    assert "--lab-muted: #94a3b8" in _DEMO_CSS
+
+
 def test_lab_replays_agent_trace_and_real_historical_scorer() -> None:
     run = _execute_lab_run("planner_executor", "DAB-ASS-001-i1", "clean")
 
@@ -461,16 +539,14 @@ def test_lab_dimension_cards_open_into_exact_scorer_breakdowns() -> None:
     assert "normalized regret" in score_html
     assert "precision" in score_html and "tool coverage" in score_html
     assert "call efficiency" in score_html
-    assert run["grade"]["breakdown"]["efficiency"]["tool_call_count"] == len(
-        run["tool_calls"]
-    )
+    assert run["grade"]["breakdown"]["efficiency"]["tool_call_count"] == len(run["tool_calls"])
 
 
 def test_lab_evaluation_target_wraps_the_full_prompt() -> None:
     assert ".run-context-task small" in _DEMO_CSS
-    target_rule = _DEMO_CSS.split(".run-context-task small", maxsplit=1)[1].split(
-        "}", maxsplit=1
-    )[0]
+    target_rule = _DEMO_CSS.split(".run-context-task small", maxsplit=1)[1].split("}", maxsplit=1)[
+        0
+    ]
 
     assert "white-space: normal" in target_rule
     assert "overflow: visible" in target_rule

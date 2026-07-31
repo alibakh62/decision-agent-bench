@@ -83,18 +83,25 @@ decision-agent-bench demo --host 127.0.0.1 --port 7860
 
 In the Lab:
 
-1. place the trusted solver file under `agents/`, or start with
-   `examples/custom_solver.py@custom_agent`;
-2. set **Agent source** to **Custom Inspect solver**;
-3. enter the `path.py@registered_solver` reference and a stable **System name**;
+1. set **Agent** to **Connect your own agent**;
+2. choose **Upload adapter** and add one Python adapter, or choose **Use local solver** for a
+   registered solver already under `agents/` or `examples/`;
+3. confirm the detected `@solver` entrypoint and give the system a stable **System name**;
 4. select or type the Inspect **Model** identifier;
 5. choose a task instance and condition, then run the evaluation; and
 6. inspect the populated trace, evidence payloads, final decision, score equation, gates, report,
    and original Inspect log.
 
-The UI accepts custom solver files only from `agents/` and `examples/`; it does not accept arbitrary
-uploads or execute a textbox as a shell command. This is a trust boundary, not a sandbox: the solver
-is Python code running with your local permissions. Review it first.
+The guided upload accepts one UTF-8 `.py` file up to 256 KB. Before a run, the Lab copies it into a
+process-local temporary directory, parses its syntax, and detects top-level `@solver` functions
+without importing or executing the file. Choosing **Run evaluation** imports the selected solver,
+so this is a trust boundary, not a sandbox: the adapter is Python code running with your local
+permissions. Review it first. The local-solver option remains restricted to `agents/` and
+`examples/` and no UI field is executed as a shell command.
+
+Use **Download starter adapter** in the onboarding panel when you need a minimal working contract.
+The adapter can call a local agent, an external framework, or a remote agent service; it only needs
+to translate that system into Inspect's `Solver` interface and return the required final JSON.
 
 `mockllm/model` checks that the integration executes without a provider call, but its generated
 answer is not a model-quality result. Choose the real provider model you intend to evaluate for a
