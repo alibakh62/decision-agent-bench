@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import re
+import tempfile
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -21,6 +24,9 @@ _MODEL_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$")
 _SYMBOL_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SYSTEM_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$")
 _TRUSTED_SOLVER_DIRECTORIES = ("agents", "examples")
+_MAX_UPLOADED_SOLVER_BYTES = 256 * 1024
+_UPLOADED_SOLVER_DIRECTORY = tempfile.TemporaryDirectory(prefix="dab-agent-uploads-")
+_UPLOADED_SOLVERS: dict[str, tuple[Path, tuple[str, ...]]] = {}
 _SUBMISSION_FIELDS = {
     "conclusion",
     "confidence",
@@ -30,6 +36,101 @@ _SUBMISSION_FIELDS = {
     "escalate",
     "data_quality_issues",
 }
+
+
+@dataclass(frozen=True)
+class UploadedSolver:
+    """Validated, process-local custom solver staged by the Lab."""
+
+    token: str
+    filename: str
+    entrypoints: tuple[str, ...]
+    sha256: str
+    size_bytes: int
+
+
+def _solver_decorator(node: ast.expr) -> bool:
+    """Return whether an AST decorator registers an Inspect solver."""
+
+    target = node.func if isinstance(node, ast.Call) else node
+    return (isinstance(target, ast.Name) and target.id == "solver") or (
+        isinstance(target, ast.Attribute) and target.attr == "solver"
+    )
+
+
+def _solver_entrypoints(source: str, *, filename: str) -> tuple[str, ...]:
+    """Find registered top-level solver factories without importing user code."""
+
+    try:
+        tree = ast.parse(source, filename=filename)
+    except SyntaxError as error:
+        line = f" on line {error.lineno}" if error.lineno else ""
+        raise ValueError(f"the uploaded adapter is not valid Python{line}") from error
+    entrypoints = tuple(
+        node.name
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+        and any(_solver_decorator(decorator) for decorator in node.decorator_list)
+    )
+    if not entrypoints:
+        raise ValueError(
+            "no top-level @solver function was found; decorate the adapter entrypoint with "
+            "Inspect's @solver"
+        )
+    return entrypoints
+
+
+def stage_uploaded_solver(uploaded_file: Any) -> UploadedSolver:
+    """Validate and stage one uploaded Python adapter without executing it."""
+
+    raw_path = getattr(uploaded_file, "path", uploaded_file)
+    if not raw_path:
+        raise ValueError("choose one Python adapter file to continue")
+    source_path = Path(str(raw_path)).expanduser()
+    if source_path.suffix.lower() != ".py":
+        raise ValueError("custom agent uploads must be a single .py file")
+    if source_path.is_symlink() or not source_path.is_file():
+        raise ValueError("the uploaded adapter must be a regular Python file")
+    payload = source_path.read_bytes()
+    if not payload:
+        raise ValueError("the uploaded adapter is empty")
+    if len(payload) > _MAX_UPLOADED_SOLVER_BYTES:
+        raise ValueError("the uploaded adapter exceeds the 256 KB size limit")
+    try:
+        source = payload.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("the uploaded adapter must be UTF-8 Python source") from error
+    entrypoints = _solver_entrypoints(source, filename=source_path.name)
+    digest = hashlib.sha256(payload).hexdigest()
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "-", source_path.name).strip(".-")
+    safe_name = safe_name or "custom_agent.py"
+    staged_path = Path(_UPLOADED_SOLVER_DIRECTORY.name) / f"{digest[:16]}-{safe_name}"
+    if not staged_path.exists():
+        staged_path.write_bytes(payload)
+    token = f"uploaded:{digest[:20]}"
+    _UPLOADED_SOLVERS[token] = (staged_path.resolve(), entrypoints)
+    return UploadedSolver(
+        token=token,
+        filename=safe_name,
+        entrypoints=entrypoints,
+        sha256=digest,
+        size_bytes=len(payload),
+    )
+
+
+def uploaded_solver_reference(token: str, entrypoint: str) -> str:
+    """Build a trusted solver reference for one staged upload and entrypoint."""
+
+    symbol = str(entrypoint).strip()
+    if not _SYMBOL_PATTERN.fullmatch(symbol):
+        raise ValueError("choose a valid detected solver entrypoint")
+    registration = _UPLOADED_SOLVERS.get(str(token).strip())
+    if registration is None:
+        raise ValueError("upload the custom agent adapter again before running")
+    _path, entrypoints = registration
+    if symbol not in entrypoints:
+        raise ValueError("the selected entrypoint was not found in the uploaded adapter")
+    return f"{str(token).strip()}@{symbol}"
 
 
 def safe_model_name(model_name: str) -> str:
@@ -79,6 +180,15 @@ def trusted_solver_spec(reference: str) -> SolverSpec:
     relative_name, symbol = value.rsplit("@", maxsplit=1)
     if not _SYMBOL_PATTERN.fullmatch(symbol):
         raise ValueError("custom solver function must be a valid Python identifier")
+    if relative_name.startswith("uploaded:"):
+        registration = _UPLOADED_SOLVERS.get(relative_name)
+        candidate = registration[0] if registration is not None else None
+        registered_symbols = registration[1] if registration is not None else ()
+        if candidate is None:
+            raise ValueError("uploaded solver is no longer staged; upload the adapter again")
+        if symbol not in registered_symbols:
+            raise ValueError("uploaded solver entrypoint was not detected in the adapter")
+        return SolverSpec(solver=f"{candidate}@{symbol}")
     candidates = _trusted_solver_files()
     candidate = candidates.get(relative_name)
     if candidate is None:

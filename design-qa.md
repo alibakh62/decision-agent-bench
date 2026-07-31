@@ -2,69 +2,82 @@
 
 ## Review target
 
-- Version: v0.5.5 score-explanation usability pass
-- Route: `http://127.0.0.1:7877`
+- Version: v0.5.6 custom-agent onboarding and cross-theme accessibility pass
+- Route: `http://127.0.0.1:7880`
 - Runtime: Gradio 6.20.0 with the production Lab CSS and real Inspect execution path
-- Verification viewport: 2048 × 1200 CSS pixels, device pixel ratio 2
-- States reviewed: ready Lab, selected trace event with Score impact open, and Decision quality scorecard expanded
+- Verification viewport: 1280 × 720 CSS pixels, device pixel ratio 2
+- States reviewed: ready Lab in dark and light themes, custom-agent onboarding before upload,
+  validated uploaded adapter, and a completed custom-agent execution attempt
 
 ## Source truth and implementation evidence
 
-- Evaluation-target reference:
-  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-8ed4f0a4-60fb-4b04-ae1f-a051c7eaaa99.png`
-- Evaluation-target implementation:
-  `artifacts/design-qa/v0.5.5/evaluation-target-full.png`
-- Score-impact reference:
-  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-6e9912ab-928d-4fe1-b22d-e3f35ffb2d0c.png`
-- Score-impact implementation:
-  `artifacts/design-qa/v0.5.5/event-score-impact.png`
-- Dimension-scorecard reference:
-  `/var/folders/y8/l1vtj33s14q6jbb9jlqr4tx80000gp/T/codex-clipboard-44c9de09-9349-47d0-b8ce-37948e17e60d.png`
-- Expanded scorecard implementation:
-  `artifacts/design-qa/v0.5.5/dimension-score-explanation.png`
+- Dark-theme baseline: `artifacts/design-qa/v0.5.6/before-dark.png`
+- Dark-theme implementation: `artifacts/design-qa/v0.5.6/after-dark.png`
+- Light-theme baseline: `artifacts/design-qa/v0.5.6/before-light.png`
+- Light-theme implementation: `artifacts/design-qa/v0.5.6/after-light.png`
+- Custom-agent onboarding: `artifacts/design-qa/v0.5.6/custom-agent-dark.png`
+- Custom-agent execution trace: `artifacts/design-qa/v0.5.6/custom-agent-run.png`
 
-All three reference/implementation pairs were opened together in one comparison input. The final
-captures preserve the existing dark Lab visual language, spacing, borders, typography, and state
-colors while adding the requested information density and interactions.
+The dark/light baseline and implementation captures were opened together in one comparison input.
+The final design preserves the established Lab hierarchy and trace/scoring workbench while making
+theme behavior explicit and elevating custom-agent connection from a hidden advanced field to a
+guided primary workflow.
 
 ## Findings and corrections
 
-- The Evaluation target prompt previously used a single-line ellipsis. It now wraps normally in a
-  top-aligned context bar, so the complete task request remains readable without hover or expansion.
-- The Score impact tab previously showed the same causality disclaimer for most events. It now
-  derives a selected-event verdict, citation status, evidence counts, tool coverage, and relevant
-  dimension explanations from the completed trace and scorer metadata.
-- The implementation does not invent per-event point deltas. It explains whether an event supplied
-  credited evidence, consumed call budget, created a recovery opportunity, supplied the final
-  decision, or served only as unscored model reasoning.
-- Dimension cards were initially implemented as independent disclosure blocks. That caused the
-  remaining cards to move into a sparse second row when one card opened. The final interaction keeps
-  all seven cards visible in one row and opens one shared, full-width calculation panel beneath them.
-- Each calculation panel reports the run-specific formula, plain-language reason, and the exact
-  scorer inputs behind that dimension. The selected card receives a stronger outline and the panel
-  has an explicit Close explanation action.
+- P1: Light mode inherited dark-only surface and text colors inside Gradio's application root.
+  Explicit semantic tokens now bind page, panel, control, muted text, borders, alerts, trace rows,
+  scorecards, and onboarding surfaces in light mode. Dark tokens are applied both to `body.dark`
+  and through `:host-context(.dark)` so shadow-root rendering remains correct.
+- P2: The original first-class onboarding layout could exceed a 1280-pixel laptop viewport and the
+  upload helper could collide with the file drop zone. The toolbar and context strip now reflow at
+  1350 pixels, the onboarding steps and configuration columns stack cleanly, and upload help owns a
+  separate readable row.
+- The custom-agent route is now named **Connect your own agent** and presents a three-step mental
+  model before asking for configuration.
+- Upload is the default low-friction path; an existing trusted local solver remains available for
+  repository-based workflows.
+- Uploaded adapters are validated for file type, size, UTF-8, Python syntax, and registered Inspect
+  solver entrypoints without importing or executing the file. The run action stays disabled until a
+  valid entrypoint and system name are available.
+- The onboarding surface includes a starter adapter download, an in-product link to the full guide,
+  and a prominent local-code safety explanation.
 
-## Interaction checks
+## Interaction and runtime checks
 
-- Selected a successful `retail_sql` evidence event and opened Score impact.
-- Verified the event was identified as Credited evidence with `2 of 2` valid citations, the minimum
-  evidence threshold, 100% tool coverage, and separate Explainability and Efficiency reasoning.
-- Opened Decision quality and verified the normalized-regret equation, oracle name, candidate
-  utility, and best available utility appeared while all seven cards remained visible.
-- Closed the dimension explanation and verified the shared panel returned to its neutral state.
-- Reloaded the production Lab and verified the complete evaluation prompt was present in the DOM and
-  visible across two lines.
-- Checked both the production Lab and the component QA fixture for browser console errors; none were
-  reported.
+- Selected **Connect your own agent** and verified the onboarding workbench appeared while the Run
+  evaluation action was disabled.
+- Uploaded `examples/custom_solver.py`; the Lab detected `custom_agent`, changed the adapter status
+  to ready, and enabled Run evaluation.
+- Ran the uploaded solver with `mockllm/model`. Inspect executed the custom adapter in the real task,
+  recorded its trace, and honestly reported an incomplete submission when the mock model did not
+  emit the required final JSON; no score was fabricated.
+- Verified the latest 1280-pixel custom-agent layout has no document-level horizontal overflow.
+- Verified complete evaluation-target copy remains readable in both themes.
+- Checked the final dark and light Lab tabs for browser console errors; none were reported.
+
+## Visual comparison
+
+- Typography: headings, labels, helper text, controls, and monospace trace content remain legible in
+  both themes with consistent hierarchy.
+- Layout: the toolbar, context strip, run state, trace placeholder, scoring placeholder, and custom
+  onboarding retain aligned edges and predictable responsive stacking.
+- Color: light surfaces use dark foregrounds and visible borders; dark surfaces preserve the existing
+  navy palette and status semantics.
+- Assets: this workflow has no illustrative source assets; interface icons and control affordances
+  remain native to the existing Gradio-based design system.
+- Copy: onboarding text explains what an adapter is, what validation does, when code executes, and
+  where to find the complete integration contract.
 
 ## Regression evidence
 
 - Ruff passed.
-- Full pytest suite: 147 passed.
+- Full pytest suite: 153 passed.
 - Specification validation: 25 task families.
 - Generated world validation: 15,297 transactions across 20 tables.
-- Reference and benchmark power-design verification passed.
+- Reference and both benchmark power-design verifications passed.
+- Source security audit passed; dependency and container audits remain live-CI checks by design.
 
-No P0, P1, or P2 issue remains in the three requested surfaces.
+No P0, P1, or P2 issue remains in the requested theme or custom-agent onboarding surfaces.
 
 final result: passed

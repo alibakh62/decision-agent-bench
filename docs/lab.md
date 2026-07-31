@@ -25,7 +25,7 @@ that environment. Keys are not entered into or stored by the Lab.
 
 The primary evaluation toolbar has four choices and one action:
 
-- **Agent** chooses one built-in DecisionAgentBench architecture or **Custom Inspect solver**.
+- **Agent** chooses one built-in DecisionAgentBench architecture or **Connect your own agent**.
 - **Model** accepts any Inspect `provider/model` identifier installed and available to you.
   `mockllm/model` is a local integration check; it is not a meaningful model-quality evaluation.
 - **Task instance** chooses one registered v0.2 concept and seed.
@@ -34,8 +34,9 @@ The primary evaluation toolbar has four choices and one action:
 
 The compact context strip underneath confirms the selected architecture, evaluation target,
 sample, condition, and expected tool-call target before provider usage begins. **Custom agent
-adapter** is an optional collapsed panel containing the trusted solver reference and stable system
-name; it is used only when **Custom Inspect solver** is selected in the Agent menu.
+adapter** becomes a guided onboarding workbench only when **Connect your own agent** is selected.
+It offers a file upload, automatically detected `@solver` entrypoints, a stable system label, live
+validation feedback, a starter adapter download, and a trusted-local solver alternative.
 The evaluation-target prompt wraps to its full length so the decision request can be reviewed
 before spending provider credits.
 
@@ -72,17 +73,21 @@ present in the transcript; they cannot call more tools or fabricate missing evid
 
 The Lab uses the same public integration boundary as the benchmark: an Inspect `Solver`.
 
-1. Put a trusted solver file under `agents/`. The included
-   [`examples/custom_solver.py`](../examples/custom_solver.py) is a working reference.
-2. Register the function with Inspect's `@solver` decorator.
-3. In the Lab choose **Custom Inspect solver**.
-4. Enter a reference such as `agents/my_agent.py@my_agent`.
-5. Give the system a stable release or commit label, choose its model, and run.
+1. Start from [`examples/custom_solver.py`](../examples/custom_solver.py), available through the
+   Lab's **Download starter adapter** button, and connect its solver body to your system.
+2. Register the adapter function with Inspect's `@solver` decorator.
+3. In the Lab choose **Connect your own agent** and keep **Upload adapter** selected.
+4. Upload the `.py` file, confirm the detected entrypoint, give the system a stable release or
+   commit label, choose its model, and run.
 
-For safety, the UI accepts solver files only from the repository's `agents/` or `examples/`
-directories. It never turns a textbox value into a shell command or an unrestricted filesystem
-path. A solver is still executable Python code running with your local permissions, so review it
-before use.
+The guided upload accepts one UTF-8 `.py` file up to 256 KB. It performs syntax and entrypoint
+validation without importing the file, then stages it in a process-local temporary directory. The
+adapter is imported only after **Run evaluation** is clicked. It is still executable Python running
+with your local permissions, not sandboxed plugin code, so review it first and never embed secrets.
+
+If the adapter already lives in the checkout, choose **Use local solver** and enter a reference such
+as `agents/my_agent.py@my_agent`. Local references remain allow-listed to `agents/` and `examples/`;
+the Lab never turns a field value into a shell command or an unrestricted filesystem path.
 
 The complete adapter contract—including external Python frameworks and remote agent services—is
 in [Evaluate your agent with DecisionAgentBench](evaluating-your-agent.md).

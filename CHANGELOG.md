@@ -4,6 +4,23 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-07-31
+
+### Added
+
+- Add a guided **Connect your own agent** workflow to the Lab with a single-file Python adapter
+  upload, non-executing syntax validation, automatic `@solver` entrypoint detection, process-local
+  staging, a trusted-local solver alternative, a starter adapter download, and in-product setup and
+  safety guidance.
+- Add regression coverage for uploaded-adapter validation, entrypoint resolution, non-execution
+  during staging, both custom-agent connection modes, and the Lab's dual-theme contract.
+
+### Fixed
+
+- Introduce explicit light-theme tokens and component overrides for the Lab's custom panels,
+  traces, score workbench, status surfaces, labels, help text, and onboarding controls while
+  preserving the established dark theme.
+
 ## [0.5.5] - 2026-07-29
 
 ### Added

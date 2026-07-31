@@ -24,12 +24,18 @@ from decision_agent_bench.lab import (
     trace_workbench_html,
     write_run_report,
 )
-from decision_agent_bench.lab_runtime import run_live_evaluation
+from decision_agent_bench.lab_runtime import (
+    run_live_evaluation,
+    stage_uploaded_solver,
+    trusted_solver_spec,
+    uploaded_solver_reference,
+)
 from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, generate_world
 from decision_agent_bench.simulator.workflow import workflow_instance_catalog
 
 _CATALOG = {item["instance_id"]: item for item in expanded_instance_catalog()}
 _WORKFLOW_CATALOG = {item["instance_id"]: item for item in workflow_instance_catalog()}
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _WORLD_TEMPORARY_DIRECTORY: tempfile.TemporaryDirectory[str] | None = None
 _WORLD_PATH: Path | None = None
 _RUN_WORLD_TEMPORARY_DIRECTORY: tempfile.TemporaryDirectory[str] | None = None
@@ -65,6 +71,20 @@ QUERY_LIBRARY = {
 
 _DEMO_CSS = """
 :root {
+  --lab-bg: #f4f7fb;
+  --lab-panel: #ffffff;
+  --lab-panel-raised: #f7f9fc;
+  --lab-border: #cbd5e1;
+  --lab-border-strong: #94a3b8;
+  --lab-text: #0f172a;
+  --lab-muted: #526177;
+  --lab-indigo: #4f46e5;
+  --lab-cyan: #087f8c;
+  --lab-green: #177245;
+  --lab-amber: #925500;
+  --lab-red: #b42318;
+}
+body.dark, :host-context(body.dark), :host-context(.dark) {
   --lab-bg: #07111f;
   --lab-panel: #0c1828;
   --lab-panel-raised: #111f31;
@@ -77,6 +97,21 @@ _DEMO_CSS = """
   --lab-green: #6fd08c;
   --lab-amber: #f3b35b;
   --lab-red: #ef6a6a;
+}
+html:not(:has(body.dark)) {
+  --lab-bg: #f4f7fb;
+  --lab-panel: #ffffff;
+  --lab-panel-raised: #f7f9fc;
+  --lab-border: #cbd5e1;
+  --lab-border-strong: #94a3b8;
+  --lab-text: #0f172a;
+  --lab-muted: #526177;
+  --lab-indigo: #4f46e5;
+  --lab-cyan: #087f8c;
+  --lab-green: #177245;
+  --lab-amber: #925500;
+  --lab-red: #b42318;
+  background: var(--lab-bg) !important;
 }
 html, body, gradio-app, .gradio-container, .main, main {
   background: var(--lab-bg) !important;
@@ -546,8 +581,48 @@ html, body, gradio-app, .gradio-container {
 .run-context-bar dl div { border-left: 1px solid #263950; min-width: 0; padding-left: 13px; }
 .run-context-bar dt { color: #8193aa; font-size: 10px; text-transform: uppercase; }
 .run-context-bar dd { color: #dbe5f2; font-size: 12px; font-weight: 650; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.custom-agent-panel { background: #0b1727 !important; border-color: #263950 !important; margin-bottom: 10px !important; }
-.custom-agent-panel > .label-wrap { font-size: 13px !important; }
+.custom-agent-workbench {
+  background: var(--lab-panel) !important;
+  border: 1px solid var(--lab-border) !important;
+  border-radius: 11px !important;
+  margin: 0 0 12px !important;
+  overflow: hidden;
+  padding: 0 !important;
+}
+.agent-connect-intro {
+  align-items: start;
+  background: var(--lab-panel-raised);
+  border-bottom: 1px solid var(--lab-border);
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(280px, 1fr) minmax(620px, 2fr);
+  padding: 20px 22px;
+}
+.agent-connect-intro h2 { color: var(--lab-text); font-size: 22px; margin: 5px 0 6px; }
+.agent-connect-intro p { color: var(--lab-muted); font-size: 13px; line-height: 1.55; margin: 0; max-width: 620px; }
+.agent-connect-intro ol { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); list-style: none; margin: 0; padding: 0; }
+.agent-connect-intro li { align-items: flex-start; display: grid; gap: 9px; grid-template-columns: 26px 1fr; min-width: 0; }
+.agent-connect-intro li > b { align-items: center; background: color-mix(in srgb, var(--lab-indigo) 16%, transparent); border: 1px solid color-mix(in srgb, var(--lab-indigo) 55%, var(--lab-border)); border-radius: 50%; color: var(--lab-indigo); display: flex; font-size: 11px; height: 24px; justify-content: center; width: 24px; }
+.agent-connect-intro li strong, .agent-connect-intro li small { display: block; }
+.agent-connect-intro li strong { color: var(--lab-text); font-size: 12px; }
+.agent-connect-intro li small { color: var(--lab-muted); font-size: 10px; line-height: 1.45; margin-top: 3px; }
+.agent-connect-grid { gap: 18px !important; padding: 18px 20px 20px !important; }
+.agent-connect-grid > .column { min-width: 0 !important; }
+.agent-method-panel { background: color-mix(in srgb, var(--lab-panel-raised) 78%, transparent) !important; border: 1px solid var(--lab-border) !important; border-radius: 8px !important; padding: 10px !important; }
+.agent-validation { background: var(--lab-panel-raised); border: 1px solid var(--lab-border); border-radius: 8px; min-height: 118px; padding: 14px 15px; }
+.agent-validation.ready { border-color: color-mix(in srgb, var(--lab-green) 65%, var(--lab-border)); }
+.agent-validation.error { border-color: color-mix(in srgb, var(--lab-red) 65%, var(--lab-border)); }
+.validation-kicker { color: var(--lab-muted); display: block; font-size: 10px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+.agent-validation strong { color: var(--lab-text); display: block; font-size: 16px; margin-top: 5px; }
+.agent-validation p { color: var(--lab-muted); font-size: 12px; line-height: 1.5; margin: 6px 0 0; }
+.validation-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.validation-facts span { background: color-mix(in srgb, var(--lab-panel-raised) 60%, var(--lab-bg)); border: 1px solid var(--lab-border); border-radius: 999px; color: var(--lab-text); font-size: 9px; padding: 4px 7px; }
+.agent-trust-note { background: color-mix(in srgb, var(--lab-amber) 9%, var(--lab-panel)); border: 1px solid color-mix(in srgb, var(--lab-amber) 45%, var(--lab-border)); border-radius: 8px; margin-top: 10px; padding: 11px 13px; }
+.agent-trust-note strong { color: var(--lab-text); font-size: 12px; }
+.agent-trust-note p { color: var(--lab-muted); font-size: 11px; line-height: 1.5; margin: 4px 0 0; }
+.starter-download { margin-top: 10px !important; }
+.agent-file-help { background: transparent !important; border: 0 !important; color: var(--lab-muted) !important; font-size: 11px !important; margin: 2px 0 6px !important; padding: 0 4px !important; }
+.agent-guide-link { color: var(--lab-muted) !important; font-size: 11px !important; margin-top: 8px !important; }
 .run-phase { border-radius: 10px; margin: 10px 0; min-height: 58px; padding: 10px 16px; }
 .run-phase strong { font-size: 14px; }
 .run-phase small, .run-phase p { font-size: 12px; }
@@ -603,6 +678,222 @@ html, body, gradio-app, .gradio-container {
 .error-next-step { background: #101f31; border: 1px solid #324a67; border-radius: 8px; display: grid; gap: 4px; margin: 16px 0 10px; padding: 12px 14px; }
 .error-next-step strong { color: #dae6f4; font-size: 12px; }
 .error-next-step span { color: #aebed1; font-size: 13px; }
+
+/* Gradio sets body.dark for dark mode. The unclassed body is the light-mode contract. */
+body:not(.dark) {
+  --lab-bg: #f4f7fb;
+  --lab-panel: #ffffff;
+  --lab-panel-raised: #f7f9fc;
+  --lab-border: #cbd5e1;
+  --lab-border-strong: #94a3b8;
+  --lab-text: #0f172a;
+  --lab-muted: #526177;
+  --lab-indigo: #4f46e5;
+  --lab-cyan: #087f8c;
+  --lab-green: #177245;
+  --lab-amber: #925500;
+  --lab-red: #b42318;
+}
+body:not(.dark), body:not(.dark) gradio-app, body:not(.dark) .gradio-container,
+body:not(.dark) .main, body:not(.dark) main { background: var(--lab-bg) !important; color: var(--lab-text) !important; }
+body:not(.dark) .mode-badge { background: #ecfdf5; border-color: #5aa98d; color: #13634f; }
+body:not(.dark) .lab-header h1,
+body:not(.dark) .lab-header p,
+body:not(.dark) .eyebrow,
+body:not(.dark) .agent-guide-link,
+body:not(.dark) .agent-file-help,
+body:not(.dark) .agent-guide-link p,
+body:not(.dark) .agent-file-help p,
+body:not(.dark) .agent-guide-link a { color: var(--lab-text) !important; }
+body:not(.dark) .lab-header p,
+body:not(.dark) .eyebrow,
+body:not(.dark) .agent-guide-link,
+body:not(.dark) .agent-file-help,
+body:not(.dark) .agent-file-help p,
+body:not(.dark) .agent-guide-link p { color: var(--lab-muted) !important; }
+body:not(.dark) .config-strip,
+body:not(.dark) .run-shell,
+body:not(.dark) .score-shell,
+body:not(.dark) .decision-shell,
+body:not(.dark) .task-shell,
+body:not(.dark) .run-status,
+body:not(.dark) .trace-empty,
+body:not(.dark) .score-workbench { background: var(--lab-panel) !important; }
+body:not(.dark) .config-strip { border-color: #b9c5d5 !important; }
+body:not(.dark) .config-strip label,
+body:not(.dark) .config-strip .wrap,
+body:not(.dark) .config-strip .info { color: var(--lab-text) !important; }
+body:not(.dark) .config-strip .info { color: var(--lab-muted) !important; }
+body:not(.dark) .custom-agent-workbench .block,
+body:not(.dark) .custom-agent-workbench .wrap,
+body:not(.dark) .custom-agent-workbench label,
+body:not(.dark) .custom-agent-workbench input,
+body:not(.dark) .custom-agent-workbench textarea,
+body:not(.dark) .custom-agent-workbench button { color: var(--lab-text) !important; }
+body:not(.dark) .custom-agent-workbench .info { color: var(--lab-muted) !important; }
+body:not(.dark) .run-context-bar,
+body:not(.dark) .run-phase,
+body:not(.dark) .live-trace,
+body:not(.dark) .trace-inspectors,
+body:not(.dark) .trace-inspector-card,
+body:not(.dark) .score-section,
+body:not(.dark) .inspector-panel details,
+body:not(.dark) .impact-fact,
+body:not(.dark) .dimension-explanation dl div,
+body:not(.dark) .error-next-step { background: var(--lab-panel-raised); }
+body:not(.dark) .run-context-bar,
+body:not(.dark) .custom-agent-workbench,
+body:not(.dark) .live-trace,
+body:not(.dark) .score-shell { border-color: var(--lab-border) !important; }
+body:not(.dark) .run-context-bar strong,
+body:not(.dark) .run-context-bar dd,
+body:not(.dark) .run-phase strong,
+body:not(.dark) .run-phase dd,
+body:not(.dark) .trace-event-row,
+body:not(.dark) .trace-run-header dd,
+body:not(.dark) .trace-inspector-card h3,
+body:not(.dark) .inspector-tab-panel h4,
+body:not(.dark) .trace-metadata dd,
+body:not(.dark) .payload-summary dd,
+body:not(.dark) .impact-verdict strong,
+body:not(.dark) .impact-fact strong,
+body:not(.dark) .impact-reasons strong,
+body:not(.dark) .dimension-detail-heading strong,
+body:not(.dark) .dimension-explanation dd,
+body:not(.dark) .task-context h3,
+body:not(.dark) .task-context p,
+body:not(.dark) .error-next-step strong { color: var(--lab-text); }
+body:not(.dark) .run-context-bar small,
+body:not(.dark) .run-context-bar dt,
+body:not(.dark) .trace-run-header small,
+body:not(.dark) .trace-run-header dt,
+body:not(.dark) .trace-table-header,
+body:not(.dark) .timeline-cell,
+body:not(.dark) .actor-cell,
+body:not(.dark) .event-cell small,
+body:not(.dark) .evidence-cell,
+body:not(.dark) .trace-metadata dt,
+body:not(.dark) .payload-summary dt,
+body:not(.dark) .impact-reasons p,
+body:not(.dark) .score-causality-note,
+body:not(.dark) .dimension-explanation p,
+body:not(.dark) .gate-card p,
+body:not(.dark) .gate-result,
+body:not(.dark) .evidence-map li span,
+body:not(.dark) .historical-note,
+body:not(.dark) .error-next-step span { color: var(--lab-muted) !important; }
+body:not(.dark) .trace-run-header,
+body:not(.dark) .trace-table-header,
+body:not(.dark) .payload-summary,
+body:not(.dark) .impact-verdict,
+body:not(.dark) .impact-reasons article,
+body:not(.dark) .dimension-card,
+body:not(.dark) .dimension-detail,
+body:not(.dark) .dimension-detail-heading,
+body:not(.dark) .gate-card,
+body:not(.dark) .evidence-map,
+body:not(.dark) .task-meta span { background: #eef3f8; }
+body:not(.dark) .trace-event-row { border-bottom-color: #d8e0ea; }
+body:not(.dark) .trace-event-row:hover { background: #e8eef8; }
+body:not(.dark) .trace-event-row label,
+body:not(.dark) .event-cell strong { color: var(--lab-text); }
+body:not(.dark) .timeline-cell i { border-color: #ffffff; }
+body:not(.dark) .trace-event-row:has(.trace-selector:checked) { background: #dfe7ff; }
+body:not(.dark) .inspector-tabs label { color: var(--lab-muted); }
+body:not(.dark) .trace-inspector-card:has(.inspector-tab-radio.details:checked) .inspector-tabs label.details,
+body:not(.dark) .trace-inspector-card:has(.inspector-tab-radio.payload:checked) .inspector-tabs label.payload,
+body:not(.dark) .trace-inspector-card:has(.inspector-tab-radio.impact:checked) .inspector-tabs label.impact { color: #3730a3; }
+body:not(.dark) .code-block { background: #f0f4f8; border-color: #b8c5d5; color: #182436; }
+body:not(.dark) .validity-warning { background: #fff8e8; border-color: #c89537; color: #66450b; }
+body:not(.dark) .validity-warning strong { color: #7a4300; }
+body:not(.dark) .equation code { color: #24334a; }
+body:not(.dark) .equation strong { color: #17633a; }
+body:not(.dark) .dimension-card:hover { background: #e8eef8; }
+body:not(.dark) .dimension-scorecards:has(.dimension-selector.task_effectiveness:checked) .dimension-card.task_effectiveness,
+body:not(.dark) .dimension-scorecards:has(.dimension-selector.decision_quality:checked) .dimension-card.decision_quality,
+body:not(.dark) .dimension-scorecards:has(.dimension-selector.safety:checked) .dimension-card.safety,
+body:not(.dark) .dimension-scorecards:has(.dimension-selector.recovery:checked) .dimension-card.recovery,
+body:not(.dark) .dimension-scorecards:has(.dimension-selector.explainability:checked) .dimension-card.explainability,
+body:not(.dark) .dimension-scorecards:has(.dimension-selector.calibration:checked) .dimension-card.calibration,
+body:not(.dark) .dimension-scorecards:has(.dimension-selector.efficiency:checked) .dimension-card.efficiency { background: #e3e9ff; box-shadow: inset 0 0 0 1px #5b66d9; }
+body:not(.dark) .dimension-action,
+body:not(.dark) .dimension-detail-heading label { color: #3730a3; }
+body:not(.dark) .error-code { background: #fff1f2; border-color: #d78b96; color: #9f1d2c; }
+body:not(.dark) .error-code.warning { background: #fff8e8; border-color: #c89537; color: #7a4300; }
+body:not(.dark) #trace-table th { background: #e8eef5 !important; color: #34435a !important; }
+body:not(.dark) #trace-table td { background: #ffffff !important; color: #182436 !important; }
+body:not(.dark) #trace-table tr:hover td { background: #edf2f8 !important; }
+
+/* Custom HTML can render inside Gradio's app root, where body theme classes are not addressable.
+   Bind every core surface and text role to Gradio's theme-aware variables as the primary contract. */
+.config-strip, .run-shell, .score-shell, .decision-shell, .task-shell,
+.run-status, .trace-empty, .score-workbench, .custom-agent-workbench {
+  background: var(--lab-panel) !important;
+  border-color: var(--lab-border) !important;
+}
+.run-context-bar, .run-phase, .live-trace, .trace-inspectors, .trace-inspector-card,
+.score-section, .inspector-panel details, .impact-fact, .dimension-explanation dl div,
+.error-next-step, .trace-run-header, .trace-table-header, .payload-summary,
+.impact-verdict, .impact-reasons article, .dimension-card, .dimension-detail,
+.dimension-detail-heading, .gate-card, .evidence-map, .task-meta span,
+.agent-connect-intro, .agent-validation {
+  background: var(--lab-panel-raised) !important;
+  border-color: var(--lab-border) !important;
+}
+.trace-event-row { border-bottom-color: var(--lab-border); }
+.trace-event-row:hover { background: color-mix(in srgb, var(--lab-indigo) 9%, var(--lab-panel)); }
+.trace-event-row:has(.trace-selector:checked) { background: color-mix(in srgb, var(--lab-indigo) 18%, var(--lab-panel)) !important; }
+.lab-header h1, .score-workbench h2, .run-context-bar strong, .run-context-bar dd,
+.run-phase strong, .run-phase dd, .trace-event-row, .trace-run-header dd,
+.trace-inspector-card h3, .inspector-tab-panel h4, .trace-metadata dd,
+.payload-summary dd, .impact-verdict strong, .impact-fact strong,
+.impact-reasons strong, .dimension-detail-heading strong, .dimension-explanation dd,
+.task-context h3, .task-context p, .error-next-step strong, .event-cell strong,
+.agent-connect-intro h2, .agent-connect-intro li strong, .agent-validation strong,
+.agent-trust-note strong, .validation-facts span {
+  color: var(--lab-text) !important;
+}
+.lab-header p, .eyebrow, .run-context-bar small, .run-context-bar dt,
+.trace-run-header small, .trace-run-header dt, .trace-table-header, .timeline-cell,
+.actor-cell, .event-cell small, .evidence-cell, .trace-metadata dt,
+.payload-summary dt, .impact-reasons p, .score-causality-note,
+.dimension-explanation p, .gate-card p, .gate-result, .evidence-map li span,
+.historical-note, .error-next-step span, .agent-connect-intro p,
+.agent-connect-intro li small, .validation-kicker, .agent-validation p,
+.agent-trust-note p, .agent-file-help, .agent-file-help p,
+.agent-guide-link, .agent-guide-link p {
+  color: var(--lab-muted) !important;
+}
+.code-block {
+  background: color-mix(in srgb, var(--lab-panel) 72%, var(--lab-bg)) !important;
+  border-color: var(--lab-border) !important;
+  color: var(--lab-text) !important;
+}
+.agent-method-panel {
+  background: color-mix(in srgb, var(--lab-panel-raised) 82%, transparent) !important;
+  border-color: var(--lab-border) !important;
+}
+.custom-agent-workbench .agent-connect-grid,
+.custom-agent-workbench .agent-connect-grid > .column {
+  background: var(--lab-panel) !important;
+}
+.dimension-card:hover { background: color-mix(in srgb, var(--lab-indigo) 8%, var(--lab-panel-raised)) !important; }
+.dimension-scorecards:has(.dimension-selector.task_effectiveness:checked) .dimension-card.task_effectiveness,
+.dimension-scorecards:has(.dimension-selector.decision_quality:checked) .dimension-card.decision_quality,
+.dimension-scorecards:has(.dimension-selector.safety:checked) .dimension-card.safety,
+.dimension-scorecards:has(.dimension-selector.recovery:checked) .dimension-card.recovery,
+.dimension-scorecards:has(.dimension-selector.explainability:checked) .dimension-card.explainability,
+.dimension-scorecards:has(.dimension-selector.calibration:checked) .dimension-card.calibration,
+.dimension-scorecards:has(.dimension-selector.efficiency:checked) .dimension-card.efficiency {
+  background: color-mix(in srgb, var(--lab-indigo) 14%, var(--lab-panel-raised)) !important;
+}
+@media (max-width: 1350px) {
+  #evaluation-toolbar { flex-wrap: wrap !important; row-gap: 10px !important; }
+  #evaluation-toolbar > .column { flex: 1 1 260px !important; min-width: 240px !important; }
+  .run-context-bar { grid-template-columns: 1fr; }
+  .run-context-task { border-left: 0; border-top: 1px solid var(--lab-border); padding: 12px 0 0; }
+  .agent-connect-intro { grid-template-columns: 1fr; }
+}
 @media (max-width: 1050px) {
   .run-status { grid-template-columns: 1fr; }
   .run-status dl { grid-template-columns: repeat(2, 1fr); }
@@ -615,8 +906,6 @@ html, body, gradio-app, .gradio-container {
   .dimension-explanation { grid-template-columns: 1fr; }
   .impact-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ledger-layout { grid-template-columns: 1fr; }
-  .run-context-bar { grid-template-columns: 1fr; }
-  .run-context-task { border-left: 0; border-top: 1px solid #263950; padding: 12px 0 0; }
 }
 @media (max-width: 700px) {
   .gradio-container { padding: 12px !important; }
@@ -628,6 +917,7 @@ html, body, gradio-app, .gradio-container {
   .evidence-cell, .outcome-cell { display: none; }
   .dimension-grid { grid-template-columns: 1fr; }
   .impact-facts { grid-template-columns: 1fr; }
+  .agent-connect-intro ol { grid-template-columns: 1fr; }
 }
 """
 
@@ -864,6 +1154,64 @@ def default_candidate() -> str:
     )
 
 
+def custom_agent_status_html(
+    state: str,
+    title: str,
+    detail: str,
+    *,
+    facts: tuple[str, ...] = (),
+) -> str:
+    """Render concise, theme-safe validation feedback for a custom adapter."""
+
+    fact_html = "".join(f"<span>{escape(fact)}</span>" for fact in facts)
+    return f"""
+    <section class="agent-validation {escape(state)}" aria-live="polite">
+      <span class="validation-kicker">Adapter status</span>
+      <strong>{escape(title)}</strong>
+      <p>{escape(detail)}</p>
+      <div class="validation-facts">{fact_html}</div>
+    </section>
+    """
+
+
+def resolve_custom_solver_reference(
+    method: str,
+    upload_token: str,
+    entrypoint: str,
+    local_reference: str,
+) -> str:
+    """Resolve either guided upload or trusted-local custom solver input."""
+
+    if method == "upload":
+        return uploaded_solver_reference(upload_token, entrypoint)
+    if method == "local":
+        value = str(local_reference).strip()
+        trusted_solver_spec(value)
+        return value
+    raise ValueError("choose Upload adapter or Use local solver")
+
+
+def custom_agent_intro_html() -> str:
+    """Explain the shortest safe custom-agent integration path inside the Lab."""
+
+    return """
+    <section class="agent-connect-intro">
+      <div><span class="eyebrow">Bring your own agent</span>
+      <h2>Connect an agent in three steps</h2>
+      <p>Use a small Inspect adapter to connect any Python agent or remote agent service to the
+      benchmark's real tools, trace recorder, and deterministic scorer.</p></div>
+      <ol>
+        <li><b>1</b><span><strong>Add adapter</strong><small>Upload one `.py` file or use a trusted
+        solver already in this checkout.</small></span></li>
+        <li><b>2</b><span><strong>Confirm entrypoint</strong><small>The Lab detects registered
+        `@solver` functions without importing the file.</small></span></li>
+        <li><b>3</b><span><strong>Run normally</strong><small>Choose the model and task above; the
+        same trace, gates, and score explanation are produced.</small></span></li>
+      </ol>
+    </section>
+    """
+
+
 def build_demo() -> Any:
     """Build the live Inspect evaluation workbench; Gradio remains optional."""
 
@@ -889,7 +1237,7 @@ def build_demo() -> Any:
     scorer output in the completed Inspect log.</p></div></section>
     """
 
-    agent_options = [*agent_choices(), ("Custom Inspect solver", "custom")]
+    agent_options = [*agent_choices(), ("Connect your own agent", "custom")]
 
     def runtime_selection(agent_key: str) -> tuple[str, str]:
         if agent_key == "custom":
@@ -898,7 +1246,10 @@ def build_demo() -> Any:
 
     def run_context_html(
         agent_key: str,
-        solver_reference: str,
+        custom_method: str,
+        upload_filename: str,
+        entrypoint: str,
+        local_solver_reference: str,
         system_name: str,
         instance_id: str,
         variant: str,
@@ -907,7 +1258,13 @@ def build_demo() -> Any:
         selected_variant = _safe_variant(variant)
         if agent_key == "custom":
             agent_label = system_name or "Unnamed custom system"
-            architecture = f"Custom solver · {solver_reference}"
+            if custom_method == "upload":
+                adapter = upload_filename or "Upload adapter to continue"
+                architecture = (
+                    f"Uploaded adapter · {adapter} · {entrypoint or 'entrypoint pending'}"
+                )
+            else:
+                architecture = f"Trusted local solver · {local_solver_reference}"
         else:
             agent = REPLAY_AGENTS_BY_KEY[_safe_agent_key(agent_key)]
             agent_label = agent.label
@@ -933,7 +1290,10 @@ def build_demo() -> Any:
 
     def execute_for_ui(
         agent_key: str,
-        solver_reference: str,
+        custom_method: str,
+        upload_token: str,
+        entrypoint: str,
+        local_solver_reference: str,
         system_name: str,
         model_name: str,
         instance_id: str,
@@ -941,6 +1301,30 @@ def build_demo() -> Any:
     ) -> Any:
         source, baseline = runtime_selection(agent_key)
         context = task_context_html(instance_id, variant)
+        try:
+            solver_reference = (
+                resolve_custom_solver_reference(
+                    custom_method,
+                    upload_token,
+                    entrypoint,
+                    local_solver_reference,
+                )
+                if agent_key == "custom"
+                else "examples/custom_solver.py@custom_agent"
+            )
+        except ValueError as error:
+            failure_payload = {"grade": {"available": False}, "error": str(error)}
+            yield (
+                {},
+                error_status_html(error),
+                "",
+                {},
+                score_explainer_html(failure_payload),
+                context,
+                None,
+                None,
+            )
+            return
         yield (
             {},
             running_status_html(
@@ -1081,31 +1465,92 @@ def build_demo() -> Any:
         selected_run_context = gr.HTML(
             run_context_html(
                 "planner_executor",
+                "upload",
+                "",
+                "",
                 "examples/custom_solver.py@custom_agent",
                 "decision-agent-bench-lab",
                 default_instance,
                 "clean",
             )
         )
-        with gr.Accordion("Custom agent adapter", open=False, elem_classes="custom-agent-panel"):
-            with gr.Row():
-                with gr.Column(scale=5, min_width=330):
-                    custom_solver = gr.Textbox(
-                        value="examples/custom_solver.py@custom_agent",
-                        label="Custom Inspect solver",
-                        info="Trusted local path.py@solver under agents/ or examples/.",
+        upload_token = gr.State("")
+        upload_filename = gr.State("")
+        with gr.Group(
+            visible=False,
+            elem_id="custom-agent-workbench",
+            elem_classes="custom-agent-workbench",
+        ) as custom_agent_panel:
+            gr.HTML(custom_agent_intro_html())
+            with gr.Row(equal_height=True, elem_classes="agent-connect-grid"):
+                with gr.Column(scale=3, min_width=340):
+                    custom_method = gr.Radio(
+                        choices=[
+                            ("Upload adapter", "upload"),
+                            ("Use local solver", "local"),
+                        ],
+                        value="upload",
+                        label="Connection method",
+                        info="Upload is the quickest route. Local solver keeps an existing repository adapter in place.",
                     )
-                with gr.Column(scale=3, min_width=240):
+                    with gr.Group(elem_classes="agent-method-panel") as upload_panel:
+                        uploaded_agent = gr.File(
+                            label="Upload Python adapter",
+                            file_types=[".py"],
+                            type="filepath",
+                            height=126,
+                        )
+                        gr.Markdown(
+                            "One UTF-8 `.py` file, up to 256 KB. Validation does not execute it.",
+                            elem_classes="agent-file-help",
+                        )
+                        solver_entrypoint = gr.Dropdown(
+                            choices=[],
+                            value=None,
+                            label="Detected solver entrypoint",
+                            info="Choose the @solver factory DecisionAgentBench should run.",
+                            interactive=False,
+                        )
+                    with gr.Group(
+                        visible=False,
+                        elem_classes="agent-method-panel",
+                    ) as local_panel:
+                        local_solver = gr.Textbox(
+                            value="examples/custom_solver.py@custom_agent",
+                            label="Trusted local solver",
+                            info="Use path.py@solver under agents/ or examples/.",
+                        )
                     system_name = gr.Textbox(
-                        value="decision-agent-bench-lab",
+                        value="my-agent-v1",
                         label="System name",
-                        info="Stable label recorded in the Inspect log and report.",
+                        info="Stable label recorded in the Inspect log and portable report.",
                     )
-            gr.Markdown(
-                "Select **Custom Inspect solver** in the Agent menu to use these fields. "
-                "Only repository files under `agents/` or `examples/` are loadable. "
-                "See [`docs/evaluating-your-agent.md`](file/docs/evaluating-your-agent.md)."
-            )
+                with gr.Column(scale=2, min_width=300):
+                    agent_validation = gr.HTML(
+                        custom_agent_status_html(
+                            "waiting",
+                            "Waiting for an adapter",
+                            "Upload a trusted Python adapter. The Lab will validate its syntax and detect registered solver entrypoints without importing it.",
+                        )
+                    )
+                    gr.HTML(
+                        """
+                        <aside class="agent-trust-note"><strong>Local-code safety</strong>
+                        <p>A custom adapter is executable Python and runs with the permissions of
+                        this Lab process. Review the file first. Never place API keys or customer
+                        data inside the adapter.</p></aside>
+                        """
+                    )
+                    gr.DownloadButton(
+                        "Download starter adapter",
+                        value=str(_PROJECT_ROOT / "examples/custom_solver.py"),
+                        variant="secondary",
+                        elem_classes="starter-download",
+                    )
+                    gr.Markdown(
+                        "Full integration guide: [`docs/evaluating-your-agent.md`](file/docs/evaluating-your-agent.md)",
+                        elem_classes="agent-guide-link",
+                    )
 
         selected_task_context = gr.HTML(task_context_html(default_instance, "clean"), visible=False)
 
@@ -1133,18 +1578,254 @@ def build_demo() -> Any:
                         variant="secondary",
                     )
 
-        for control in (
+        def refresh_custom_agent_ui(
+            agent_key: str,
+            method: str,
+            token: str,
+            filename: str,
+            entrypoint: str,
+            local_reference: str,
+            selected_system_name: str,
+            instance_id: str,
+            variant: str,
+        ) -> tuple[Any, Any, Any, str, Any, str]:
+            is_custom = agent_key == "custom"
+            ready = not is_custom
+            if method == "upload":
+                if not token:
+                    validation = custom_agent_status_html(
+                        "waiting",
+                        "Upload required",
+                        "Choose one reviewed Python adapter to detect its registered @solver entrypoints.",
+                    )
+                else:
+                    try:
+                        reference = uploaded_solver_reference(token, entrypoint)
+                    except ValueError as error:
+                        validation = custom_agent_status_html(
+                            "error",
+                            "Adapter needs attention",
+                            str(error),
+                        )
+                    else:
+                        ready = True
+                        validation = custom_agent_status_html(
+                            "ready",
+                            "Adapter ready",
+                            "The file passed non-executing syntax validation and the selected @solver entrypoint is ready for Inspect.",
+                            facts=(
+                                filename or "Uploaded .py",
+                                entrypoint,
+                                reference.split("@", 1)[0],
+                            ),
+                        )
+            else:
+                try:
+                    reference = resolve_custom_solver_reference(
+                        method,
+                        token,
+                        entrypoint,
+                        local_reference,
+                    )
+                except ValueError as error:
+                    validation = custom_agent_status_html(
+                        "error",
+                        "Local solver needs attention",
+                        str(error),
+                    )
+                else:
+                    ready = True
+                    validation = custom_agent_status_html(
+                        "ready",
+                        "Local solver ready",
+                        "The reference resolves inside an allow-listed project directory. Inspect will import it only when the evaluation starts.",
+                        facts=(reference,),
+                    )
+            return (
+                gr.update(visible=is_custom),
+                gr.update(visible=method == "upload"),
+                gr.update(visible=method == "local"),
+                validation,
+                gr.update(interactive=ready),
+                run_context_html(
+                    agent_key,
+                    method,
+                    filename,
+                    entrypoint,
+                    local_reference,
+                    selected_system_name,
+                    instance_id,
+                    variant,
+                ),
+            )
+
+        def handle_agent_upload(
+            uploaded_file: Any,
+            agent_key: str,
+            method: str,
+            selected_system_name: str,
+            local_reference: str,
+            instance_id: str,
+            variant: str,
+        ) -> tuple[str, str, Any, str, Any, str]:
+            try:
+                registration = stage_uploaded_solver(uploaded_file)
+            except ValueError as error:
+                return (
+                    "",
+                    "",
+                    gr.update(choices=[], value=None, interactive=False),
+                    custom_agent_status_html(
+                        "error",
+                        "Adapter could not be validated",
+                        str(error),
+                    ),
+                    gr.update(interactive=agent_key != "custom"),
+                    run_context_html(
+                        agent_key,
+                        method,
+                        "",
+                        "",
+                        local_reference,
+                        selected_system_name,
+                        instance_id,
+                        variant,
+                    ),
+                )
+            selected_entrypoint = registration.entrypoints[0]
+            size_kb = max(0.1, registration.size_bytes / 1024)
+            status_html = custom_agent_status_html(
+                "ready",
+                "Adapter ready",
+                "Syntax is valid and registered solver entrypoints were detected without executing the uploaded code.",
+                facts=(
+                    registration.filename,
+                    f"{len(registration.entrypoints)} @solver entrypoint(s)",
+                    f"{size_kb:.1f} KB · SHA-256 {registration.sha256[:10]}",
+                ),
+            )
+            return (
+                registration.token,
+                registration.filename,
+                gr.update(
+                    choices=list(registration.entrypoints),
+                    value=selected_entrypoint,
+                    interactive=len(registration.entrypoints) > 1,
+                ),
+                status_html,
+                gr.update(interactive=agent_key != "custom" or method == "upload"),
+                run_context_html(
+                    agent_key,
+                    method,
+                    registration.filename,
+                    selected_entrypoint,
+                    local_reference,
+                    selected_system_name,
+                    instance_id,
+                    variant,
+                ),
+            )
+
+        custom_ui_inputs = [
             selected_agent,
-            custom_solver,
+            custom_method,
+            upload_token,
+            upload_filename,
+            solver_entrypoint,
+            local_solver,
             system_name,
             selected_task,
             selected_variant,
-        ):
+        ]
+        custom_ui_outputs = [
+            custom_agent_panel,
+            upload_panel,
+            local_panel,
+            agent_validation,
+            run_button,
+            selected_run_context,
+        ]
+        for control in (selected_agent, custom_method, solver_entrypoint, local_solver):
+            control.change(
+                refresh_custom_agent_ui,
+                inputs=custom_ui_inputs,
+                outputs=custom_ui_outputs,
+                show_progress="hidden",
+                api_name=False,
+            )
+        uploaded_agent.upload(
+            handle_agent_upload,
+            inputs=[
+                uploaded_agent,
+                selected_agent,
+                custom_method,
+                system_name,
+                local_solver,
+                selected_task,
+                selected_variant,
+            ],
+            outputs=[
+                upload_token,
+                upload_filename,
+                solver_entrypoint,
+                agent_validation,
+                run_button,
+                selected_run_context,
+            ],
+            show_progress="minimal",
+            api_name=False,
+        )
+        uploaded_agent.clear(
+            lambda agent_key, method, selected_system_name, local_reference, instance_id, variant: (
+                "",
+                "",
+                gr.update(choices=[], value=None, interactive=False),
+                custom_agent_status_html(
+                    "waiting",
+                    "Waiting for an adapter",
+                    "Upload a trusted Python adapter to detect its registered @solver entrypoints.",
+                ),
+                gr.update(interactive=agent_key != "custom"),
+                run_context_html(
+                    agent_key,
+                    method,
+                    "",
+                    "",
+                    local_reference,
+                    selected_system_name,
+                    instance_id,
+                    variant,
+                ),
+            ),
+            inputs=[
+                selected_agent,
+                custom_method,
+                system_name,
+                local_solver,
+                selected_task,
+                selected_variant,
+            ],
+            outputs=[
+                upload_token,
+                upload_filename,
+                solver_entrypoint,
+                agent_validation,
+                run_button,
+                selected_run_context,
+            ],
+            show_progress="hidden",
+            api_name=False,
+        )
+
+        for control in (system_name, selected_task, selected_variant):
             control.change(
                 run_context_html,
                 inputs=[
                     selected_agent,
-                    custom_solver,
+                    custom_method,
+                    upload_filename,
+                    solver_entrypoint,
+                    local_solver,
                     system_name,
                     selected_task,
                     selected_variant,
@@ -1171,7 +1852,10 @@ def build_demo() -> Any:
             execute_for_ui,
             inputs=[
                 selected_agent,
-                custom_solver,
+                custom_method,
+                upload_token,
+                solver_entrypoint,
+                local_solver,
                 system_name,
                 selected_model,
                 selected_task,

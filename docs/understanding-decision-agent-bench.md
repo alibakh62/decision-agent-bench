@@ -115,7 +115,7 @@ It is not a claim of parity with benchmarks that measure days or months of human
 
 Version numbers have different roles:
 
-- the package release may be `0.5.5`;
+- the package release may be `0.5.6`;
 - the v0.2 research contract is `0.2.1`;
 - the stateful workflow contract is `0.3.0`.
 
@@ -521,7 +521,8 @@ decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
 The Lab runs one real Inspect sample with a chosen provider model and either a built-in architecture
-or a trusted custom solver. It shows the actual model/tool timeline, exact event payloads, final
+or a reviewed custom solver connected through a guided upload or trusted local reference. It shows
+the actual model/tool timeline, exact event payloads, final
 decision, usage, weighted score substitutions, gates, and evidence mapping. The interface starts
 empty and never presents a scripted run as an empirical result. See the [Lab guide](lab.md) for the
 complete workflow, custom-agent boundary, and claim limits.
