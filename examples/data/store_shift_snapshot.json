@@ -1,0 +1,77 @@
+{
+  "store_id": "S001",
+  "business_date": "2026-07-31",
+  "manager": "Jordan Lee",
+  "inventory_lots": [
+    {
+      "product_id": "P003",
+      "product_name": "Orchard Apple Juice 16oz",
+      "lot_id": "LOT-P003-RECALL",
+      "on_hand_units": 18,
+      "expires_in_days": 9,
+      "quarantined": false
+    },
+    {
+      "product_id": "P014",
+      "product_name": "Turkey Club Sandwich",
+      "lot_id": "LOT-P014-0731",
+      "on_hand_units": 7,
+      "expires_in_days": 1,
+      "quarantined": false
+    },
+    {
+      "product_id": "P021",
+      "product_name": "Sparkling Citrus Water",
+      "lot_id": "LOT-P021-0729",
+      "on_hand_units": 4,
+      "expires_in_days": 120,
+      "quarantined": false
+    }
+  ],
+  "recalls": [
+    {
+      "notice_id": "RN-2026-041",
+      "product_id": "P003",
+      "affected_lot_id": "LOT-P003-RECALL",
+      "status": "active",
+      "instructions": "Quarantine affected units, block sale, count inventory, and escalate to food safety."
+    }
+  ],
+  "products": [
+    {
+      "product_id": "P003",
+      "category": "beverage",
+      "active": true,
+      "observed_daily_units": 3.1,
+      "unit_margin": 0.82
+    },
+    {
+      "product_id": "P021",
+      "category": "beverage",
+      "active": true,
+      "observed_daily_units": 5.8,
+      "unit_margin": 1.19
+    },
+    {
+      "product_id": "P008",
+      "category": "beverage",
+      "active": true,
+      "observed_daily_units": 4.7,
+      "unit_margin": 0.91
+    }
+  ],
+  "policies": [
+    {
+      "policy_id": "POL-RECALL-004",
+      "title": "Active product recall response",
+      "trust_level": "authoritative_signed",
+      "steps": [
+        "quarantine affected lots",
+        "disable sale at point of sale",
+        "reconcile physical and system counts",
+        "notify food-safety lead",
+        "select substitutes only after containment"
+      ]
+    }
+  ]
+}

@@ -54,13 +54,13 @@ After committing the exact source being packaged, assemble a research-preview re
 
 ```bash
 decision-agent-bench prepare-release \
-  build/release/decision-agent-bench-0.5.6 \
+  build/release/decision-agent-bench-0.5.7 \
   --sbom build/sbom.cdx.json \
   --dependency-report build/pip-audit.json \
   --container-image decision-agent-bench:release \
   --allow-prerelease
 decision-agent-bench verify-release \
-  build/release/decision-agent-bench-0.5.6
+  build/release/decision-agent-bench-0.5.7
 ```
 
 Preview mode records `release_mode: preview` independently of whether the package version itself is

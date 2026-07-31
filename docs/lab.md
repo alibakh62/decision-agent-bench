@@ -17,6 +17,8 @@ python -m pip install -e ".[demo]"
 decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
+Install `.[demo,agents]` instead when you want to run the included LangGraph examples.
+
 The Lab may contact a model provider. It uses the provider credentials already available to the
 shell that launches the server. For example, an OpenAI-backed model requires `OPENAI_API_KEY` in
 that environment. Keys are not entered into or stored by the Lab.
@@ -91,6 +93,16 @@ the Lab never turns a field value into a shell command or an unrestricted filesy
 
 The complete adapter contract—including external Python frameworks and remote agent services—is
 in [Evaluate your agent with DecisionAgentBench](evaluating-your-agent.md).
+
+The onboarding panel also provides two complete, directly uploadable examples:
+
+- [LangGraph store assistant](examples/langgraph-store-assistant.md), an in-process Python agent
+  that prepares a recall and opening-operations brief; and
+- [LangGraph replenishment service](examples/langgraph-remote-replenishment.md), a local HTTP agent
+  that requests benchmark tool calls through an auditable adapter broker.
+
+Each guide shows how to run the agent independently on included synthetic data before evaluating
+the same code in the Lab.
 
 ## What actually runs
 

@@ -1,7 +1,7 @@
 # DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.5.6 custom-agent Lab usability patch, 31 July 2026
-**Benchmark software:** `0.5.6` (historical v0.1-v0.3 task contracts)
+**Status:** v0.5.7 runnable custom-agent examples, 31 July 2026
+**Benchmark software:** `0.5.7` (historical v0.1-v0.3 task contracts)
 **Task protocols:** `0.1` confirmatory suite; `0.2` research expansion; `0.3` stateful preview
 
 > **Measurement hold:** an independent audit reproduced lexical grader gaming, paraphrase
@@ -401,6 +401,12 @@ task/data manifests, CI, experiment planner, cost-gated runner, sanitized analyz
 protocol, leaderboard governance, and external-reproduction checklist. Result-affecting changes
 require a task or software version and visible changelog entry. Results are never silently moved
 between versions.
+
+The v0.5.7 software release also includes two runnable LangGraph integration references: an
+in-process recall-response store assistant and a remote replenishment service. Both operate on
+included synthetic inputs outside the benchmark and expose thin Inspect adapters that retain the
+benchmark's original tool callables, evidence lineage, strict submission contract, and scorer.
+They are engineering examples rather than new benchmark baselines or performance evidence.
 
 The empirical release is gated on completed model runs, blinded agreement, security and leakage
 review, an external reproduction, an archival DOI, and a public report. Inspect Evals registration

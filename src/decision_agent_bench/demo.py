@@ -1551,6 +1551,33 @@ def build_demo() -> Any:
                         "Full integration guide: [`docs/evaluating-your-agent.md`](file/docs/evaluating-your-agent.md)",
                         elem_classes="agent-guide-link",
                     )
+                    gr.Markdown(
+                        "**Try a complete convenience-retail agent**\n\n"
+                        "Download either example, then place that same `.py` file in the upload "
+                        "box on the left.",
+                        elem_classes="agent-example-heading",
+                    )
+                    with gr.Row(elem_classes="agent-example-downloads"):
+                        gr.DownloadButton(
+                            "Python store assistant",
+                            value=str(
+                                _PROJECT_ROOT / "examples/langgraph_store_assistant.py"
+                            ),
+                            variant="secondary",
+                        )
+                        gr.DownloadButton(
+                            "Remote replenishment service",
+                            value=str(
+                                _PROJECT_ROOT
+                                / "examples/langgraph_replenishment_service.py"
+                            ),
+                            variant="secondary",
+                        )
+                    gr.Markdown(
+                        "[Python-agent guide](file/docs/examples/langgraph-store-assistant.md) · "
+                        "[Remote-service guide](file/docs/examples/langgraph-remote-replenishment.md)",
+                        elem_classes="agent-guide-link",
+                    )
 
         selected_task_context = gr.HTML(task_context_html(default_instance, "clean"), visible=False)
 
