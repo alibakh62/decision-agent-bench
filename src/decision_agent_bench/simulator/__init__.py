@@ -34,11 +34,11 @@ from decision_agent_bench.simulator.validation import validate_world
 __all__ = [
     "BASELINES",
     "CAUSAL_SCENARIOS",
+    "REGIMES",
     "ClosedLoopConfig",
     "ClosedLoopEnvironment",
     "EpisodeOutcome",
     "GenerationConfig",
-    "REGIMES",
     "RetailEnvironment",
     "baseline_catalog",
     "closed_loop_digest",

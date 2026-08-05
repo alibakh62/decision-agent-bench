@@ -1288,7 +1288,7 @@ class ClosedLoopEnvironment:
             rounding_draw = self._draw(
                 "round", business_date, row["store_id"], row["product_id"]
             )
-            latent = max(0, int(math.floor(expected + rounding_draw)))
+            latent = max(0, math.floor(expected + rounding_draw))
             own_sale, cogs = self._consume_inventory(
                 str(row["store_id"]),
                 str(row["product_id"]),
@@ -1352,11 +1352,9 @@ class ClosedLoopEnvironment:
         total = 0
         for row in rows:
             expected = int(row["sold_units"]) * float(row["quality_return_rate"])
-            returned = int(
-                math.floor(
-                    expected
-                    + self._draw("return", business_date, row["store_id"], row["product_id"])
-                )
+            returned = math.floor(
+                expected
+                + self._draw("return", business_date, row["store_id"], row["product_id"])
             )
             refund = _money(returned * float(row["unit_price"]))
             reason = "quality" if returned else "none"
