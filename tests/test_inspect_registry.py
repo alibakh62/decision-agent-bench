@@ -57,6 +57,7 @@ def test_task_discovery_returns_decorator_lines() -> None:
         "decision_agent_bench",
         "decision_agent_bench_v0_2",
         "decision_agent_bench_v0_3",
+        "decision_agent_bench_v0_6",
     }
     assert all(line > 0 for line in tasks.values())
 

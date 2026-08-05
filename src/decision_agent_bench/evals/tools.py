@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -12,6 +11,7 @@ from inspect_ai.tool import Tool, ToolError, tool
 from inspect_ai.util import store
 
 from decision_agent_bench.evals.runtime import STORE_PREFIX
+from decision_agent_bench.evals.trace import tool_trace_event
 from decision_agent_bench.simulator import RetailEnvironment
 from decision_agent_bench.simulator.environment import (
     PolicyViolation,
@@ -46,13 +46,19 @@ def _set_calls(calls: list[dict[str, Any]]) -> None:
 
 def _record_error(tool_name: str, arguments: dict[str, Any], message: str) -> None:
     calls = _calls()
+    index = len(calls) + 1
+    root = store().get(f"{STORE_PREFIX}trace_root")
     calls.append(
         {
-            "index": len(calls) + 1,
-            "tool": tool_name,
-            "status": "error",
-            "arguments": arguments,
-            "error": message,
+            "index": index,
+            **tool_trace_event(
+                root=dict(root or {}),
+                index=index,
+                tool_name=tool_name,
+                status="error",
+                arguments=arguments,
+                error=message,
+            ),
         }
     )
     _set_calls(calls)
@@ -70,17 +76,22 @@ def _maybe_inject_failure(tool_name: str, arguments: dict[str, Any]) -> None:
 
 def _record_success(tool_name: str, arguments: dict[str, Any], result: Any) -> dict[str, Any]:
     calls = _calls()
-    evidence_id = f"E{len(calls) + 1:03d}"
-    serialized = json.dumps(result, sort_keys=True, separators=(",", ":"), default=str)
+    index = len(calls) + 1
+    evidence_id = f"E{index:03d}"
     prior_error = any(call["tool"] == tool_name and call["status"] == "error" for call in calls)
+    root = store().get(f"{STORE_PREFIX}trace_root")
     calls.append(
         {
-            "index": len(calls) + 1,
-            "tool": tool_name,
-            "status": "success",
-            "arguments": arguments,
-            "evidence_id": evidence_id,
-            "result_sha256": hashlib.sha256(serialized.encode()).hexdigest(),
+            "index": index,
+            **tool_trace_event(
+                root=dict(root or {}),
+                index=index,
+                tool_name=tool_name,
+                status="success",
+                arguments=arguments,
+                result=result,
+                evidence_id=evidence_id,
+            ),
         }
     )
     _set_calls(calls)

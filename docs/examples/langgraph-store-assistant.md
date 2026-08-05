@@ -102,10 +102,10 @@ The same smoke test is reproducible from the command line:
 
 ```bash
 ./.venv/bin/inspect eval \
-  src/decision_agent_bench/evals/task.py@decision_agent_bench \
+  src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_6 \
   --solver examples/langgraph_store_assistant.py@langgraph_store_assistant \
   --model mockllm/model \
-  --sample-id DAB-ASS-004-clean \
+  --sample-id DAB-ASS-004-i1-clean \
   --log-dir logs/langgraph-store-assistant \
   -T category=assortment \
   -T variant=clean \

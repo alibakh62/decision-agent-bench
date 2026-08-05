@@ -14,9 +14,11 @@
       multiplicity plan, confirmatory/exploratory labels, and study-cost ceiling.
 - [ ] Replace the v0.5 planning assumptions with pilot variance where materially different and
       generate the empirical metric-dependence report from valid typed-score samples.
-- [ ] Complete every v0.4-v0.8 validity-first roadmap gate: typed scoring, evidence support,
-      structured safety, power/MDE, richer task discrimination, branching workflows, blinded human
-      validation, red team, and leakage audit.
+- [x] Implement the v0.6 typed scoring, semantic evidence, portable causal trace, structured
+      safety, metric-applicability, and adversarial scorer-validity gates.
+- [ ] Complete every v0.7-v0.10 validity-first roadmap gate: a closed-loop world, power/MDE, task
+      discrimination, branching workflows, portable observability, horizon validation, blinded
+      human and model-judge validation, a governed regression workflow, red team, and leakage audit.
 - [ ] Freeze the preregistered model/baseline grid, archive its preflight, and authorize the exact
       configured exposure under a whole-study cost ceiling.
 - [ ] Run at least three current model families with three or more repetitions.

@@ -151,6 +151,6 @@ requires review before execution.
 - A high powered test can precisely estimate an invalid metric. Construct validity remains upstream.
 - The Gaussian planning model approximates bounded benchmark scores; a pilot should test whether
   strong ceiling/floor behavior requires a binary, ordinal, or otherwise bounded simulation.
-- Task-family generalization is limited to the registered concepts until v0.6 adds genuinely new
-  families.
+- Task-family generalization is limited to the registered concepts until v0.8 adds genuinely new
+  families on the v0.7 closed-loop world.
 - Exploratory comparisons must be labeled as such regardless of their observed p-values.

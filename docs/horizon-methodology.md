@@ -85,5 +85,5 @@ those gates are satisfied, use “dependency-enforced horizon preview,” report
 and keep human-time and cross-benchmark claims separate.
 
 Separately, any claim about planning quality requires branching or alternative feasible decisions
-with outcome-sensitive grading. That work is scheduled for v0.7.0 in the
+with outcome-sensitive grading. That work is scheduled for v0.9.0 in the
 [versioned roadmap](roadmap.md); it is not implied by satisfying the horizon criteria alone.

@@ -4,6 +4,43 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-05
+
+### Added
+
+- Add a separate construct-valid task registration with 25 public typed construct definitions,
+  world-derived answer functions, task-specific field contracts, and a machine-readable
+  `show-constructs` command.
+- Add claim-level semantic evidence validation, behavioral action and safety grading, independent
+  regret/utility measures where applicable, non-compensatory score gates, and exact run-specific
+  score breakdowns.
+- Add a portable causal trace contract with deterministic root/tool/terminal spans, parent-child
+  lineage, payload integrity hashes, capture-time secret minimization, and trace-completeness
+  eligibility.
+- Add adversarial validity fixtures covering keyword stuffing, paraphrase invariance, fabricated
+  citations, evidence mutation, unsafe action intent, complete construct coverage, and public-target
+  leakage.
+- Add the v0.6 scoring protocol and custom-agent migration guide, and make the built-in finalizer
+  and both LangGraph examples compatible with the typed contract.
+
+### Changed
+
+- Report per-sample calibration and robustness as null, retain Brier telemetry for group analysis,
+  and make analysis schema 4.0 preserve metric applicability instead of coercing null to zero.
+- Keep v0.1-v0.3 task and scorer behavior frozen for historical reproduction while selecting v0.6
+  for current development-evaluation examples.
+
+### Documentation
+
+- Rebase the post-v0.5 release plan around an explicit v0.6 construct-valid scorer, v0.7
+  closed-loop retail world, v0.8 discriminating task suite, v0.9 horizon validation, v0.10 external
+  validation, and v0.11 empirical beta before stable v1 contracts.
+- Preserve the completed v0.5 statistical and agent-integration work while clarifying that it does
+  not close the measurement-validity or long-horizon gates.
+- Incorporate the Google *Agent Quality* review by adding an outside-in score hierarchy, portable
+  causal traces, operational-versus-quality observability, evaluator triangulation, context-rich
+  review, and a governed feedback-to-regression loop to the v0.6-v0.10 gates.
+
 ## [0.5.7] - 2026-07-31
 
 ### Added

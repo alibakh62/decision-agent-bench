@@ -1,4 +1,4 @@
-"""Inspect AI task registrations for DecisionAgentBench v0.1 through v0.3."""
+"""Inspect AI task registrations for historical and construct-valid benchmark releases."""
 
 from __future__ import annotations
 
@@ -9,6 +9,11 @@ from inspect_ai.dataset import MemoryDataset, Sample
 
 from decision_agent_bench.evals.baselines import baseline_solver
 from decision_agent_bench.evals.cases import CASES, validate_cases
+from decision_agent_bench.evals.constructs import (
+    V06_VERSION,
+    public_contract,
+    submission_instructions,
+)
 from decision_agent_bench.evals.instances import (
     EXPANDED_VERSION,
     expanded_category,
@@ -49,13 +54,10 @@ def build_dataset(
     if not 1 <= instances_per_family <= 4:
         raise ValueError("instances_per_family must be between 1 and 4")
     specs = {str(spec["id"]): spec for spec in load_task_specs()}
-    expanded = benchmark_version in {"0.2.0", EXPANDED_VERSION}
+    expanded = benchmark_version in {"0.2.0", EXPANDED_VERSION, V06_VERSION}
+    modern_categories = benchmark_version in {EXPANDED_VERSION, V06_VERSION}
     available_categories = {
-        (
-            expanded_category(str(spec["category"]))
-            if benchmark_version == EXPANDED_VERSION
-            else str(spec["category"])
-        )
+        (expanded_category(str(spec["category"])) if modern_categories else str(spec["category"]))
         for spec in specs.values()
     }
     if category is not None and category not in available_categories:
@@ -67,9 +69,7 @@ def build_dataset(
     for case in CASES:
         spec = specs[case.task_id]
         sample_category = (
-            expanded_category(str(spec["category"]))
-            if benchmark_version == EXPANDED_VERSION
-            else str(spec["category"])
+            expanded_category(str(spec["category"])) if modern_categories else str(spec["category"])
         )
         if category is not None and sample_category != category:
             continue
@@ -90,13 +90,17 @@ def build_dataset(
                         scheduled_perturbation(
                             [str(value) for value in spec["perturbations"]], instance_index
                         )
-                        if benchmark_version == EXPANDED_VERSION
+                        if modern_categories
                         else str(spec["perturbations"][0])
                     )
                 else:
                     perturbation = None
-                target = case.target()
-                if expanded:
+                target = (
+                    public_contract(case.task_id)
+                    if benchmark_version == V06_VERSION
+                    else case.target()
+                )
+                if expanded and benchmark_version != V06_VERSION:
                     target["contract_version"] = benchmark_version
                     if case.task_id == "DAB-ASS-001":
                         target["economic_oracle"] = "replacement_opportunity"
@@ -105,7 +109,12 @@ def build_dataset(
                 samples.append(
                     Sample(
                         id=f"{case.task_id}{instance_suffix}-{selected_variant}",
-                        input=case.prompt + SUBMISSION_INSTRUCTIONS,
+                        input=case.prompt
+                        + (
+                            submission_instructions(case.task_id)
+                            if benchmark_version == V06_VERSION
+                            else SUBMISSION_INSTRUCTIONS
+                        ),
                         target=json.dumps(target, sort_keys=True),
                         metadata={
                             "task_id": case.task_id,
@@ -125,7 +134,8 @@ def build_dataset(
     return MemoryDataset(
         samples=samples,
         name=(
-            f"decision_agent_bench_{'v0_2' if expanded else 'v0_1'}_"
+            f"decision_agent_bench_"
+            f"{'v0_6' if benchmark_version == V06_VERSION else 'v0_2' if expanded else 'v0_1'}_"
             f"{category or 'all'}_{variant}_"
             f"{instances_per_family}x"
         ),
@@ -281,6 +291,26 @@ def decision_agent_bench_v0_2(
         baseline=baseline,
         instances_per_family=instances_per_family,
         version=EXPANDED_VERSION,
+        system_name=system_name,
+    )
+
+
+@task
+def decision_agent_bench_v0_6(
+    category: str | None = None,
+    variant: str = "both",
+    baseline: str = "single_agent",
+    instances_per_family: int = 4,
+    system_name: str | None = None,
+) -> Task:
+    """Construct-valid benchmark with typed claims and semantic evidence grading."""
+
+    return _benchmark_task(
+        category=category,
+        variant=variant,
+        baseline=baseline,
+        instances_per_family=instances_per_family,
+        version=V06_VERSION,
         system_name=system_name,
     )
 

@@ -429,6 +429,45 @@ def test_summary_reports_reliability_and_paired_robustness_delta() -> None:
     assert paired["perturbed_minus_clean_composite"]["mean"] == pytest.approx(-0.3)
 
 
+def test_v06_summary_preserves_metric_applicability_instead_of_zero_filling() -> None:
+    records = [
+        replace(
+            _record("clean", 0.9),
+            benchmark_version="0.6.0",
+            scores={
+                **_record("clean", 0.9).scores,
+                "calibration": None,
+                "recovery": None,
+                "robustness": None,
+            },
+        ),
+        replace(
+            _record("perturbed", 0.6),
+            benchmark_version="0.6.0",
+            scores={
+                **_record("perturbed", 0.6).scores,
+                "calibration": None,
+                "robustness": None,
+            },
+        ),
+    ]
+
+    summary = summarize_records(records)
+    clean = next(group for group in summary["groups"] if group["variant"] == "clean")
+    perturbed = next(
+        group for group in summary["groups"] if group["variant"] == "perturbed"
+    )
+    paired = summary["paired_robustness"][0]
+
+    assert summary["analysis_schema_version"] == "4.0.0"
+    assert clean["metrics"]["recovery"]["applicable_n"] == 0
+    assert clean["metrics"]["recovery"]["mean"] is None
+    assert perturbed["metrics"]["recovery"]["applicable_n"] == 1
+    assert paired["metric_deltas"]["robustness"]["applicable_n"] == 0
+    assert paired["metric_deltas"]["robustness"]["mean"] is None
+    assert paired["metric_deltas"]["composite"]["mean"] == pytest.approx(-0.3)
+
+
 def test_summary_preserves_absolute_and_normalized_business_regret() -> None:
     records = [
         replace(
@@ -587,7 +626,7 @@ def _write_test_analysis_bundle(directory: Path) -> dict[str, object]:
         content = "" if name == "samples.sanitized.jsonl" else f"test artifact: {name}\n"
         (directory / name).write_text(content, encoding="utf-8")
     payload: dict[str, object] = {
-        "schema_version": "3.0.0",
+        "schema_version": "4.0.0",
         "source_log_count": 0,
         "source_logs": [],
         "source_log_status_counts": {},

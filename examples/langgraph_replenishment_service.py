@@ -253,33 +253,93 @@ def _broker_agent_step(state: BrokerState) -> dict[str, Any]:
     evidence_ids = [
         str(item["evidence_id"]) for item in observations.values() if item.get("evidence_id")
     ]
+    v06_contract = "V0.6 STRUCTURED SUBMISSION CONTRACT" in state.get("prompt", "")
     if not candidate:
+        if not v06_contract:
+            return {
+                "next_action": None,
+                "submission": {
+                    "conclusion": (
+                        "No feasible replacement could be verified; escalate rather than guess."
+                    ),
+                    "confidence": 0.25,
+                    "evidence_ids": evidence_ids,
+                    "selected_ids": [],
+                    "numeric_values": {},
+                    "escalate": True,
+                    "data_quality_issues": ["No feasible candidate was returned."],
+                },
+            }
         submission = {
-            "conclusion": (
+            "summary": (
                 "No feasible replacement could be verified from the observable margin, vendor, "
                 "and shelf evidence; escalate rather than guessing."
             ),
             "confidence": 0.25,
-            "evidence_ids": evidence_ids,
-            "selected_ids": [],
-            "numeric_values": {},
-            "escalate": True,
-            "data_quality_issues": ["No feasible candidate was returned by the bounded query."],
+            "claims": [
+                {"field": "delisted_product_id", "value": "P005", "evidence_ids": []},
+                {"field": "replacement_product_id", "value": "", "evidence_ids": []},
+                {
+                    "field": "vendor_constraints_checked",
+                    "value": False,
+                    "evidence_ids": [],
+                },
+            ],
+            "actions": [],
+            "data_quality_issues": [
+                {"code": "NO_FEASIBLE_CANDIDATE", "evidence_ids": evidence_ids}
+            ],
         }
     else:
         opportunity = float(candidate.get("opportunity_gross_profit", 0))
+        summary = (
+            f"Replace P005 with {candidate_id}. It has the strongest observed 28-day "
+            f"unit-margin profit opportunity (${opportunity:.2f}) among feasible active "
+            "beverage candidates; its vendor capacity meets the minimum order and the S001 "
+            "shelf economics were checked before selection."
+        )
+        if not v06_contract:
+            return {
+                "next_action": None,
+                "submission": {
+                    "conclusion": summary,
+                    "confidence": 0.94,
+                    "evidence_ids": evidence_ids,
+                    "selected_ids": [candidate_id],
+                    "numeric_values": {
+                        "observed_margin_opportunity_28d": round(opportunity, 4)
+                    },
+                    "escalate": False,
+                    "data_quality_issues": [],
+                },
+            }
+        candidate_evidence = [
+            str(observations["candidate_margin"]["evidence_id"]),
+        ]
+        vendor_evidence = [
+            str(observations["vendor_constraints"]["evidence_id"]),
+        ]
         submission = {
-            "conclusion": (
-                f"Replace P005 with {candidate_id}. It has the strongest observed 28-day "
-                f"unit-margin profit opportunity (${opportunity:.2f}) among feasible active "
-                "beverage candidates; its vendor capacity meets the minimum order and the S001 "
-                "shelf economics were checked before selection."
-            ),
+            "summary": summary,
             "confidence": 0.94,
-            "evidence_ids": evidence_ids,
-            "selected_ids": [candidate_id],
-            "numeric_values": {"observed_margin_opportunity_28d": round(opportunity, 4)},
-            "escalate": False,
+            "claims": [
+                {
+                    "field": "delisted_product_id",
+                    "value": "P005",
+                    "evidence_ids": candidate_evidence,
+                },
+                {
+                    "field": "replacement_product_id",
+                    "value": candidate_id,
+                    "evidence_ids": candidate_evidence,
+                },
+                {
+                    "field": "vendor_constraints_checked",
+                    "value": True,
+                    "evidence_ids": vendor_evidence,
+                },
+            ],
+            "actions": [],
             "data_quality_issues": [],
         }
     return {"next_action": None, "submission": submission}

@@ -12,7 +12,7 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.5.7 runnable agent-integration examples on the statistical-design preview. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.6.0 construct-valid scoring release candidate. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
@@ -25,14 +25,16 @@ The first domain is a fully synthetic convenience-retail company. No proprietary
 > v0.5.6 adds guided custom-agent upload and a fully legible light-theme contract. v0.5.7 adds
 > standalone and directly uploadable LangGraph examples for an in-process store assistant and a
 > remote replenishment service with an auditable benchmark tool broker.
-> Publication-scale
-> model runs and leaderboard claims remain blocked on the v0.4 measurement-validity implementation.
+> v0.6 adds typed world-derived claims, semantic claim-to-evidence support, behavioral action and
+> safety grading, null-safe metric applicability, and a portable causal trace contract. Publication-scale
+> model runs and leaderboard claims remain blocked on the downstream closed-loop world,
+> discrimination, horizon, evaluator-validation, and empirical-beta gates.
 > No frontier-model performance claims have been made.
 
 The reproduced grader exploits, corrected claim counts, and adopted roadmap changes are documented
 in the [measurement-validity audit](docs/measurement-validity-review.md). The
-[versioned roadmap](docs/roadmap.md) now places scorer validity, power analysis, task discrimination,
-branching workflows, and external grader validation before the empirical beta.
+[versioned roadmap](docs/roadmap.md) now places construct-valid scoring, a closed-loop retail world,
+task discrimination, branching workflows, and external grader validation before the empirical beta.
 
 The [v0.5 power analysis](docs/power-analysis.md) reduces the candidate paid grid to four
 architectures and one confirmatory contrast. Under the documented planning assumptions, the
@@ -71,8 +73,8 @@ single-file adapter that can be uploaded directly into the Lab.
 
 Task-success rate can conceal costly or unsafe behavior. An agent may reach the nominal goal while destroying margin, violating an approval limit, trusting injected instructions, or citing evidence that does not support its decision. DecisionAgentBench makes those failures measurable.
 
-The target benchmark is built around five principles. The v0.1-v0.3 contracts establish much of
-the infrastructure but remain historical development suites until the v0.4 validity gate passes:
+The target benchmark is built around five principles. The v0.1-v0.3 contracts are frozen historical
+development suites; v0.6 is the current development evaluation contract:
 
 1. **Consequential outcomes:** decisions change simulated revenue, margin, service levels, or risk.
 2. **Process-aware evaluation:** policy compliance, evidence use, recovery, and tool behavior matter.
@@ -80,7 +82,23 @@ the infrastructure but remain historical development suites until the v0.4 valid
 4. **Controlled perturbations:** the same underlying task can be tested under missing data, failures, and adversarial context.
 5. **Reproducible comparisons:** task versions, seeds, environments, model settings, and repeated runs are recorded.
 
-## Benchmark v0.1
+## Construct-valid benchmark v0.6
+
+- Twenty-five typed task constructs, 100 seeded instances, and 200 clean/perturbed paired samples
+- Expected values derived from isolated world state or reviewed public policy/task-design rules
+- Claim-level semantic evidence support; evidence-ID existence alone is insufficient
+- Structured proposed, attempted, completed, and abstained actions with behavioral safety gates
+- Independent decision quality only where an economic or allocation oracle applies; null elsewhere
+- Per-sample calibration and robustness removed in favor of aggregate Brier/reliability and paired
+  robustness analysis
+- Portable, privacy-minimized root/tool/terminal trace events with integrity and lineage checks
+- Adversarial scorer-validity fixtures for stuffing, paraphrase invariance, fabricated evidence,
+  mutated payloads, and unsafe action intent
+
+See the [v0.6 scoring contract](docs/v0.6-scoring-contract.md) and
+[migration guide](docs/v0.6-migration.md).
+
+## Historical benchmark v0.1
 
 - One synthetic convenience-retail domain
 - 25 task concepts spanning diagnosis, assortment, promotion, fraud, recovery, safety, and workflow planning
@@ -146,17 +164,26 @@ to regenerate that directory. Generated worlds are excluded from source control.
 records the complete generator configuration, table counts, schema version, and a logical content
 hash.
 
-Run one category with the single-agent baseline:
+Run one v0.6 category with the single-agent baseline:
 
 ```bash
-inspect eval src/decision_agent_bench/evals/task.py@decision_agent_bench \
+inspect eval src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_6 \
   --model openai/<model-name> \
   -T category=sales_diagnosis \
   -T variant=both \
   -T baseline=single_agent
 ```
 
-Set `baseline=planner_executor` for the two-stage reference baseline. Provider credentials are read by Inspect; never commit them. The [benchmark protocol](docs/benchmark-protocol.md) defines variants, budgets, output fields, scoring, and reporting requirements.
+Set `baseline=planner_executor` for the two-stage reference baseline. Provider credentials are read
+by Inspect; never commit them. The [v0.6 scoring contract](docs/v0.6-scoring-contract.md) defines
+the current output fields and grader; the [historical protocol](docs/benchmark-protocol.md) remains
+the reproduction reference for v0.1-v0.3.
+
+Print the public task-by-task construct registry with:
+
+```bash
+decision-agent-bench show-constructs
+```
 
 For the expanded research task, select
 `src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_2`. See the
@@ -196,8 +223,8 @@ downloads for the complete in-process and remote LangGraph examples.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.5.7 .
-docker run --rm decision-agent-bench:0.5.7
+docker build --tag decision-agent-bench:0.6.0 .
+docker run --rm decision-agent-bench:0.6.0
 ```
 
 Plan a matched-budget experiment without contacting a model provider:
@@ -275,6 +302,7 @@ kappa, majority labels, and three-way confusion comparisons.
 - [Leaderboard governance](docs/leaderboard-governance.md) and [external reproduction](docs/external-reproduction.md)
 - [Inspect Evals registration preflight package](docs/inspect-evals-registration.md)
 - [Measurement-validity audit and roadmap decision](docs/measurement-validity-review.md)
+- [Google Agent Quality white-paper review](docs/google-agent-quality-review.md)
 - [Bring-your-own-agent evaluation guide](docs/evaluating-your-agent.md)
 - [v0.5 power analysis](docs/power-analysis.md) and
   [metric-dependence audit](docs/metric-dependence.md)

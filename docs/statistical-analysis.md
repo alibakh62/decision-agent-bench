@@ -1,7 +1,9 @@
 # Statistical analysis protocol
 
 This document defines the implemented DecisionAgentBench estimands and uncertainty calculations.
-It is normative for analysis schema `3.0.0`. Any change to these definitions is result-affecting and
+It is normative for analysis schema `4.0.0`. v0.6 preserves null metric applicability in sample,
+group, paired, leaderboard, and CSV artifacts; historical `3.0.0` bundles remain verifiable. Any
+change to these definitions is result-affecting and
 requires a changelog entry and a new analysis-schema version.
 
 Schema 3.0 adds nullable workflow telemetry for v0.3: workflow identity and completion, completed

@@ -21,6 +21,10 @@ def _parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate = subparsers.add_parser("validate-specs", help="validate benchmark task contracts")
     validate.add_argument("path", nargs="?", type=Path)
+    subparsers.add_parser(
+        "show-constructs",
+        help="print the public v0.6 task-by-task construct registry",
+    )
     generate = subparsers.add_parser("generate-world", help="generate a deterministic retail world")
     generate.add_argument("output", type=Path)
     generate.add_argument("--seed", type=int, default=GenerationConfig.seed)
@@ -171,6 +175,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{category}={count}" for category, count in report.category_counts.items()
         )
         print(f"validated {report.task_count} task specifications ({categories})")
+    elif args.command == "show-constructs":
+        from decision_agent_bench.evals.constructs import construct_catalog
+
+        print(json.dumps(construct_catalog(), indent=2, sort_keys=True))
     elif args.command == "generate-world":
         database = generate_world(
             args.output,

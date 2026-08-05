@@ -10,8 +10,7 @@ from inspect_ai import eval
 from pytest import MonkeyPatch
 
 from decision_agent_bench.evals.task import (
-    decision_agent_bench,
-    decision_agent_bench_v0_2,
+    decision_agent_bench_v0_6,
 )
 from decision_agent_bench.experiments.analysis import records_from_eval_log
 from decision_agent_bench.lab_runtime import stage_uploaded_solver
@@ -101,14 +100,15 @@ def test_store_assistant_scores_through_real_benchmark_tools(
 ) -> None:
     _isolate_inspect(tmp_path, monkeypatch)
     logs = eval(
-        decision_agent_bench(
+        decision_agent_bench_v0_6(
             category="assortment",
             variant="clean",
+            instances_per_family=4,
             system_name="langgraph-store-assistant-v1",
         ),
         model="mockllm/model",
         solver=langgraph_store_assistant(),
-        sample_id="DAB-ASS-004-clean",
+        sample_id="DAB-ASS-004-i1-clean",
         log_dir=str(tmp_path / "store-assistant"),
         display="none",
     )
@@ -126,7 +126,7 @@ def test_remote_agent_brokers_tools_and_scores_with_oracle(
 ) -> None:
     _isolate_inspect(tmp_path, monkeypatch)
     logs = eval(
-        decision_agent_bench_v0_2(
+        decision_agent_bench_v0_6(
             category="assortment",
             variant="clean",
             instances_per_family=4,

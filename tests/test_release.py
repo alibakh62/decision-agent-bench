@@ -196,7 +196,7 @@ def _write_publishable_analysis(directory: Path) -> None:
         for cell in cells
     ]
     payload: dict[str, object] = {
-        "schema_version": "3.0.0",
+        "schema_version": "4.0.0",
         "source_log_count": len(source_logs),
         "source_logs": source_logs,
         "source_log_status_counts": {"success": len(source_logs)},

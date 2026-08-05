@@ -1,13 +1,14 @@
 # DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.5.7 runnable custom-agent examples, 31 July 2026
-**Benchmark software:** `0.5.7` (historical v0.1-v0.3 task contracts)
-**Task protocols:** `0.1` confirmatory suite; `0.2` research expansion; `0.3` stateful preview
+**Status:** v0.6.0 construct-valid scoring release candidate, 5 August 2026
+**Benchmark software:** `0.6.0` (current v0.6 and frozen historical v0.1-v0.3 contracts)
+**Task protocols:** `0.1`/`0.2` historical suites; `0.3` stateful preview; `0.6` typed development suite
 
 > **Measurement hold:** an independent audit reproduced lexical grader gaming, paraphrase
 > sensitivity, unsupported-evidence acceptance, and unsafe narrated intent. The v0.1-v0.3
-> contracts remain reproducible development suites, but the confirmatory study and leaderboard are
-> blocked until the v0.4 construct-validity implementation and subsequent roadmap gates pass. See the
+> contracts remain reproducible development suites. v0.6 implements the separate typed,
+> semantic-evidence contract, but the confirmatory study and leaderboard remain blocked until the
+> subsequent world, discrimination, horizon, evaluator, and empirical-study gates pass. See the
 > [measurement-validity audit](../docs/measurement-validity-review.md).
 
 ## Abstract
@@ -30,6 +31,14 @@ implemented. Only two v0.2.1 tasks currently have oracle-relative decision quali
 decision-quality values copy lexical effectiveness. Deterministic state, economic,
 evidence-lineage, and policy graders are preferred over model judgments, but their constructs must
 first pass the new validity protocol.
+
+v0.6 adds a separate 25-concept registration with typed claims, seeded-world answer functions,
+claim-level semantic evidence checks, structured action behavior, quantitative decision quality
+only where an independent oracle applies, and non-compensatory eligibility/safety gates. It reports
+per-sample calibration and robustness as inapplicable and retains the inputs needed for group Brier
+and paired robustness analysis. A portable public trace links root, tool, evidence, and terminal
+decision spans without requiring hidden chain-of-thought. Adversarial fixtures reject keyword
+stuffing, fabricated or mutated evidence, and unsafe completed action intent.
 
 A separate v0.3 preview adds three stateful workflow concepts, twelve seeded instances, and 24
 clean/stressed samples. Each requires 20 persisted transitions over at least 15 simulated days,

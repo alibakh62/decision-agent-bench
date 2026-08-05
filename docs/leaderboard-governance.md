@@ -5,8 +5,8 @@ be reproducible, comparable, and attributable to a frozen benchmark version.
 
 > **Admission is currently closed.** The historical v0.1-v0.3 contracts failed the
 > [measurement-validity audit](measurement-validity-review.md). No run becomes an official entry
-> until the v0.4-v0.8 validity, power, discrimination, workflow, human-validation, red-team, and
-> leakage gates pass and a new leaderboard namespace is approved.
+> until the v0.6-v0.10 scoring, world, power, discrimination, workflow, horizon,
+> human-validation, red-team, and leakage gates pass and a new leaderboard namespace is approved.
 
 ## Admission requirements
 

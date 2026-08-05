@@ -8,11 +8,11 @@ solver controls how the candidate system reasons and acts.
 This guide shows the shortest working integration, the requirements an external framework adapter
 must preserve, and how to inspect and interpret the result.
 
-> **Research-status warning:** the v0.1-v0.3 tasks are useful for integration tests, regression
-> tests, and explicitly non-publishable development pilots. Their historical scorer has known
-> construct-validity defects, so v0.5 does not authorize new leaderboard or general model-quality
-> claims. See the [measurement-validity audit](measurement-validity-review.md) and
-> [roadmap](roadmap.md).
+> **Research-status warning:** use v0.6 for current development evaluation. The v0.1-v0.3 tasks
+> remain available for historical reproduction but have known construct-validity defects. v0.6
+> closes the typed-scoring gate; downstream world, task-discrimination, horizon, evaluator, and
+> empirical-study gates still block leaderboard or general model-quality claims. See the
+> [v0.6 contract](v0.6-scoring-contract.md) and [roadmap](roadmap.md).
 
 ## Choose an integration route
 
@@ -122,7 +122,7 @@ Start with one sample:
 
 ```bash
 ./.venv/bin/inspect eval \
-  src/decision_agent_bench/evals/task.py@decision_agent_bench \
+  src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_6 \
   --solver examples/custom_solver.py@custom_agent \
   --model <provider>/<model> \
   --limit 1 \
@@ -175,16 +175,18 @@ The example uses Inspect's `basic_agent`, but the registered function can return
    recoveries are recorded.
 3. End with exactly one JSON object matching the submission contract.
 
-The required final shape is:
+The v0.6 task prompt declares its exact typed fields. The required top-level shape is:
 
 ```json
 {
-  "conclusion": "Concise decision and rationale",
+  "summary": "Concise decision and rationale",
   "confidence": 0.82,
-  "evidence_ids": ["E001", "E003"],
-  "selected_ids": ["R03"],
-  "numeric_values": {},
-  "escalate": false,
+  "claims": [
+    {"field": "region_id", "value": "R03", "evidence_ids": ["E001"]},
+    {"field": "direction", "value": "decline", "evidence_ids": ["E001"]},
+    {"field": "primary_driver", "value": "unit_demand", "evidence_ids": ["E001"]}
+  ],
+  "actions": [],
   "data_quality_issues": []
 }
 ```
@@ -258,8 +260,9 @@ Use the smallest contract that tests the behavior you care about:
 | Task entry point | Use it for | Important limitation |
 | --- | --- | --- |
 | `decision_agent_bench` | Fast integration smoke test over the original 25 concepts | Frozen v0.1 lexical scorer |
-| `decision_agent_bench_v0_2` | Four seeded instances and matched clean/perturbed evaluation | 25 concepts, not 200 independent concepts |
+| `decision_agent_bench_v0_2` | Historical four-seed paired reproduction | Frozen evidence-ID/lexical scorer |
 | `decision_agent_bench_v0_3` | Persisted multi-step workflows, delayed events, and rollback | Linear dependency-enforced preview, not validated long-horizon planning |
+| `decision_agent_bench_v0_6` | Current typed, semantic-evidence paired evaluation | 25 concepts, not 200 independent concepts; still a synthetic development suite |
 
 The v0.3 tools must be enabled in the included solver:
 
@@ -312,7 +315,7 @@ After the clean sample works, run the same system and model against the matched 
 
 ```bash
 ./.venv/bin/inspect eval \
-  src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_2 \
+  src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_6 \
   --solver examples/custom_solver.py@custom_agent \
   --model <provider>/<model> \
   --sample-id DAB-SAL-001-i1-clean,DAB-SAL-001-i1-perturbed \
@@ -357,7 +360,7 @@ and limits. Remove `--solver` and `system_name`, then set the intended baseline:
 
 ```bash
 ./.venv/bin/inspect eval \
-  src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_2 \
+  src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_6 \
   --model <provider>/<model> \
   --sample-id DAB-SAL-001-i1-clean,DAB-SAL-001-i1-perturbed \
   --epochs 3 \
@@ -383,11 +386,10 @@ review asks:
 - Did it complete persisted workflow transitions rather than merely narrating them?
 - How many turns, tool calls, tokens, seconds, and dollars did the behavior require?
 
-The historical metric names and dependencies have important limits. In particular, evidence-ID
-eligibility does not prove semantic support, most historical decision-quality values duplicate
-effectiveness, and per-sample `calibration` is not a system calibration study. Use
-[Understanding DecisionAgentBench](understanding-decision-agent-bench.md) for the exact score
-definitions and [the benchmark protocol](benchmark-protocol.md) for comparable-run rules.
+In v0.6, semantic support is claim-specific, decision quality is null unless an independent oracle
+applies, and calibration and robustness are group/paired analyses rather than per-sample scores.
+Null means inapplicable, not failure. Use the [v0.6 contract](v0.6-scoring-contract.md) for exact
+definitions and [the migration guide](v0.6-migration.md) when upgrading an adapter.
 
 ## Integration acceptance checklist
 
@@ -409,7 +411,7 @@ Before treating a custom-agent run as a useful engineering result, confirm:
 | --- | --- | --- |
 | `unknown baseline` before execution | `baseline` was changed to the custom label | Keep a valid fallback baseline and put the custom identity in `system_name` |
 | `F-FORMAT` | Output is prose, fenced JSON, malformed JSON, or has the wrong fields | Return exactly one JSON object with the required types |
-| `F-EVID` | Citations are missing, fabricated, duplicated, unsuccessful, or from incomplete tool coverage | Call benchmark tools in the same sample and cite their returned IDs |
+| `F-EVID-INVALID` or `F-EVID-UNSUPPORTED` | Citations are fabricated, unsuccessful, irrelevant, or do not expose the claimed fact | Call benchmark tools in the same sample and attach each returned ID only to claims it supports |
 | Workflow tools are unavailable | The custom solver was created without workflow tools | Pass `-S workflow=true` or enable them in the solver |
 | The log says `success` but scores are zero | Inspect completed normally but the candidate failed the task contract | Read the scorer explanation, failure codes, and trace |
 | Usage is implausibly low | The external system called models outside Inspect | Add external usage accounting or route calls through Inspect |

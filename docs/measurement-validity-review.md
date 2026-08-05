@@ -11,9 +11,10 @@ sources.
 The central criticism is confirmed: the v0.1-v0.2.1 scorer establishes format, provenance, required
 tool use, and some executable outcomes, but it does not establish semantic decision validity across
 the suite. A submission can game lexical effectiveness with unrelated successful calls, and the
-current adversarial-context rule can reward unsafe narrated behavior. Publication-scale model runs
-and a public leaderboard are therefore blocked until v0.4.0 introduces a separate construct-valid
-contract.
+current adversarial-context rule can reward unsafe narrated behavior. v0.6.0 now introduces the
+separate construct-valid contract specified by the v0.4.0 audit. Publication-scale model runs and a
+public leaderboard remain blocked by the downstream closed-loop world, task-discrimination,
+horizon, evaluator-validation, and empirical-study gates.
 
 This does not invalidate the reproducibility, simulator, cost-control, analysis, or workflow
 infrastructure. It limits what scores from the historical contracts can claim.
@@ -102,7 +103,7 @@ The calibration and power recommendations also have methodological support, with
 - Oracle coverage is based on task applicability, not a target chosen solely to reach 12/25.
 - Metric correlation is published with uncertainty and structural analysis; `|r| > 0.95` triggers
   review but does not automatically prove two constructs are identical.
-- Small, explicitly non-publishable pilot runs may estimate variance after the v0.4 validity gate;
+- Small, explicitly non-publishable pilot runs may estimate variance after the v0.6 validity gate;
   publication-scale runs remain blocked through external validation.
 
 ### Rejected
@@ -116,8 +117,9 @@ The calibration and power recommendations also have methodological support, with
 ## Governing consequence
 
 The [versioned roadmap](roadmap.md) is now the authoritative sequence. The v0.4.0 audit is complete,
-but its typed measurement-validity implementation remains the primary blocker. v0.5.0 implements
-the power/MDE system and reduces the candidate comparison grid to one confirmatory and two
-exploratory contrasts; it does not override the validity hold. World enrichment, branching
-workflows, external grader validation, and red teaming precede the v0.9.0 empirical beta. v1.0.0 is
-blocked until public construct-validity evidence accompanies the benchmark results.
+and its typed measurement-validity implementation is delivered in v0.6.0. v0.5.0 implements the
+power/MDE system and reduces the candidate comparison grid to one
+confirmatory and two exploratory contrasts; it does not override the validity hold. A closed-loop
+world, discriminating tasks, branching workflows, horizon validation, external grader validation,
+and red teaming precede the v0.11.0 empirical beta. v1.0.0 is blocked until public
+construct-validity evidence accompanies the benchmark results.
