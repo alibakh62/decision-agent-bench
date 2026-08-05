@@ -9,7 +9,7 @@ budgets to every model, and requires two explicit CLI flags before execution.
 > [measurement-validity audit](measurement-validity-review.md), so its existing “publishable”
 > configuration checks are necessary provenance controls but not sufficient authorization for a
 > leaderboard study. Publication-scale execution is blocked by the
-> [v0.6.0-v0.10.0 roadmap gates](roadmap.md).
+> [v0.8.0-v0.10.0 roadmap gates](roadmap.md).
 
 Before even a candidate paid manifest is reviewed, reproduce the v0.5 statistical design:
 
@@ -20,9 +20,9 @@ decision-agent-bench verify-power \
   results/design/v0.5-power.json --design configs/power/v0.5.json
 ```
 
-The committed report deliberately returns `publication_scale_run_authorized: false` while the
-typed measurement-validity implementation is absent. A successful cost or power gate cannot
-override that result.
+The committed report deliberately returns `publication_scale_run_authorized: false` until the
+world-dependent task-discrimination, horizon, and evaluator-validation gates pass. A successful
+cost or power gate cannot override that result.
 
 ## 1. Configure
 

@@ -22,6 +22,7 @@ from decision_agent_bench.integrity import (
     verify_sbom_inventory,
     verify_vulnerability_dispositions,
 )
+from decision_agent_bench.simulator.closed_loop_calibration import verify_calibration_report
 
 RELEASE_MANIFEST = "release-manifest.json"
 CHECKSUMS = "SHA256SUMS"
@@ -186,6 +187,30 @@ def _base_assets(
             "data/reference-world-manifest.json",
             "dataset-provenance",
             "application/json",
+        ),
+        ReleaseAsset(
+            repository / "data/closed-loop-v0.7-manifest.json",
+            "data/closed-loop-v0.7-manifest.json",
+            "dataset-provenance",
+            "application/json",
+        ),
+        ReleaseAsset(
+            repository / "results/design/v0.7-calibration.json",
+            "research/design/v0.7-calibration.json",
+            "calibration-evidence",
+            "application/json",
+        ),
+        ReleaseAsset(
+            repository / "docs/v0.7-closed-loop-world.md",
+            "research/v0.7-closed-loop-world.md",
+            "world-protocol",
+            "text/markdown",
+        ),
+        ReleaseAsset(
+            repository / "docs/v0.7-calibration-sensitivity.md",
+            "research/v0.7-calibration-sensitivity.md",
+            "calibration-protocol",
+            "text/markdown",
         ),
         ReleaseAsset(
             repository / "report/technical-report.md",
@@ -405,6 +430,14 @@ def assemble_release_bundle(
     reference = json.loads(
         (repository / "data/reference-world-manifest.json").read_text(encoding="utf-8")
     )
+    closed_loop = json.loads(
+        (repository / "data/closed-loop-v0.7-manifest.json").read_text(encoding="utf-8")
+    )
+    calibration = verify_calibration_report(
+        repository / "results/design/v0.7-calibration.json"
+    )
+    if not calibration["verified"]:
+        raise ValueError("v0.7 calibration report failed verification")
     v01 = json.loads((repository / "data/task_specs/v0.1.json").read_text(encoding="utf-8"))
     v02 = json.loads(
         (repository / "data/task_specs/v0.2-instances.json").read_text(encoding="utf-8")
@@ -427,6 +460,8 @@ def assemble_release_bundle(
             "v0_3_instances": len(v03),
             "v0_3_paired_samples": len(v03) * 2,
             "reference_world_sha256": reference["logical_sha256"],
+            "closed_loop_sha256": closed_loop["initial_logical_sha256"],
+            "calibration_sha256": calibration["report"]["report_sha256"],
         },
         "contains_publishable_results": contains_publishable,
         "artifacts": evidence,
@@ -503,6 +538,7 @@ def _verify_release_semantics(
     }
     sdist_path = f"packages/{package_stem}.tar.gz"
     required_paths = {
+        "data/closed-loop-v0.7-manifest.json",
         "data/reference-world-manifest.json",
         "data/task-instances-v0.2.json",
         "data/stateful-workflows-v0.3.json",
@@ -519,9 +555,12 @@ def _verify_release_semantics(
         "research/design/power-report-v0.5.json",
         "research/design/power-v0.5-initial.json",
         "research/design/power-v0.5.json",
+        "research/design/v0.7-calibration.json",
         "research/metric-dependence.md",
         "research/power-analysis.md",
         "research/technical-report.md",
+        "research/v0.7-calibration-sensitivity.md",
+        "research/v0.7-closed-loop-world.md",
         sdist_path,
     }
     missing_required = sorted(required_paths - artifact_paths)
@@ -571,6 +610,12 @@ def _verify_release_semantics(
         reference = json.loads(
             (directory / "data/reference-world-manifest.json").read_text(encoding="utf-8")
         )
+        closed_loop = json.loads(
+            (directory / "data/closed-loop-v0.7-manifest.json").read_text(encoding="utf-8")
+        )
+        calibration = verify_calibration_report(
+            directory / "research/design/v0.7-calibration.json"
+        )
         if (
             not isinstance(task_families, list)
             or not isinstance(task_instances, list)
@@ -581,6 +626,12 @@ def _verify_release_semantics(
             reference.get("logical_sha256"), str
         ):
             raise ValueError("reference manifest has no logical_sha256")
+        if not isinstance(closed_loop, dict) or not isinstance(
+            closed_loop.get("initial_logical_sha256"), str
+        ):
+            raise ValueError("closed-loop manifest has no initial_logical_sha256")
+        if not calibration["verified"]:
+            raise ValueError("v0.7 calibration report failed verification")
     except (OSError, ValueError, json.JSONDecodeError) as error:
         issues.append(f"bundled benchmark metadata is invalid: {error}")
     else:
@@ -594,6 +645,8 @@ def _verify_release_semantics(
             "v0_3_instances": len(workflow_instances),
             "v0_3_paired_samples": len(workflow_instances) * 2,
             "reference_world_sha256": reference["logical_sha256"],
+            "closed_loop_sha256": closed_loop["initial_logical_sha256"],
+            "calibration_sha256": calibration["report"]["report_sha256"],
         }
         if payload.get("benchmark") != recomputed_benchmark:
             issues.append("release benchmark summary does not match bundled data")

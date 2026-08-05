@@ -21,6 +21,8 @@ from decision_agent_bench.integrity import (
     verify_vulnerability_dispositions,
 )
 from decision_agent_bench.simulator import GenerationConfig, RetailEnvironment, generate_world
+from decision_agent_bench.simulator.closed_loop_calibration import verify_calibration_report
+from decision_agent_bench.simulator.closed_loop_reference import verify_closed_loop_reference
 from decision_agent_bench.simulator.environment import ToolError
 from decision_agent_bench.simulator.reference import verify_reference_world
 from decision_agent_bench.simulator.schema import INTERNAL_TABLES, PUBLIC_TABLES
@@ -252,10 +254,19 @@ def _artifact_check(repository: Path) -> AuditCheck:
     )
 
 
-def _benchmark_check() -> AuditCheck:
+def _benchmark_check(repository: Path) -> AuditCheck:
     try:
         specifications = validate_task_specs()
         reference = verify_reference_world()
+        closed_loop = verify_closed_loop_reference()
+        calibration = verify_calibration_report(
+            repository / "results/design/v0.7-calibration.json"
+        )
+        if not calibration["verified"]:
+            raise ValueError(
+                "v0.7 calibration verification failed: "
+                + "; ".join(calibration["issues"])
+            )
     except (OSError, ValueError) as error:
         return AuditCheck(
             "benchmark", "fail", "benchmark verification failed", {"error": str(error)}
@@ -263,11 +274,14 @@ def _benchmark_check() -> AuditCheck:
     return AuditCheck(
         "benchmark",
         "pass",
-        "task contracts and reference world reproduce",
+        "task contracts, reference worlds, and calibration evidence reproduce",
         {
             "task_families": specifications.task_count,
             "reference_world_sha256": reference["logical_sha256"],
-            "tables": len(reference["table_counts"]),
+            "reference_tables": len(reference["table_counts"]),
+            "closed_loop_sha256": closed_loop["initial_logical_sha256"],
+            "closed_loop_tables": len(closed_loop["table_counts"]),
+            "calibration_sha256": calibration["report"]["report_sha256"],
         },
     )
 
@@ -401,12 +415,12 @@ def _container_check(image: str | None, runtime: str = "docker") -> AuditCheck:
         capture_output=True,
         text=True,
     )
-    expected_digest = "c362c754d6f102c76d45aecf61f6e1cec7a49134fb416e02e59f341a20305f0b"
+    expected_digest = "ffcea84a99eb5dd0fc595f36d11ad3b903029180050fcfecfb08f9f6307121a1"
     errors = []
     if inspect_result.returncode:
         errors.append("image inspection failed")
     if verify_result.returncode or expected_digest not in verify_result.stdout:
-        errors.append("default reference-world verification failed")
+        errors.append("default v0.7 closed-loop verification failed")
     if user_result.returncode or "uid=10001(benchmark)" not in user_result.stdout:
         errors.append("container did not run as the benchmark user")
     return AuditCheck(
@@ -435,7 +449,7 @@ def audit_repository(
 
     repository = repository.resolve()
     checks = [
-        _benchmark_check(),
+        _benchmark_check(repository),
         _oracle_boundary_check(repository),
         _secret_check(repository),
         _provenance_check(repository),

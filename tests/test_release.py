@@ -33,6 +33,9 @@ def _write_fake_repository(root: Path, version: str = "0.2.1.dev0") -> Path:
             ]
         ),
         "data/reference-world-manifest.json": json.dumps({"logical_sha256": "a" * 64}),
+        "data/closed-loop-v0.7-manifest.json": json.dumps(
+            {"initial_logical_sha256": "b" * 64}
+        ),
         "report/technical-report.md": "# Report\n",
         "configs/power/v0.5.json": (
             repository / "configs/power/v0.5.json"
@@ -46,6 +49,11 @@ def _write_fake_repository(root: Path, version: str = "0.2.1.dev0") -> Path:
         "results/design/v0.5-initial-power.json": (
             repository / "results/design/v0.5-initial-power.json"
         ).read_text(encoding="utf-8"),
+        "results/design/v0.7-calibration.json": (
+            repository / "results/design/v0.7-calibration.json"
+        ).read_text(encoding="utf-8"),
+        "docs/v0.7-closed-loop-world.md": "# Closed-loop world\n",
+        "docs/v0.7-calibration-sensitivity.md": "# Calibration\n",
         "docs/power-analysis.md": "# Power analysis\n",
         "docs/metric-dependence.md": "# Metric dependence\n",
         "talk/decision-agent-bench-research-talk.pptx": "presentation",
@@ -308,9 +316,11 @@ def test_release_bundle_is_exact_and_detects_tampering(
         "v0_3_instances": 2,
         "v0_3_paired_samples": 4,
         "reference_world_sha256": "a" * 64,
+        "closed_loop_sha256": "b" * 64,
+        "calibration_sha256": "8e85e18d1b13e80dc0c6b658b38fae56c56f9707268c209e572da92693701047",
     }
     assert verified["verified"] is True
-    assert verified["artifact_count"] == 24
+    assert verified["artifact_count"] == 28
     assert tampered["verified"] is False
     assert "sha256 mismatch: research/technical-report.md" in tampered["issues"]
     assert "SHA256SUMS does not match release contents" in tampered["issues"]
@@ -458,7 +468,7 @@ def test_final_release_accepts_complete_tagged_evidence(
     assert manifest["contains_publishable_results"] is True
     assert manifest["release_mode"] == "final"
     assert verified["verified"] is True
-    assert verified["artifact_count"] == 36
+    assert verified["artifact_count"] == 40
 
     result_path = tmp_path / "bundle/results/primary" / ANALYSIS_ARTIFACTS[0]
     result_path.write_text("outer manifest was recomputed\n", encoding="utf-8")
