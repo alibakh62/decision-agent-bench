@@ -1,0 +1,465 @@
+{
+  "claim_boundary": "The report verifies deterministic sensitivity and plausible directional behavior. It does not establish convenience-retail forecast accuracy or external validity.",
+  "horizon_days": 28,
+  "one_at_a_time_sensitivity": [
+    {
+      "action_count": 341,
+      "ending_cash": 124311.42,
+      "gross_profit": 7946.05,
+      "level": "base",
+      "lost_sales_units": 337,
+      "parameter": "base",
+      "processed_days": 28,
+      "returned_units": 55,
+      "revenue": 16139.39,
+      "service_level": 0.945212,
+      "spoiled_units": 473,
+      "value": 1.0
+    },
+    {
+      "action_count": 293,
+      "ending_cash": 121894.97,
+      "gross_profit": 6226.24,
+      "level": "low",
+      "lost_sales_units": 216,
+      "parameter": "demand_scale",
+      "processed_days": 28,
+      "returned_units": 41,
+      "revenue": 13189.16,
+      "service_level": 0.956408,
+      "spoiled_units": 523,
+      "value": 0.8
+    },
+    {
+      "action_count": 372,
+      "ending_cash": 126342.79,
+      "gross_profit": 9328.54,
+      "level": "high",
+      "lost_sales_units": 549,
+      "parameter": "demand_scale",
+      "processed_days": 28,
+      "returned_units": 61,
+      "revenue": 18742.68,
+      "service_level": 0.925276,
+      "spoiled_units": 519,
+      "value": 1.2
+    },
+    {
+      "action_count": 342,
+      "ending_cash": 124317.49,
+      "gross_profit": 7954.29,
+      "level": "low",
+      "lost_sales_units": 338,
+      "parameter": "price_elasticity_scale",
+      "processed_days": 28,
+      "returned_units": 55,
+      "revenue": 16145.46,
+      "service_level": 0.945059,
+      "spoiled_units": 471,
+      "value": 0.75
+    },
+    {
+      "action_count": 341,
+      "ending_cash": 124321.05,
+      "gross_profit": 7949.8,
+      "level": "high",
+      "lost_sales_units": 334,
+      "parameter": "price_elasticity_scale",
+      "processed_days": 28,
+      "returned_units": 55,
+      "revenue": 16149.02,
+      "service_level": 0.945753,
+      "spoiled_units": 474,
+      "value": 1.25
+    },
+    {
+      "action_count": 341,
+      "ending_cash": 124391.72,
+      "gross_profit": 8026.35,
+      "level": "low",
+      "lost_sales_units": 337,
+      "parameter": "return_rate_scale",
+      "processed_days": 28,
+      "returned_units": 30,
+      "revenue": 16139.39,
+      "service_level": 0.945212,
+      "spoiled_units": 473,
+      "value": 0.5
+    },
+    {
+      "action_count": 341,
+      "ending_cash": 124228.34,
+      "gross_profit": 7862.97,
+      "level": "high",
+      "lost_sales_units": 337,
+      "parameter": "return_rate_scale",
+      "processed_days": 28,
+      "returned_units": 81,
+      "revenue": 16139.39,
+      "service_level": 0.945212,
+      "spoiled_units": 473,
+      "value": 1.5
+    },
+    {
+      "action_count": 337,
+      "ending_cash": 124150.9,
+      "gross_profit": 7964.73,
+      "level": "low",
+      "lost_sales_units": 324,
+      "parameter": "lead_time_scale",
+      "processed_days": 28,
+      "returned_units": 55,
+      "revenue": 16179.43,
+      "service_level": 0.947326,
+      "spoiled_units": 476,
+      "value": 0.75
+    },
+    {
+      "action_count": 287,
+      "ending_cash": 124648.29,
+      "gross_profit": 7915.13,
+      "level": "high",
+      "lost_sales_units": 405,
+      "parameter": "lead_time_scale",
+      "processed_days": 28,
+      "returned_units": 55,
+      "revenue": 15975.14,
+      "service_level": 0.934039,
+      "spoiled_units": 446,
+      "value": 1.5
+    },
+    {
+      "action_count": 335,
+      "ending_cash": 124313.61,
+      "gross_profit": 7942.11,
+      "level": "low",
+      "lost_sales_units": 327,
+      "parameter": "disruption_scale",
+      "processed_days": 28,
+      "returned_units": 55,
+      "revenue": 16093.64,
+      "service_level": 0.946577,
+      "spoiled_units": 461,
+      "value": 0.5
+    },
+    {
+      "action_count": 338,
+      "ending_cash": 124327.57,
+      "gross_profit": 7968.3,
+      "level": "high",
+      "lost_sales_units": 333,
+      "parameter": "disruption_scale",
+      "processed_days": 28,
+      "returned_units": 54,
+      "revenue": 16238.21,
+      "service_level": 0.946195,
+      "spoiled_units": 495,
+      "value": 1.5
+    }
+  ],
+  "parameter_ranges": {
+    "demand_scale": {
+      "base": 1.0,
+      "high": 1.2,
+      "low": 0.8,
+      "provenance": "synthetic"
+    },
+    "disruption_scale": {
+      "base": 1.0,
+      "high": 1.5,
+      "low": 0.5,
+      "provenance": "synthetic stress parameter"
+    },
+    "lead_time_scale": {
+      "base": 1.0,
+      "high": 1.5,
+      "low": 0.75,
+      "provenance": "synthetic"
+    },
+    "price_elasticity_scale": {
+      "base": 1.0,
+      "high": 1.25,
+      "low": 0.75,
+      "provenance": "USDA range-informed"
+    },
+    "return_rate_scale": {
+      "base": 1.0,
+      "high": 1.5,
+      "low": 0.5,
+      "provenance": "synthetic"
+    }
+  },
+  "policy": "information_matched",
+  "regime_runs": [
+    {
+      "action_count": 329,
+      "ending_cash": 124200.54,
+      "gross_profit": 7889.84,
+      "lost_sales_units": 323,
+      "processed_days": 28,
+      "regime": "train_normal",
+      "returned_units": 55,
+      "revenue": 16010.81,
+      "seed": 20260805,
+      "service_level": 0.946884,
+      "spoiled_units": 464
+    },
+    {
+      "action_count": 338,
+      "ending_cash": 123885.09,
+      "gross_profit": 7610.37,
+      "lost_sales_units": 323,
+      "processed_days": 28,
+      "regime": "train_normal",
+      "returned_units": 76,
+      "revenue": 15564.27,
+      "seed": 20260806,
+      "service_level": 0.945189,
+      "spoiled_units": 444
+    },
+    {
+      "action_count": 320,
+      "ending_cash": 123709.57,
+      "gross_profit": 7504.38,
+      "lost_sales_units": 311,
+      "processed_days": 28,
+      "regime": "train_normal",
+      "returned_units": 58,
+      "revenue": 15432.56,
+      "seed": 20260807,
+      "service_level": 0.947208,
+      "spoiled_units": 501
+    },
+    {
+      "action_count": 332,
+      "ending_cash": 124245.12,
+      "gross_profit": 7899.8,
+      "lost_sales_units": 323,
+      "processed_days": 28,
+      "regime": "heldout_supply_shock",
+      "returned_units": 55,
+      "revenue": 16010.81,
+      "seed": 20260805,
+      "service_level": 0.946884,
+      "spoiled_units": 458
+    },
+    {
+      "action_count": 332,
+      "ending_cash": 123834.09,
+      "gross_profit": 7601.95,
+      "lost_sales_units": 323,
+      "processed_days": 28,
+      "regime": "heldout_supply_shock",
+      "returned_units": 76,
+      "revenue": 15564.27,
+      "seed": 20260806,
+      "service_level": 0.945189,
+      "spoiled_units": 449
+    },
+    {
+      "action_count": 319,
+      "ending_cash": 123772.51,
+      "gross_profit": 7511.98,
+      "lost_sales_units": 311,
+      "processed_days": 28,
+      "regime": "heldout_supply_shock",
+      "returned_units": 58,
+      "revenue": 15432.56,
+      "seed": 20260807,
+      "service_level": 0.947208,
+      "spoiled_units": 497
+    },
+    {
+      "action_count": 332,
+      "ending_cash": 124302.08,
+      "gross_profit": 7982.93,
+      "lost_sales_units": 324,
+      "processed_days": 28,
+      "regime": "heldout_demand_shift",
+      "returned_units": 55,
+      "revenue": 16179.43,
+      "seed": 20260805,
+      "service_level": 0.947326,
+      "spoiled_units": 465
+    },
+    {
+      "action_count": 341,
+      "ending_cash": 123954.77,
+      "gross_profit": 7686.8,
+      "lost_sales_units": 323,
+      "processed_days": 28,
+      "regime": "heldout_demand_shift",
+      "returned_units": 77,
+      "revenue": 15714.2,
+      "seed": 20260806,
+      "service_level": 0.945769,
+      "spoiled_units": 447
+    },
+    {
+      "action_count": 321,
+      "ending_cash": 123815.09,
+      "gross_profit": 7586.1,
+      "lost_sales_units": 311,
+      "processed_days": 28,
+      "regime": "heldout_demand_shift",
+      "returned_units": 58,
+      "revenue": 15586.65,
+      "seed": 20260807,
+      "service_level": 0.947784,
+      "spoiled_units": 506
+    },
+    {
+      "action_count": 337,
+      "ending_cash": 124165.22,
+      "gross_profit": 7871.24,
+      "lost_sales_units": 327,
+      "processed_days": 28,
+      "regime": "heldout_cold_chain",
+      "returned_units": 55,
+      "revenue": 15994.69,
+      "seed": 20260805,
+      "service_level": 0.946226,
+      "spoiled_units": 470
+    },
+    {
+      "action_count": 338,
+      "ending_cash": 123810.01,
+      "gross_profit": 7570.13,
+      "lost_sales_units": 334,
+      "processed_days": 28,
+      "regime": "heldout_cold_chain",
+      "returned_units": 76,
+      "revenue": 15521.23,
+      "seed": 20260806,
+      "service_level": 0.943323,
+      "spoiled_units": 454
+    },
+    {
+      "action_count": 326,
+      "ending_cash": 123708.42,
+      "gross_profit": 7497.87,
+      "lost_sales_units": 312,
+      "processed_days": 28,
+      "regime": "heldout_cold_chain",
+      "returned_units": 58,
+      "revenue": 15428.77,
+      "seed": 20260807,
+      "service_level": 0.947038,
+      "spoiled_units": 504
+    },
+    {
+      "action_count": 341,
+      "ending_cash": 124311.42,
+      "gross_profit": 7946.05,
+      "lost_sales_units": 337,
+      "processed_days": 28,
+      "regime": "stress_mixed",
+      "returned_units": 55,
+      "revenue": 16139.39,
+      "seed": 20260805,
+      "service_level": 0.945212,
+      "spoiled_units": 473
+    },
+    {
+      "action_count": 336,
+      "ending_cash": 123853.82,
+      "gross_profit": 7629.23,
+      "lost_sales_units": 329,
+      "processed_days": 28,
+      "regime": "stress_mixed",
+      "returned_units": 77,
+      "revenue": 15692.21,
+      "seed": 20260806,
+      "service_level": 0.944762,
+      "spoiled_units": 474
+    },
+    {
+      "action_count": 322,
+      "ending_cash": 123752.8,
+      "gross_profit": 7551.95,
+      "lost_sales_units": 312,
+      "processed_days": 28,
+      "regime": "stress_mixed",
+      "returned_units": 58,
+      "revenue": 15582.86,
+      "seed": 20260807,
+      "service_level": 0.947616,
+      "spoiled_units": 525
+    }
+  ],
+  "regime_summary": [
+    {
+      "gross_profit_mean": 7668.2,
+      "n": 3,
+      "regime": "train_normal",
+      "service_level_mean": 0.946427,
+      "spoilage_mean": 469.667
+    },
+    {
+      "gross_profit_mean": 7671.24,
+      "n": 3,
+      "regime": "heldout_supply_shock",
+      "service_level_mean": 0.946427,
+      "spoilage_mean": 468.0
+    },
+    {
+      "gross_profit_mean": 7751.94,
+      "n": 3,
+      "regime": "heldout_demand_shift",
+      "service_level_mean": 0.94696,
+      "spoilage_mean": 472.667
+    },
+    {
+      "gross_profit_mean": 7646.41,
+      "n": 3,
+      "regime": "heldout_cold_chain",
+      "service_level_mean": 0.945529,
+      "spoilage_mean": 476.0
+    },
+    {
+      "gross_profit_mean": 7709.08,
+      "n": 3,
+      "regime": "stress_mixed",
+      "service_level_mean": 0.945863,
+      "spoilage_mean": 490.667
+    }
+  ],
+  "report_sha256": "8e85e18d1b13e80dc0c6b658b38fae56c56f9707268c209e572da92693701047",
+  "schema_version": "0.7.0",
+  "seeds": [
+    20260805,
+    20260806,
+    20260807
+  ],
+  "sources": [
+    {
+      "construct": "retail sales, inventories, and seasonal variation",
+      "source": "U.S. Census Bureau Monthly Retail Trade Survey",
+      "status": "structural grounding; simulator levels are not fitted to confidential microdata",
+      "url": "https://www.census.gov/retail/mrts/about_the_surveys.html",
+      "use": "motivates store-level sales/inventory outputs and explicit seasonal factors"
+    },
+    {
+      "construct": "own-price and cross-product demand response",
+      "source": "USDA Economic Research Service Food Demand Analysis",
+      "status": "range-informed; convenience-store product coefficients remain synthetic",
+      "url": "https://www.ers.usda.gov/topics/food-choices-health/food-consumption-demand/food-demand-analysis",
+      "use": "grounds negative own-price elasticity and positive within-category substitution"
+    },
+    {
+      "construct": "fresh-food retail loss",
+      "source": "USDA ERS Food Availability and Food Loss data",
+      "status": "range-informed; episode spoilage is intentionally stress-testable",
+      "url": "https://www.ers.usda.gov/data-products/food-availability-per-capita-data-system/food-loss/",
+      "use": "grounds higher loss exposure for perishable categories"
+    },
+    {
+      "construct": "food price measurement",
+      "source": "U.S. Bureau of Labor Statistics Consumer Price Index",
+      "status": "structural grounding; the benchmark does not forecast CPI",
+      "url": "https://www.bls.gov/cpi/",
+      "use": "motivates separate nominal price state and explicit price interventions"
+    }
+  ],
+  "status": "engineering calibration; not external predictive validation"
+}

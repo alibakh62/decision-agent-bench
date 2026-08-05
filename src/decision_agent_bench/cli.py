@@ -5,13 +5,26 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Sequence
+from dataclasses import asdict
 from pathlib import Path
 
 from decision_agent_bench.simulator import (
+    BASELINES,
+    CAUSAL_SCENARIOS,
+    REGIMES,
+    ClosedLoopConfig,
     GenerationConfig,
+    baseline_catalog,
+    generate_closed_loop_world,
     generate_world,
+    run_baseline,
+    run_causal_scenario,
+    validate_closed_loop_world,
     validate_world,
+    verify_calibration_report,
+    verify_closed_loop_reference,
     verify_reference_world,
+    write_calibration_report,
 )
 from decision_agent_bench.specs import validate_task_specs
 
@@ -29,6 +42,57 @@ def _parser() -> argparse.ArgumentParser:
     generate.add_argument("output", type=Path)
     generate.add_argument("--seed", type=int, default=GenerationConfig.seed)
     generate.add_argument("--overwrite", action="store_true")
+    closed_loop = subparsers.add_parser(
+        "generate-closed-loop", help="generate a deterministic v0.7 retail episode"
+    )
+    closed_loop.add_argument("output", type=Path)
+    closed_loop.add_argument("--seed", type=int, default=ClosedLoopConfig.seed)
+    closed_loop.add_argument("--days", type=int, default=ClosedLoopConfig.horizon_days)
+    closed_loop.add_argument(
+        "--regime", choices=REGIMES, default=ClosedLoopConfig.regime
+    )
+    closed_loop.add_argument("--overwrite", action="store_true")
+    validate_closed = subparsers.add_parser(
+        "validate-closed-loop", help="validate v0.7 conservation and policy invariants"
+    )
+    validate_closed.add_argument("database", type=Path)
+    subparsers.add_parser(
+        "show-closed-loop-baselines", help="print v0.7 baseline information boundaries"
+    )
+    run_closed = subparsers.add_parser(
+        "run-closed-loop-baseline", help="run a classical v0.7 policy to the episode horizon"
+    )
+    run_closed.add_argument("output", type=Path)
+    run_closed.add_argument("--policy", choices=BASELINES, required=True)
+    run_closed.add_argument("--seed", type=int, default=ClosedLoopConfig.seed)
+    run_closed.add_argument("--days", type=int, default=ClosedLoopConfig.horizon_days)
+    run_closed.add_argument("--regime", choices=REGIMES, default=ClosedLoopConfig.regime)
+    run_closed.add_argument("--overwrite", action="store_true")
+    compare = subparsers.add_parser(
+        "compare-closed-loop", help="run a matched v0.7 causal intervention pair"
+    )
+    compare.add_argument("output", type=Path)
+    compare.add_argument("--scenario", choices=CAUSAL_SCENARIOS, required=True)
+    compare.add_argument("--seed", type=int, default=ClosedLoopConfig.seed)
+    compare.add_argument("--days", type=int, default=ClosedLoopConfig.horizon_days)
+    compare.add_argument("--regime", choices=REGIMES, default=ClosedLoopConfig.regime)
+    compare.add_argument("--overwrite", action="store_true")
+    calibrate = subparsers.add_parser(
+        "calibrate-closed-loop",
+        help="write the v0.7 regime and parameter sensitivity report",
+    )
+    calibrate.add_argument("output", type=Path)
+    calibrate.add_argument("--days", type=int, default=28)
+    verify_calibration = subparsers.add_parser(
+        "verify-closed-loop-calibration",
+        help="verify the content-addressed v0.7 calibration report",
+    )
+    verify_calibration.add_argument("report", type=Path)
+    closed_reference = subparsers.add_parser(
+        "verify-closed-loop-reference",
+        help="regenerate and verify the published v0.7 closed-loop episode",
+    )
+    closed_reference.add_argument("manifest", nargs="?", type=Path)
     world = subparsers.add_parser("validate-world", help="validate a generated retail world")
     world.add_argument("database", type=Path)
     reference = subparsers.add_parser(
@@ -186,6 +250,49 @@ def main(argv: Sequence[str] | None = None) -> int:
             overwrite=args.overwrite,
         )
         print(f"generated {database}")
+    elif args.command == "generate-closed-loop":
+        database = generate_closed_loop_world(
+            args.output,
+            ClosedLoopConfig(seed=args.seed, horizon_days=args.days, regime=args.regime),
+            overwrite=args.overwrite,
+        )
+        print(f"generated closed-loop episode {database}")
+    elif args.command == "validate-closed-loop":
+        report = validate_closed_loop_world(args.database)
+        print(json.dumps(asdict(report), indent=2, sort_keys=True))
+    elif args.command == "show-closed-loop-baselines":
+        print(json.dumps(baseline_catalog(), indent=2, sort_keys=True))
+    elif args.command == "run-closed-loop-baseline":
+        report = run_baseline(
+            args.output,
+            args.policy,
+            ClosedLoopConfig(seed=args.seed, horizon_days=args.days, regime=args.regime),
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(asdict(report), indent=2, sort_keys=True))
+    elif args.command == "compare-closed-loop":
+        report = run_causal_scenario(
+            args.output,
+            args.scenario,
+            ClosedLoopConfig(seed=args.seed, horizon_days=args.days, regime=args.regime),
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(asdict(report), indent=2, sort_keys=True))
+    elif args.command == "calibrate-closed-loop":
+        report = write_calibration_report(args.output, horizon_days=args.days)
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "verify-closed-loop-calibration":
+        report = verify_calibration_report(args.report)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        if not report["verified"]:
+            return 1
+    elif args.command == "verify-closed-loop-reference":
+        manifest = verify_closed_loop_reference(args.manifest)
+        print(
+            "verified v0.7 closed-loop episode "
+            f"initial_logical_sha256={manifest['initial_logical_sha256']} "
+            f"tables={len(manifest['table_counts'])}"
+        )
     elif args.command == "validate-world":
         report = validate_world(args.database)
         print(

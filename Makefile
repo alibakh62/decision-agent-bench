@@ -1,4 +1,4 @@
-IMAGE ?= decision-agent-bench:0.6.0
+IMAGE ?= decision-agent-bench:0.7.0
 
 .PHONY: check test validate verify-reference audit audit-inspect demo docker-build docker-verify docker-audit
 
@@ -9,6 +9,8 @@ check:
 	PYTHONPATH=src python -m decision_agent_bench generate-world /tmp/decision-agent-bench-ci --overwrite
 	PYTHONPATH=src python -m decision_agent_bench validate-world /tmp/decision-agent-bench-ci/world.sqlite
 	PYTHONPATH=src python -m decision_agent_bench verify-reference
+	PYTHONPATH=src python -m decision_agent_bench verify-closed-loop-reference
+	PYTHONPATH=src python -m decision_agent_bench verify-closed-loop-calibration results/design/v0.7-calibration.json
 	PYTHONPATH=src python -m decision_agent_bench verify-power results/design/v0.5-initial-power.json --design configs/power/v0.5-initial.json
 	PYTHONPATH=src python -m decision_agent_bench verify-power results/design/v0.5-power.json --design configs/power/v0.5.json
 

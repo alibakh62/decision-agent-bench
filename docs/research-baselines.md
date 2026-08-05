@@ -2,8 +2,9 @@
 
 > **Status:** these architectures are implemented experimental interventions, but their original
 > primary endpoint is suspended. The v0.5.0 power analysis retains one confirmatory architecture
-> contrast and two exploratory comparisons. Publication-scale execution remains blocked until the
-> v0.4 typed measurement contract is implemented.
+> contrast and two exploratory comparisons. v0.6 implements the typed measurement contract and
+> v0.7 adds the closed-loop world, but publication-scale execution remains blocked on v0.8-v0.10
+> discrimination, horizon, and evaluator-validation gates.
 
 DecisionAgentBench v0.2 adds four architectures and two prompt ablations to the v0.1 single-agent
 and planner-executor references. Every architecture receives the same task, tools, model, generation
@@ -48,3 +49,12 @@ the sole confirmatory contrast (smallest effect 0.10; simulated power 0.90025; 8
 Planner effectiveness and verifier explainability are exploratory. `multi_agent` is excluded from
 the candidate paid grid, while `corrupted_context`, `no_policy_prompt`, and `no_evidence_prompt`
 remain non-confirmatory validation probes. See the [power analysis](power-analysis.md).
+
+## v0.7 model-free retail policies
+
+The v0.7 world adds executable `random`, `fixed_policy`, `reorder_point`, `newsvendor`, `pricing`,
+and `information_matched` policies. They use only public state and are future v0.8 comparison
+controls, not new language-model architectures. A seventh `privileged_oracle` policy reads hidden
+demand state solely to diagnose simulator and task behavior; it is marked leaderboard-ineligible
+and is not claimed as a guaranteed mathematical upper bound. Run
+`decision-agent-bench show-closed-loop-baselines` to inspect each information boundary.

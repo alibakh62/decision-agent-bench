@@ -9,7 +9,11 @@ unauthorized state changes, and misleading publication of incomplete results.
 - Model text, retrieved external documents, SQL strings, and proposed actions are untrusted.
 - Agent-facing SQL is single-statement, read-only, row-bounded, and authorized table by table.
 - Oracle parameters, grading contracts, and annotation re-identification keys are evaluator-only.
+- In v0.7, `cl_demand_parameters`, `cl_random_draws`, and `cl_metadata` are evaluator-only; the
+  closed-loop SQL authorizer admits only the public table allowlist recorded in the manifest.
 - State changes use typed methods with policy checks, approval IDs, and an immutable action ledger.
+- High-stakes v0.7 promotions use machine-checked approval lifecycles. A prose claim of approval
+  cannot substitute for `approved`, and rejected requests must end in `aborted` rather than resume.
 - Experiment credentials come from process environment variables and are never accepted in
   manifests or model arguments.
 - The public analyzer excludes prompts, targets, transcripts, raw tool results, provider payloads,
@@ -49,6 +53,11 @@ Evaluated agents cannot invoke an editor or arbitrary host command. `security/op
 the time-bounded `not_affected` assessment; CI ignores only this named advisory and must fail on any
 other vulnerability. The assessment expires for review on 17 August 2026 or when upstream metadata
 allows the fixed Click version.
+
+The v0.6 lock also selected `aiohttp==3.14.1`, which accumulated three published advisories and
+caused the dependency and release-audit checks to fail after merge. v0.7 declares `aiohttp>=3.14.3`
+and regenerates the hash lock at 3.14.3. The local v0.7 dependency audit reports only the reviewed,
+time-bounded Click advisory above; no aiohttp advisory remains.
 
 ## Residual risks
 

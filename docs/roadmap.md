@@ -30,7 +30,7 @@ v0.6-v0.9 without renaming released software or rewriting historical task contra
   a frozen experiment manifest, and successful external validation.
 - A leaderboard is an output of a validated study, not evidence that the study is valid.
 
-## Completed implementation: v0.0.1-v0.6.0 release candidate
+## Completed implementation: v0.0.1-v0.7.0 release candidate
 
 | Release | Completed scope | Claim boundary |
 | --- | --- | --- |
@@ -44,6 +44,7 @@ v0.6-v0.9 without renaming released software or rewriting historical task contra
 | `v0.5.1-v0.5.6` | Agent-evaluation guide, real Inspect-powered Lab, reliable agent finalization, run-specific scoring explanations, dual-theme UI, and custom-agent upload | Evaluation tooling around the historical scorer; not validated model-quality evidence |
 | `v0.5.7` | Standalone and Lab-compatible LangGraph examples for an in-process store assistant and remote replenishment service | Integration examples, not benchmark baselines or performance claims |
 | `v0.6.0` | Typed world-derived scoring, semantic evidence support, behavioral safety, metric applicability, and portable causal traces | Construct-valid scorer implementation; synthetic-world external validity and publication claims remain gated |
+| `v0.7.0` | Coupled closed-loop retail state, partial observability, deterministic replay, structured approvals, held-out regimes, public and privileged policies, causal intervention pairs, and calibration evidence | Validated synthetic world infrastructure; discriminating tasks, external validity, and a general long-horizon claim remain gated |
 
 The experiment planner, cost gates, sanitizer, cluster bootstrap, annotation tooling, Lab, release
 audit, security workflows, and governance materials are implemented infrastructure. They are
@@ -67,8 +68,7 @@ from branching workflows to external validation. The revised plan makes each dep
 
 ## v0.6.0 - Construct-valid scoring and evaluation contract
 
-**Status:** implementation complete in the v0.6.0 release candidate; pending maintainer review and
-merge.
+**Status:** released and approved as the v0.7 prerequisite.
 
 Replace the v0.1-v0.3 lexical grading surface with a separate versioned contract whose primary
 scores come from typed, world-derived outcomes and audited behavior. Frozen historical tasks remain
@@ -121,7 +121,8 @@ runnable but are ineligible for new leaderboard claims.
 
 ## v0.7.0 - Closed-loop retail world
 
-**Status:** planned after v0.6.0 approval.
+**Status:** implementation complete in the v0.7.0 release candidate; pending maintainer review and
+merge.
 
 Create a new deterministic retail-world version where agent decisions alter future observations and
 business outcomes. Preserve the historical snapshot world for reproduction.
@@ -154,9 +155,22 @@ business outcomes. Preserve the historical snapshot world for reproduction.
 - Configurable multi-week and multi-month episodes run reproducibly, but the unqualified
   “long-horizon” claim remains blocked until v0.9.
 
+### Release evidence
+
+- The committed v0.7 reference manifest regenerates to the same canonical initial-state digest.
+- Same-seed, same-action replays match across multi-week and 60-day episodes.
+- Replenishment, pricing, shelf-allocation, and approved-promotion matched pairs each change later
+  observable state and realized utility.
+- Conservation, accounting, lot-flow, capacity, temporal, authorization, approval-state, and
+  causal-intervention tests run across normal, held-out, and mixed-stress regimes.
+- The content-addressed calibration report discloses public grounding, synthetic mechanisms,
+  parameter ranges, regime summaries, and directional sensitivity.
+- Six fair public-state policies and one explicitly ineligible privileged diagnostic policy are
+  executable. No policy result is presented as an agent leaderboard result.
+
 ## v0.8.0 - Discriminating task suite and baseline validation
 
-**Status:** planned after v0.7.0 approval.
+**Status:** planned after v0.7.0 approval; no implementation starts before maintainer sign-off.
 
 Build new task families on the closed-loop world and demonstrate that the suite rewards the intended
 decision constructs rather than answer frequency, entity memorization, or tool volume.
@@ -271,7 +285,7 @@ release candidate for the comparative study.
 
 ## v0.11.0 - Publication-eligible empirical benchmark beta
 
-**Status:** blocked on v0.6.0-v0.10.0.
+**Status:** blocked on v0.8.0-v0.10.0.
 
 Run the first evidence-bearing comparative study. The exact grid is determined by the power analysis
 and frozen before execution.

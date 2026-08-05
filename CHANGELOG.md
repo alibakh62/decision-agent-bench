@@ -4,6 +4,40 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-05
+
+### Added
+
+- Add a deterministic action-sensitive retail episode engine coupling purchase orders and delivery
+  delays, lot inventory, shelf capacity, store-specific prices, promotions, demand and substitution,
+  sales and lost sales, spoilage, returns, operational events, and cash across 14-to-180-day runs.
+- Add bounded public SQL and typed state-changing actions while keeping simulator demand parameters,
+  keyed random draws, and metadata evaluator-only.
+- Add structured approval-required, requested, approved/rejected, resumed, and aborted events for
+  high-stakes promotion decisions.
+- Add normal, held-out supply, demand-shift, cold-chain, and mixed-stress regimes with heterogeneous
+  stores, seasonality, shocks, exact same-seed replay, and a content-addressed reference manifest.
+- Add random, fixed, reorder-point, newsvendor, pricing, and information-matched public policies plus
+  a clearly leaderboard-ineligible privileged diagnostic policy.
+- Add matched causal scenarios for replenishment, pricing, shelf allocation, and promotion approval,
+  each requiring a later observable state and realized-outcome difference.
+- Add conservation, accounting, inventory-flow, capacity, temporal, authorization, approval-state,
+  deterministic replay, multi-week, multi-month, and stress-regime tests.
+- Add a content-addressed public-source grounding and one-at-a-time sensitivity report with explicit
+  synthetic-mechanism and external-validity boundaries.
+
+### Changed
+
+- Raise the transitive aiohttp floor to 3.14.3 and refresh the hash lock, removing the known
+  advisories that caused the v0.6 dependency and release-audit checks to fail.
+
+### Documentation
+
+- Publish the v0.7 world contract, calibration interpretation, baseline information boundaries,
+  data-card additions, security boundary, reproducibility commands, and release evidence.
+- Keep discriminating tasks assigned to v0.8 and branching/human-time horizon validation assigned
+  to v0.9; v0.7 makes no model leaderboard or general long-horizon claim.
+
 ## [0.6.0] - 2026-08-05
 
 ### Added

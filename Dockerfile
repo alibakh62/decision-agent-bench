@@ -19,4 +19,4 @@ RUN python -m pip install --no-cache-dir --no-deps .
 
 USER benchmark
 ENTRYPOINT ["decision-agent-bench"]
-CMD ["verify-reference"]
+CMD ["verify-closed-loop-reference"]

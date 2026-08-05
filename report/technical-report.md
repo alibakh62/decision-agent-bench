@@ -1,14 +1,15 @@
 # DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.6.0 construct-valid scoring release candidate, 5 August 2026
-**Benchmark software:** `0.6.0` (current v0.6 and frozen historical v0.1-v0.3 contracts)
+**Status:** v0.7.0 closed-loop retail-world release candidate, 5 August 2026
+**Benchmark software:** `0.7.0` (v0.7 world, v0.6 scoring, frozen v0.1-v0.3 contracts)
 **Task protocols:** `0.1`/`0.2` historical suites; `0.3` stateful preview; `0.6` typed development suite
 
 > **Measurement hold:** an independent audit reproduced lexical grader gaming, paraphrase
 > sensitivity, unsupported-evidence acceptance, and unsafe narrated intent. The v0.1-v0.3
 > contracts remain reproducible development suites. v0.6 implements the separate typed,
-> semantic-evidence contract, but the confirmatory study and leaderboard remain blocked until the
-> subsequent world, discrimination, horizon, evaluator, and empirical-study gates pass. See the
+> semantic-evidence contract and v0.7 implements the subsequent closed-loop world, but the
+> confirmatory study and leaderboard remain blocked until discrimination, horizon, evaluator, and
+> empirical-study gates pass. See the
 > [measurement-validity audit](../docs/measurement-validity-review.md).
 
 ## Abstract
@@ -39,6 +40,15 @@ per-sample calibration and robustness as inapplicable and retains the inputs nee
 and paired robustness analysis. A portable public trace links root, tool, evidence, and terminal
 decision spans without requiring hidden chain-of-thought. Adversarial fixtures reject keyword
 stuffing, fabricated or mutated evidence, and unsafe completed action intent.
+
+v0.7 adds a separate deterministic closed-loop world coupling inventory lots, orders and delivery
+delays, shelf allocation, prices and promotions, demand and substitution, sales and lost sales,
+spoilage, returns, operational events, and cash over 14-to-180-day episodes. Public bounded state is
+separated from private simulator state. Same-seed action sequences replay exactly; matched
+replenishment, pricing, shelf, and promotion decisions change later observations and utility. Six
+public-information policies and one ineligible privileged diagnostic policy are included alongside
+a content-addressed calibration/sensitivity report. These are world-validity artifacts, not new
+agent task results or a general long-horizon claim.
 
 A separate v0.3 preview adds three stateful workflow concepts, twelve seeded instances, and 24
 clean/stressed samples. Each requires 20 persisted transitions over at least 15 simulated days,

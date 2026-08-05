@@ -12,7 +12,7 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.6.0 construct-valid scoring release candidate. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.7.0 closed-loop retail-world release candidate. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
@@ -27,8 +27,11 @@ The first domain is a fully synthetic convenience-retail company. No proprietary
 > remote replenishment service with an auditable benchmark tool broker.
 > v0.6 adds typed world-derived claims, semantic claim-to-evidence support, behavioral action and
 > safety grading, null-safe metric applicability, and a portable causal trace contract. Publication-scale
-> model runs and leaderboard claims remain blocked on the downstream closed-loop world,
-> discrimination, horizon, evaluator-validation, and empirical-beta gates.
+> model runs and leaderboard claims remain blocked. v0.7 adds an action-sensitive closed-loop
+> world with coupled daily transitions, partial observability, deterministic counterfactual replay,
+> structured approvals, held-out regimes, seven disclosed policies, conservation tests, and a
+> content-addressed calibration report. Discrimination, horizon, evaluator-validation, and
+> empirical-beta gates remain open.
 > No frontier-model performance claims have been made.
 
 The reproduced grader exploits, corrected claim counts, and adopted roadmap changes are documented
@@ -98,6 +101,22 @@ development suites; v0.6 is the current development evaluation contract:
 See the [v0.6 scoring contract](docs/v0.6-scoring-contract.md) and
 [migration guide](docs/v0.6-migration.md).
 
+## Closed-loop retail world v0.7
+
+- Coupled inventory, order, delivery, shelf, price, promotion, demand, substitution, sales, lost
+  sales, spoilage, return, operational-event, and cash transitions
+- Store-specific decisions whose consequences persist into later observations and outcomes
+- Public bounded business state separated from private demand and random-draw state
+- Reproducible 14-to-180-day episodes with normal, held-out, and mixed-stress regimes
+- Structured approval interruption, decision, resumption, and abort events
+- Six public-information policies plus a clearly ineligible privileged diagnostic oracle
+- Matched replenishment, pricing, shelf-allocation, and promotion-approval interventions
+- Content-addressed reference manifest and public-source calibration/sensitivity evidence
+
+See the [v0.7 world contract](docs/v0.7-closed-loop-world.md) and
+[calibration report](docs/v0.7-calibration-sensitivity.md). v0.7 is world infrastructure—not yet a
+new scored task suite or evidence of general long-horizon agent capability.
+
 ## Historical benchmark v0.1
 
 - One synthetic convenience-retail domain
@@ -150,6 +169,7 @@ python -m pip install -e ".[dev,demo,agents]"
 python -m pytest
 python -m decision_agent_bench validate-specs
 python -m decision_agent_bench verify-reference
+python -m decision_agent_bench verify-closed-loop-reference
 ```
 
 Generate and validate the deterministic synthetic company:
@@ -163,6 +183,20 @@ Generation refuses to replace an existing world. Use `--overwrite` only when you
 to regenerate that directory. Generated worlds are excluded from source control. Their manifest
 records the complete generator configuration, table counts, schema version, and a logical content
 hash.
+
+Generate, validate, and compare decisions in the v0.7 action-sensitive world:
+
+```bash
+decision-agent-bench generate-closed-loop /tmp/dab-v07 --days 28 --regime train_normal
+decision-agent-bench validate-closed-loop /tmp/dab-v07/episode.sqlite
+decision-agent-bench show-closed-loop-baselines
+decision-agent-bench compare-closed-loop /tmp/dab-causal \
+  --scenario replenishment --days 14
+decision-agent-bench verify-closed-loop-calibration results/design/v0.7-calibration.json
+```
+
+These commands exercise simulator and model-free policy infrastructure. The v0.8 release will add
+the discriminating agent task suite that uses it.
 
 Run one v0.6 category with the single-agent baseline:
 
@@ -223,8 +257,8 @@ downloads for the complete in-process and remote LangGraph examples.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.6.0 .
-docker run --rm decision-agent-bench:0.6.0
+docker build --tag decision-agent-bench:0.7.0 .
+docker run --rm decision-agent-bench:0.7.0
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

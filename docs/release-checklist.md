@@ -16,8 +16,11 @@
       generate the empirical metric-dependence report from valid typed-score samples.
 - [x] Implement the v0.6 typed scoring, semantic evidence, portable causal trace, structured
       safety, metric-applicability, and adversarial scorer-validity gates.
-- [ ] Complete every v0.7-v0.10 validity-first roadmap gate: a closed-loop world, power/MDE, task
-      discrimination, branching workflows, portable observability, horizon validation, blinded
+- [x] Complete the v0.7 closed-loop-world gate: deterministic action-sensitive state, bounded
+      observability, structured approvals, causal intervention tests, public baselines, stress
+      regimes, reproducible manifests, and calibration/sensitivity evidence.
+- [ ] Complete every v0.8-v0.10 validity-first roadmap gate: task discrimination, branching
+      workflows, portable observability, horizon validation, blinded
       human and model-judge validation, a governed regression workflow, red team, and leakage audit.
 - [ ] Freeze the preregistered model/baseline grid, archive its preflight, and authorize the exact
       configured exposure under a whole-study cost ceiling.

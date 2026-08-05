@@ -46,6 +46,8 @@ def test_repository_audit_passes_deterministic_safety_checks() -> None:
     checks = {item["check_id"]: item for item in report["checks"]}
 
     assert checks["benchmark"]["status"] == "pass"
+    assert checks["benchmark"]["evidence"]["closed_loop_tables"] == 21
+    assert len(checks["benchmark"]["evidence"]["calibration_sha256"]) == 64
     assert checks["oracle_boundary"]["status"] == "pass"
     assert checks["oracle_boundary"]["evidence"]["agent_tools"] == [
         "advance_workflow_time",
@@ -89,8 +91,8 @@ def test_container_audit_uses_allow_listed_runtime(
             if command[1:3] == ["image", "inspect"]
             else "uid=10001(benchmark) gid=10001(benchmark)\n"
             if command[-1] == "image" and "id" in command
-            else "verified reference world logical_sha256="
-            "c362c754d6f102c76d45aecf61f6e1cec7a49134fb416e02e59f341a20305f0b\n"
+            else "verified v0.7 closed-loop episode initial_logical_sha256="
+            "ffcea84a99eb5dd0fc595f36d11ad3b903029180050fcfecfb08f9f6307121a1\n"
         )
         return subprocess.CompletedProcess(command, 0, output, "")
 
