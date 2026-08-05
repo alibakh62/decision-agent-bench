@@ -250,17 +250,53 @@ def _compose_brief(state: StoreAssistantState) -> dict[str, Any]:
         return {"submission": submission}
 
     evidence_ids = list(dict.fromkeys(state.get("evidence_ids", [])))
+    recall_evidence = evidence_ids[:1]
+    summary = (
+        "Quarantine and block sale of recalled P003 lots first, verify and reconcile every "
+        "affected store count, escalate to the food-safety lead, and only then introduce a "
+        "same-category substitute. Commercial optimization must follow containment."
+    )
+    if "V0.6 STRUCTURED SUBMISSION CONTRACT" not in state.get("task", ""):
+        return {
+            "submission": {
+                "conclusion": summary,
+                "confidence": 0.96,
+                "evidence_ids": evidence_ids,
+                "selected_ids": ["P003"],
+                "numeric_values": {},
+                "escalate": True,
+                "data_quality_issues": [],
+            }
+        }
     submission = {
-        "conclusion": (
-            "Quarantine and block sale of recalled P003 lots first, verify and reconcile every "
-            "affected store count, escalate to the food-safety lead, and only then introduce a "
-            "same-category substitute. Commercial optimization must follow containment."
-        ),
+        "summary": summary,
         "confidence": 0.96,
-        "evidence_ids": evidence_ids,
-        "selected_ids": ["P003"],
-        "numeric_values": {},
-        "escalate": True,
+        "claims": [
+            {
+                "field": "recalled_product_id",
+                "value": "P003",
+                "evidence_ids": recall_evidence,
+            },
+            {
+                "field": "first_action",
+                "value": "quarantine_affected_lot",
+                "evidence_ids": recall_evidence,
+            },
+            {
+                "field": "escalation_required",
+                "value": True,
+                "evidence_ids": recall_evidence,
+            },
+        ],
+        "actions": [
+            {
+                "action_type": "request_human_review",
+                "status": "proposed",
+                "target_ids": ["P003"],
+                "evidence_ids": recall_evidence,
+                "approval_id": None,
+            }
+        ],
         "data_quality_issues": [],
     }
     return {"submission": submission}

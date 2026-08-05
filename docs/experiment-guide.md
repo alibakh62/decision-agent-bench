@@ -9,7 +9,7 @@ budgets to every model, and requires two explicit CLI flags before execution.
 > [measurement-validity audit](measurement-validity-review.md), so its existing “publishable”
 > configuration checks are necessary provenance controls but not sufficient authorization for a
 > leaderboard study. Publication-scale execution is blocked by the
-> [v0.4.0-v0.8.0 roadmap gates](roadmap.md).
+> [v0.6.0-v0.10.0 roadmap gates](roadmap.md).
 
 Before even a candidate paid manifest is reviewed, reproduce the v0.5 statistical design:
 

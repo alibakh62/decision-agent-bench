@@ -12,6 +12,7 @@ from inspect_ai.scorer import Score, Scorer, Target, mean, scorer, stderr
 from inspect_ai.solver import TaskState
 
 from decision_agent_bench.evals.runtime import STORE_PREFIX
+from decision_agent_bench.evals.v06_scorer import grade_v06_submission
 from decision_agent_bench.simulator.oracle import EconomicOracle
 from decision_agent_bench.simulator.workflow import workflow_metrics
 
@@ -26,7 +27,7 @@ SCORE_KEYS = (
     "explainability",
     "composite",
 )
-STRICT_CONTRACT_VERSIONS = {"0.2.0", "0.2.1", "0.3.0"}
+STRICT_CONTRACT_VERSIONS = {"0.2.0", "0.2.1", "0.3.0", "0.6.0"}
 EVIDENCE_GATED_CONTRACT_VERSIONS = {"0.2.1", "0.3.0"}
 
 
@@ -38,11 +39,11 @@ def _strict_contract(contract: dict[str, Any]) -> bool:
 class DeterministicGrade:
     """Pure grading result used by the Inspect adapter and unit tests."""
 
-    values: dict[str, float]
+    values: dict[str, float | None]
     failures: tuple[str, ...]
     explanation: str
     decision_outcome: dict[str, Any]
-    breakdown: dict[str, dict[str, Any]] = field(default_factory=dict)
+    breakdown: dict[str, Any] = field(default_factory=dict)
 
 
 def parse_submission(completion: str, *, strict: bool = False) -> dict[str, Any] | None:
@@ -156,8 +157,30 @@ def grade_submission(
     variant: str,
     perturbation_kind: str,
     database_path: Path | None,
+    trace_root: Any = None,
 ) -> DeterministicGrade:
     """Compute all score dimensions without invoking a grading model."""
+
+    if str(contract.get("contract_version", "")) == "0.6.0":
+        if database_path is None:
+            raise ValueError("v0.6 scoring requires a generated-world database")
+        grade = grade_v06_submission(
+            contract=contract,
+            submission=submission,
+            tool_calls=tool_calls,
+            recoveries=recoveries,
+            variant=variant,
+            perturbation_kind=perturbation_kind,
+            database_path=database_path,
+            trace_root=trace_root,
+        )
+        return DeterministicGrade(
+            values=grade.values,
+            failures=grade.failures,
+            explanation=grade.explanation,
+            decision_outcome=grade.decision_outcome,
+            breakdown=grade.breakdown,
+        )
 
     failures: list[str] = []
     if submission is None:
@@ -479,14 +502,10 @@ def grade_submission(
             "recoveries": list(recoveries),
             "data_quality_issue_count": len(data_issues),
             "workflow_completed": (
-                bool(workflow_result["workflow_completed"])
-                if workflow_result is not None
-                else None
+                bool(workflow_result["workflow_completed"]) if workflow_result is not None else None
             ),
             "workflow_recovery_satisfied": (
-                bool(workflow_result["recovery_satisfied"])
-                if workflow_result is not None
-                else None
+                bool(workflow_result["recovery_satisfied"]) if workflow_result is not None else None
             ),
         },
         "explainability": {
@@ -561,6 +580,7 @@ def decision_agent_scorer() -> Scorer:
             variant=str(state.store.get(f"{STORE_PREFIX}variant", "clean")),
             perturbation_kind=str(state.store.get(f"{STORE_PREFIX}perturbation_kind", "none")),
             database_path=Path(str(state.store.get(f"{STORE_PREFIX}database_path"))),
+            trace_root=state.store.get(f"{STORE_PREFIX}trace_root"),
         )
         return Score(
             value=grade.values,

@@ -129,8 +129,8 @@ Each task contract names its applicable metrics, hard constraints, evidence requ
 
 The historical v0.1-v0.3 contracts deviate from this last rule: decision quality usually copies
 effectiveness, robustness mirrors recovery in perturbed samples, and the per-sample confidence loss
-is included in the composite. v0.4.0 introduces an applicability map, nullable inapplicable
-dimensions, and a new composite. Historical outputs remain reproducible but are not evidence that
+is included in the composite. The v0.6.0 construct-valid contract introduces an applicability map,
+nullable inapplicable dimensions, and a new composite. Historical outputs remain reproducible but are not evidence that
 all named constructs were independently measured.
 
 ### 4.3 Oracle and regret
@@ -224,14 +224,18 @@ The engineering gates for v0.1-v0.3 are complete, but those releases are histori
 previews rather than an empirical benchmark release. The governing gates are now versioned in the
 [roadmap](roadmap.md):
 
-1. v0.4 audit plus the still-open implementation gate - typed world-derived scoring, semantic
-   evidence support, structured action safety, and adversarial grader validity;
-2. v0.5.0 - implemented task-family power/MDE and metric-dependence analysis, with execution still
-   blocked by gate 1;
-3. v0.6.0 - richer worlds and discriminating task families;
-4. v0.7.0 - decision-sensitive branching workflows;
-5. v0.8.0 - blinded human grader validation, leakage audit, and external red team;
-6. v0.9.0 - first publication-eligible multi-model empirical beta; and
+1. v0.6.0 - construct-valid typed scoring, an outside-in outcome/trajectory hierarchy, semantic
+   evidence support, a portable causal trace contract, structured action safety, and adversarial
+   grader validity, implementing the still-open v0.4 audit requirements;
+2. v0.7.0 - a deterministic closed-loop retail world with coupled daily consequences and calibrated
+   dynamics;
+3. v0.8.0 - discriminating task families, held-out regimes, classical policies, shortcut baselines,
+   and a valid-score power update;
+4. v0.9.0 - decision-sensitive branching workflows, OpenTelemetry-compatible observability,
+   root-cause trajectory diagnostics, and skilled-human horizon validation;
+5. v0.10.0 - blinded human and model-judge validation, context-rich review and regression workflows,
+   leakage audit, external red team, and release-candidate freeze;
+6. v0.11.0 - first publication-eligible multi-model empirical beta; and
 7. v1.0.0 - stable contracts, public validity evidence, external reproduction, and archival release.
 
 No public leaderboard or model/architecture superiority claim may bypass those gates.

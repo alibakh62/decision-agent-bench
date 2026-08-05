@@ -12,6 +12,11 @@ validation preserves fixed causal, safety, and answer-key fixtures while varying
 transaction noise; these are not 200 independent evaluation concepts. All 53 named perturbations
 are deterministically scheduled across the 100 perturbed samples.
 
+The v0.6 registration reuses those generated worlds and paired instance identities under a new
+typed scoring contract. It does not create more independent task concepts or a new empirical data
+source. Every task has world-derived or reviewed expected fields, semantic evidence rules, and an
+explicit decision-quality applicability declaration.
+
 The additional v0.3 workflow preview contains **3 workflow concepts, 12 seeded instances, and 24
 paired samples**. Each sample uses the generated retail world plus private workflow state. Twenty
 transitions persist across at least 15 simulated days; stressed pairs introduce a delayed event
@@ -60,8 +65,8 @@ All entities and events are created by project code. Names are fictional. Custom
 - Generator parameters can encode benchmark assumptions that advantage matching heuristics.
 - Synthetic validity does not imply external business validity.
 
-The v0.6.0 roadmap creates a separate richer world and task contract rather than rewriting this
-historical reference fixture.
+The v0.7.0 roadmap creates a separate closed-loop world rather than rewriting this historical
+reference fixture; v0.8.0 then builds discriminating task contracts on that world.
 
 ## Validation and appropriate use
 

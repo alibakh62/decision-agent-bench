@@ -11,6 +11,7 @@ from pathlib import Path
 
 from inspect_ai.solver import Generate, Solver, TaskState, solver
 
+from decision_agent_bench.evals.trace import root_trace_event
 from decision_agent_bench.simulator import GenerationConfig, generate_world
 from decision_agent_bench.simulator.workflow import initialize_workflow
 
@@ -346,6 +347,10 @@ def setup_environment() -> Solver:
         state.store.set(f"{STORE_PREFIX}perturbation_triggered", kind != "none")
         state.store.set(f"{STORE_PREFIX}tool_calls", [])
         state.store.set(f"{STORE_PREFIX}recoveries", [])
+        state.store.set(
+            f"{STORE_PREFIX}trace_root",
+            root_trace_event(task_id, scenario_seed, str(state.metadata["variant"])),
+        )
         return state
 
     return solve

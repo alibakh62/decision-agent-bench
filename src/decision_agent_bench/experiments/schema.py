@@ -21,6 +21,7 @@ KNOWN_TASKS = {
     "decision_agent_bench",
     "decision_agent_bench_v0_2",
     "decision_agent_bench_v0_3",
+    "decision_agent_bench_v0_6",
 }
 SENSITIVE_ARGUMENT_FRAGMENTS = {
     "api_key",
@@ -150,18 +151,13 @@ class ExperimentConfig:
             name=str(payload.get("name", "")).strip(),
             models=tuple(ModelSpec.from_dict(item) for item in models_payload),
             baselines=tuple(
-                str(item)
-                for item in payload.get("baselines", ["single_agent", "planner_executor"])
+                str(item) for item in payload.get("baselines", ["single_agent", "planner_executor"])
             ),
-            variants=tuple(
-                str(item) for item in payload.get("variants", ["clean", "perturbed"])
-            ),
+            variants=tuple(str(item) for item in payload.get("variants", ["clean", "perturbed"])),
             repetitions=int(payload.get("repetitions", 3)),
             categories=tuple(str(item) for item in payload.get("categories", [])),
             sample_limit=(
-                int(payload["sample_limit"])
-                if payload.get("sample_limit") is not None
-                else None
+                int(payload["sample_limit"]) if payload.get("sample_limit") is not None else None
             ),
             budget=Budget.from_dict(payload.get("budget", {})),
             benchmark_version=str(payload.get("benchmark_version", "0.1.0")),
@@ -195,11 +191,9 @@ class ExperimentConfig:
             "decision_agent_bench": "0.1.0",
             "decision_agent_bench_v0_2": "0.2.1",
             "decision_agent_bench_v0_3": "0.3.0",
+            "decision_agent_bench_v0_6": "0.6.0",
         }[self.task_name]
-        if (
-            self.benchmark_version != expected_version
-            or self.task_version != expected_version
-        ):
+        if self.benchmark_version != expected_version or self.task_version != expected_version:
             raise ValueError(
                 f"{self.task_name} requires benchmark_version and task_version "
                 f"{expected_version}"
@@ -229,9 +223,7 @@ class ExperimentConfig:
             if self.budget.study_cost_limit_usd is None:
                 protocol_errors.append("an explicit whole-study cost limit")
             if protocol_errors:
-                raise ValueError(
-                    "publishable experiments require " + ", ".join(protocol_errors)
-                )
+                raise ValueError("publishable experiments require " + ", ".join(protocol_errors))
 
     def to_dict(self) -> dict[str, Any]:
         """Return a stable JSON-compatible representation."""

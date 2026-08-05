@@ -131,7 +131,7 @@ additional Lab field. A different service URL can be supplied from Inspect's CLI
 
 ```bash
 ./.venv/bin/inspect eval \
-  src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_2 \
+  src/decision_agent_bench/evals/task.py@decision_agent_bench_v0_6 \
   --solver examples/langgraph_replenishment_service.py@langgraph_remote_replenishment \
   -S service_url=http://127.0.0.1:8099 \
   --model mockllm/model \

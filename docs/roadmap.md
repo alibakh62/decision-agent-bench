@@ -1,13 +1,14 @@
 # Versioned roadmap
 
-DecisionAgentBench now follows a validity-first release sequence. The completed releases established
-useful engineering infrastructure, but the v0.1-v0.3 decision scorer is not sufficiently
-construct-valid for a public model leaderboard. Publication-scale provider runs are blocked until
-the measurement, power, and task-discrimination gates below are satisfied.
+DecisionAgentBench follows a validity-first release sequence. Releases through v0.5.x established
+substantial benchmark infrastructure, statistical preflight tooling, an interactive evaluation Lab,
+and bring-your-own-agent integrations. They did not close the measurement-validity gap discovered
+in v0.4.0, and they do not support a public model leaderboard or a general long-horizon claim.
 
-This roadmap supersedes earlier milestone descriptions that did not reserve a distinct phase for
-grader validity. It does not retroactively rename released software or rewrite historical task
-contracts.
+This roadmap incorporates the v0.4 measurement audit, the completed v0.5.x work, the subsequent
+comparison with closed-loop retail-agent benchmarks, and the
+[Google Agent Quality review](google-agent-quality-review.md). It supersedes the earlier mapping of
+v0.6-v0.9 without renaming released software or rewriting historical task contracts.
 
 ## Release principles
 
@@ -18,274 +19,306 @@ contracts.
 - A larger sample count cannot substitute for more independent task concepts.
 - A metric is reported only when its construct is independently measurable. Structurally
   inapplicable values are null, not copies of another metric.
+- Evaluation proceeds outside-in: eligibility and safety, then end-to-end business outcomes, then
+  trajectory diagnostics. Process quality cannot compensate for a failed outcome or hard safety
+  violation.
+- Long horizon means dependent state changes and delayed consequences, not metadata, prompt length,
+  tool count, or a long linear checklist.
+- Official scores require complete, causally linked traces. Public plans and action intent are
+  observable; provider-private chain of thought is never required.
 - Publication-scale model spending requires construct-valid scoring, a documented power analysis,
-  and an immutable cost-authorized experiment manifest.
+  a frozen experiment manifest, and successful external validation.
 - A leaderboard is an output of a validated study, not evidence that the study is valid.
 
-## Completed foundation and audit releases: v0.0.1-v0.4.0
+## Completed implementation: v0.0.1-v0.6.0 release candidate
 
 | Release | Completed scope | Claim boundary |
 | --- | --- | --- |
 | `v0.0.1` | Research design, first 25 task specifications, repository standards, CI | Design foundation only |
-| `v0.0.2` | Seeded SQLite retail company, tools, policies, manifests, invariant tests | Synthetic world, not real-company validity |
-| `v0.1.0` | 25 executable Inspect task families and two reference baselines | Historical lexical/evidence-lineage scorer retained for reproducibility |
+| `v0.0.2` | Seeded SQLite retail company, tools, policies, manifests, invariant tests | Synthetic snapshot world, not real-company validity |
+| `v0.1.0` | 25 executable Inspect task families and two reference baselines | Historical lexical/evidence-lineage scorer retained for reproduction |
 | `v0.2.0-v0.2.1` | Strict JSON contract, evidence-ID eligibility, 100 seeded instances, 200 paired samples, second economic oracle | 25 concepts, not 200 independent tasks; evidence existence is not semantic support |
-| `v0.3.0` | Three dependency-enforced workflow concepts with persisted transitions, delayed events, and rollback | Workflow preview with a linear shared topology, not general long-horizon planning |
-| `v0.3.1` | Offline Inspect test fix and documentation consolidation | No empirical model-performance claim |
-| `v0.4.0` | Independently reproduced measurement audit and validity-first roadmap | The audit specified the scorer redesign but did not implement it; the validity gate remains open |
+| `v0.3.0-v0.3.1` | Three dependency-enforced workflow concepts with persisted transitions, delayed events, rollback, and offline fixes | Linear workflow preview, not general long-horizon planning |
+| `v0.4.0` | Independently reproduced measurement audit and validity-first roadmap | Specified the scorer redesign but did not implement it |
+| `v0.5.0` | Hierarchical power/MDE simulation and metric-dependence audit | Statistical preflight only; its assumptions require a valid-score pilot |
+| `v0.5.1-v0.5.6` | Agent-evaluation guide, real Inspect-powered Lab, reliable agent finalization, run-specific scoring explanations, dual-theme UI, and custom-agent upload | Evaluation tooling around the historical scorer; not validated model-quality evidence |
+| `v0.5.7` | Standalone and Lab-compatible LangGraph examples for an in-process store assistant and remote replenishment service | Integration examples, not benchmark baselines or performance claims |
+| `v0.6.0` | Typed world-derived scoring, semantic evidence support, behavioral safety, metric applicability, and portable causal traces | Construct-valid scorer implementation; synthetic-world external validity and publication claims remain gated |
 
-The experiment planner, cost gates, sanitizer, cluster bootstrap, annotation tooling, demo, release
-audit, and governance materials are implemented infrastructure. They are not substitutes for the
-validation work below.
+The experiment planner, cost gates, sanitizer, cluster bootstrap, annotation tooling, Lab, release
+audit, security workflows, and governance materials are implemented infrastructure. They are
+important strengths, but they do not substitute for the scientific gates below.
 
-## v0.4 measurement-validity implementation gate
+## Why the remaining sequence changed
 
-**Status:** blocking. The v0.4.0 audit release is merged; the implementation below is not.
+The earlier roadmap left the v0.4 scorer implementation as an unnumbered blocking gate even after
+v0.5.x shipped. It also grouped richer data generation with task discrimination and moved directly
+from branching workflows to external validation. The revised plan makes each dependency explicit:
+
+1. v0.6 owns the previously unimplemented measurement-validity contract.
+2. v0.7 is a dedicated closed-loop retail-world release in which actions cause later outcomes.
+3. v0.8 builds discriminating tasks and strong baselines on that validated world.
+4. v0.9 establishes decision-sensitive workflows, portable observability, and the long-horizon
+   claim.
+5. v0.10 validates deterministic and model-based evaluators, adds the governed feedback loop, and
+   freezes a release candidate.
+6. v0.11 performs the first publication-eligible comparative study.
+7. v1.0 publishes stable contracts only after independent reproduction.
+
+## v0.6.0 - Construct-valid scoring and evaluation contract
+
+**Status:** implementation complete in the v0.6.0 release candidate; pending maintainer review and
+merge.
 
 Replace the v0.1-v0.3 lexical grading surface with a separate versioned contract whose primary
-scores come from typed, world-derived outcomes and audited behavior. The frozen historical tasks
-remain runnable but become ineligible for new leaderboard claims.
+scores come from typed, world-derived outcomes and audited behavior. Frozen historical tasks remain
+runnable but are ineligible for new leaderboard claims.
 
 ### Deliverables
 
-1. **Task-by-task construct map.** For all 25 retail concepts, publish the intended construct,
-   observable ground truth, applicable metrics, tolerances, evidence requirements, safety rules,
-   and known ambiguity. No metric may silently fall back to another metric.
-2. **Computed answer keys.** Replace `expected_concepts` as a primary grader with deterministic
-   functions over the seeded world. Grade typed fields such as region, driver, direction,
-   magnitude, chosen entities, abstention, and bounded numeric decisions.
-3. **Structured claims and actions.** Extend the submission contract with typed claims and proposed,
-   attempted, and completed actions. Grade authorization and policy against these fields and the
-   action ledger; prose is never the authoritative safety signal.
-4. **Evidence support.** Bind each machine-checkable claim to evidence IDs and retain the canonical
-   facts needed to verify that cited results support the claim. ID existence and required-tool
-   coverage remain provenance checks, not semantic-support checks.
-5. **Independent decision quality.** Implement regret, dominance, constraint satisfaction, or
-   another independent utility measure for every task where decision quality is applicable. Return
-   null where it is not independently defined and reweight aggregates only over applicable
-   dimensions.
-6. **Metric redesign.** Remove per-sample calibration and duplicated robustness from the composite.
-   Retain confidence and Brier loss as raw sample telemetry; report calibration curves and summary
-   calibration error only over groups of predictions. Publish the new composite rationale before
-   model runs.
-7. **Behavioral safety grading.** Determine injection resistance from trusted-source use, structured
-   actions, approvals, and the ledger. Remove keyword-presence safety rules.
-8. **Adversarial validity tests.** Add `tests/test_grader_validity.py` with keyword stuffing,
-   correct paraphrases, fabricated-but-existing evidence, unsupported claims, unsafe stated intent,
-   and injection-compliance cases for every relevant construct.
-9. **Public validity report.** Publish the fixtures, expected outcomes, test results, and remaining
-   constructs that still require human review.
+- Publish a task-by-task construct map covering ground truth, applicable metrics, tolerances,
+  evidence requirements, safety rules, and known ambiguity.
+- Replace `expected_concepts` as a primary grader with deterministic typed answer functions over the
+  seeded world.
+- Add typed claims and proposed, attempted, completed, and successful actions. Prose is not the
+  authoritative safety signal.
+- Verify semantic claim support against canonical facts retained with each cited evidence item.
+  Evidence-ID existence and required-tool coverage remain provenance checks only.
+- Implement regret, dominance, constraint satisfaction, or another independent utility measure for
+  every task where decision quality applies; return null elsewhere.
+- Remove per-sample calibration and duplicated robustness from the composite. Retain confidence and
+  Brier loss as telemetry and calculate calibration only over groups.
+- Grade prompt-injection and policy safety from trusted-source use, approvals, structured actions,
+  and the action ledger rather than keyword presence.
+- Publish an outside-in score contract that separates eligibility and hard safety, end-to-end
+  outcome quality, and non-compensatory trajectory diagnostics.
+- Define a portable event schema with run, trace, span, and parent IDs; actor and role; public action
+  intent; typed model/tool inputs and outputs; errors; evidence; state mutations; approvals; usage;
+  latency; and cost.
+- Replace the historical failure codes with an observable trajectory taxonomy covering planning,
+  tool selection and parameterization, result interpretation, retrieval and evidence, loops,
+  recovery, multi-agent handoffs, authorization, privacy, and safety.
+- Classify trace fields and apply configurable secret and personal-data minimization before durable
+  storage or export where possible; document raw-trace access and retention boundaries.
+- Add adversarial fixtures and degenerate baselines for keyword stuffing, fixed answers, correct
+  paraphrases, fabricated or irrelevant citations, evidence spam, unsafe narrated intent, and
+  injection compliance.
+- Publish a scorer-validity report and a migration guide for custom agents and historical logs.
 
 ### Exit gate
 
-- The three reproduced exploits in the
-  [measurement-validity audit](measurement-validity-review.md) satisfy these bounds:
-  keyword stuffing `composite <= 0.30`, supported correct paraphrase `effectiveness >= 0.80`, and
-  injection compliance `safety = 0` and `composite = 0`.
-- Every one of the 25 concepts has a typed world-derived answer or an explicit, reviewed reason it
-  is human-scored; no primary score depends on free-text substring matching.
-- Changing only conclusion wording while holding typed claims fixed cannot change primary outcome
-  scores.
-- Mutating cited facts produces the expected claim-support failure.
+- Keyword stuffing scores `composite <= 0.30`; a supported correct paraphrase scores
+  `effectiveness >= 0.80`; injection compliance scores `safety = 0` and `composite = 0`.
+- Every concept has a typed world-derived answer or an explicit reviewed human-scoring reason.
+- Wording-only changes cannot alter primary scores while typed claims remain fixed.
+- Mutating cited facts produces the expected support or contradiction failure.
 - `decision_quality` never defaults to `task_effectiveness`; applicability and coverage are public.
-- All automated checks, adversarial fixtures, contract migration tests, and a small blinded human
-  spot-check pass.
-- No publication-scale paid comparison is authorized before this gate is reviewed and merged.
+- The final outcome score can be reproduced from versioned state, action, and evidence records;
+  trajectory diagnostics cannot inflate a failed outcome.
+- Trace completeness and parent-child lineage are machine-validated across built-in, uploaded, and
+  remote agents, without requiring hidden chain of thought.
+- All validity fixtures, contract migrations, automated checks, and a blinded human spot-check pass.
 
-## v0.5.0 - Statistical design and metric audit
-
-**Status:** implemented statistical layer; publication authorization remains blocked by v0.4.
-
-Determine whether the registered task-family population can answer the proposed model and
-architecture questions before paying for a full grid.
-
-### Deliverables
-
-- Add a deterministic `simulate-power` command and `docs/power-analysis.md`.
-- Simulate the exact candidate grid under documented family variance, instance variance,
-  trajectory variance, clean/perturbed correlation, missingness, and plausible effect sizes.
-- Report effective independent family count, minimum detectable effect (MDE), interval width,
-  family-wise error plan, and power for every preregistered primary contrast.
-- Use a small, explicitly non-publishable pilot only if needed to estimate variance; update the
-  simulation without promoting pilot outcomes to benchmark claims.
-- Reduce the primary architecture set, increase distinct task families, or label comparisons
-  exploratory when the target effect cannot be estimated with adequate precision.
-- Add a metric-dependence report using structural definitions plus empirical Pearson/Spearman
-  correlations and uncertainty. High correlation triggers investigation; it is not an automatic
-  instruction to merge constructs.
-
-### Implemented outcome
-
-- `simulate-power` executes a strict, content-addressed 4,000-draw hierarchical simulation with
-  task-family inference, clean/perturbed correlation, missingness, MDEs, simultaneous interval
-  widths, and single-step max-|t| control.
-- The candidate grid has 25 independent families, 100 seeded instances, 200 paired samples, three
-  repetitions, three fixed model-family blocks, four architectures, and 7,200 executions under a
-  $1,800 ceiling.
-- The initial three-contrast max-|t| design placed all three effects below 80% power. Planner
-  effectiveness and verifier explainability were therefore labeled exploratory. With the smaller
-  confirmatory family, memory-feedback perturbed recovery remains the sole confirmatory contrast,
-  with 90.03% simulated power at its 0.10 smallest effect and an 80% MDE of 0.0849 under the stated
-  assumptions.
-- `metric-dependence` publishes Pearson/Spearman correlations, identical-value rates, and whole-
-  family bootstrap intervals after a sanitized pilot. The structural audit is public; no empirical
-  report is fabricated before a valid typed-score pilot exists.
-- The report keeps `publication_scale_run_authorized` and `grid_frozen` false because the upstream
-  measurement-validity implementation has not passed. See [the power analysis](power-analysis.md)
-  and [metric-dependence audit](metric-dependence.md).
-
-### Exit gate
-
-- Every confirmatory contrast has a prespecified smallest effect of interest and either at least 80%
-  simulated power or an explicit exploratory label.
-- Every planned table states task-family count, seeded-instance count, sample count, repetitions,
-  and MDE.
-- The final architecture and ablation grid is frozen before the empirical run and fits within an
-  explicit study-cost ceiling.
-
-The first two exit conditions are satisfied by the candidate design. The cost ceiling is satisfied,
-but the grid cannot become execution-frozen until the v0.4 endpoint contract exists and any required
-non-publishable pilot has checked the variance assumptions.
-
-## v0.6.0 - Richer retail world and discriminating tasks
-
-**Status:** next after v0.5.0 review, but still blocked on the v0.4 implementation gate.
-
-Create a new retail-world and task-contract version without modifying the historical reference
-world. Increase construct diversity only where the power and validity audits show a need.
-
-### Deliverables
-
-- Replace single-cause diagnostic fixtures with composed causes, store-level heterogeneity,
-  countervailing effects, red-herring correlations, and independently recoverable magnitudes.
-- Vary decision-relevant answers across seeds while preserving deterministic ground truth and
-  matched clean/perturbed objectives.
-- Add distinct task families—not cosmetic seed copies—until the power target or a documented scope
-  limit is met.
-- Add held-out surface forms and generator regimes for leakage and shortcut testing.
-- Extend regret/dominance oracles to every quantitative action-selection task identified as
-  applicable in the v0.4 construct map.
-- Add weak shortcut baselines, deliberately degenerate agents, and ablations that test whether the
-  suite rewards intended reasoning rather than answer-frequency or entity memorization.
-
-### Exit gate
-
-- All new worlds reproduce from manifests and pass accounting, policy, answerability, and
-  perturbation-preservation checks.
-- A model-free shortcut cannot pass the typed validity suite by returning frequent labels or fixed
-  entity IDs.
-- A limited discrimination pilot reports ceiling/floor behavior, item difficulty, failure modes,
-  and family-level variance without making leaderboard claims.
-- The v0.5 power analysis is rerun with the final family count and pilot variance.
-
-## v0.7.0 - Decision-sensitive branching workflows
+## v0.7.0 - Closed-loop retail world
 
 **Status:** planned after v0.6.0 approval.
 
-Replace the linear v0.3 preview as the primary workflow research surface. Preserve v0.3.0 for
-historical reproduction.
+Create a new deterministic retail-world version where agent decisions alter future observations and
+business outcomes. Preserve the historical snapshot world for reproduction.
 
 ### Deliverables
 
-- Dependency DAGs with genuine branches, optional paths, concurrency constraints, and alternative
-  feasible action orders.
-- At least one choice in every workflow where two policy-compliant paths have different measurable
-  utility, risk, cost, or recovery consequences.
-- Workflow-specific topology and outcome logic rather than one shared 20-step scaffold with renamed
-  steps.
-- Delayed observations whose content depends on earlier choices, not only elapsed simulated time.
-- Trace-derived planning metrics that distinguish correct adaptation from rote transition
-  completion.
-- A skilled-human protocol for task completion time; the unqualified “long-horizon” label remains
-  prohibited until that study and non-mock trace audits exist.
+- Implement coupled daily transitions for inventory, purchase orders and delivery delays, shelf
+  allocation, pricing and promotions, demand and substitution, sales and lost sales, aging and
+  spoilage, returns and feedback, operational events, and cash flow.
+- Enforce partial observability: agents use bounded business tools while the simulator and oracle
+  retain clearly documented privileged state.
+- Ground or calibrate important distributions with documented public retail data; label every
+  synthetic or hand-authored mechanism and publish sensitivity ranges.
+- Add held-out generator regimes, store heterogeneity, seasonality, shocks, and independently
+  reproducible world manifests.
+- Add accounting, inventory-flow, capacity, temporal, authorization, determinism, and causal
+  intervention tests.
+- Represent high-stakes interruptions as structured approval-required, approval-requested,
+  approved/rejected, resumed, and aborted events rather than prose-only escalation claims.
+- Provide random, fixed-policy, reorder-point, newsvendor, pricing, and information-matched heuristic
+  baselines plus a privileged diagnostic oracle that is never presented as a fair agent baseline.
 
 ### Exit gate
 
-- Graph tests demonstrate reachable alternatives, optional-path validity, decision-dependent
-  outcomes, rollback integrity, and no single fixed sequence that maximizes every instance.
-- Workflow decision quality comes from outcome utility or dominance, not completion percentage.
-- Dependency span is measured from nontrivial graph paths and reported with human time, agent turns,
-  and tool calls as separate quantities.
+- Replaying the same seed and action sequence yields the same state and ledger.
+- At least one feasible decision in every benchmark scenario changes a later observable state and
+  realized utility relative to an alternative action.
+- Conservation, accounting, capacity, and policy invariants hold across stress simulations.
+- Simulator distributions and failure modes have a public calibration and sensitivity report.
+- Configurable multi-week and multi-month episodes run reproducibly, but the unqualified
+  “long-horizon” claim remains blocked until v0.9.
 
-## v0.8.0 - External grader validation and red team
+## v0.8.0 - Discriminating task suite and baseline validation
 
 **Status:** planned after v0.7.0 approval.
 
-Validate the benchmark itself before treating deterministic scores as reference labels.
+Build new task families on the closed-loop world and demonstrate that the suite rewards the intended
+decision constructs rather than answer frequency, entity memorization, or tool volume.
 
 ### Deliverables
 
-- Blind multiple human raters to deterministic scores and oversample high-scoring, low-scoring,
-  threshold, safety-critical, and disagreement cases.
-- Report agreement separately for typed task correctness, decision quality, evidence support,
-  safety, and failure taxonomy.
-- Treat deterministic-human disagreement as a possible grader defect first, not automatically as
-  human or model-judge noise.
+- Replace single-cause fixtures with composed causes, countervailing effects, red herrings,
+  heterogeneous stores, ambiguity boundaries, and independently recoverable magnitudes.
+- Vary correct conclusions and optimal actions across seeds while preserving deterministic ground
+  truth and matched clean/perturbed objectives.
+- Add distinct task families where power requires them; do not count cosmetic seed copies as new
+  concepts.
+- Add held-out surface forms and generator regimes for shortcut, leakage, and distribution-shift
+  testing.
+- Use realized utility, constraint-adjusted regret, or dominance for quantitative decisions.
+- Run model-free shortcuts, degenerate agents, classical retail policies, solver ablations, and a
+  limited non-leaderboard discrimination pilot.
+- Rerun the v0.5 power analysis using final family counts and pilot variance.
+
+### Exit gate
+
+- Fixed-answer, keyword, citation-spam, and entity-frequency baselines cannot pass the suite.
+- Strong task-appropriate policies outperform random and weak baselines where the construct predicts
+  they should.
+- The pilot reports ceiling/floor behavior, item difficulty, failure modes, family variance, metric
+  dependence, and applicable denominators without making leaderboard claims.
+- Every confirmatory contrast has at least 80% simulated power or is explicitly exploratory.
+
+## v0.9.0 - Decision-sensitive workflows, observability, and horizon validation
+
+**Status:** planned after v0.8.0 approval.
+
+Replace the linear v0.3 preview as the primary workflow surface and determine whether the resulting
+episodes justify a long-horizon claim.
+
+### Deliverables
+
+- Add workflow-specific dependency DAGs with real branches, optional paths, concurrency constraints,
+  rollback, and multiple feasible action orders.
+- Include choices with different measurable utility, risk, cost, service, or recovery consequences.
+- Make delayed observations and available future actions depend on earlier choices and evolving world
+  state.
+- Grade outcome utility and adaptation rather than checklist completion.
+- Report simulated days, dependent state transitions, decision points, model turns, tool calls,
+  tokens, and wall-clock duration separately.
+- Add OpenTelemetry-compatible span export and context propagation across Inspect, the Lab, local
+  adapters, remote services, tools, and multi-agent handoffs.
+- Separate operational dashboards and exports (latency percentiles, error rate, tokens, cost, tool
+  frequency, and trace completeness) from quality dashboards (outcome, utility, evidence support,
+  recovery, robustness, and safety).
+- Produce run-level root-cause diagnostics for planning, tool selection, tool arguments, tool-result
+  interpretation, retrieval, recovery, and multi-agent coordination without assigning invented
+  per-event score deltas.
+- Require complete traces for official evaluations. Any production-observability sampling policy is
+  declared and its sampled traces remain ineligible for benchmark ranking.
+- Run a skilled-human completion-time study and audit representative non-mock agent traces using a
+  documented time-horizon methodology.
+
+### Exit gate
+
+- Graph tests demonstrate reachable alternatives, decision-dependent outcomes, optional-path
+  validity, and no fixed sequence that maximizes every instance.
+- Failed or delayed decisions propagate into later state and remain recoverable only through valid
+  actions where the scenario permits recovery.
+- Workflow decision quality comes from outcome utility or dominance, not completion percentage.
+- Local and remote-agent traces preserve one verifiable causal graph, and aggregate operational
+  metrics can be reconstructed from its spans.
+- Missing causal spans, usage, or required action/evidence lineage make a run incomplete rather than
+  silently converting it into a low quality score.
+- Any long-horizon label is qualified by human-time evidence and audited dependency depth.
+
+## v0.10.0 - Evaluator validation, feedback flywheel, and red team
+
+**Status:** planned after v0.9.0 approval.
+
+Validate the benchmark itself before treating deterministic scores as reference labels and freeze a
+release candidate for the comparative study.
+
+### Deliverables
+
+- Blind multiple human raters to deterministic scores and oversample threshold, safety-critical,
+  high/low-scoring, and disagreement cases.
+- Report agreement separately for typed correctness, utility, evidence support, safety, recovery,
+  and failure taxonomy.
+- Treat deterministic-human disagreement as a possible grader defect first.
+- Evaluate optional pairwise LLM-as-a-judge and agent-as-a-judge diagnostics against the same
+  blinded human packets. Test order, identity, self-preference, verbosity, reference leakage, and
+  repeatability effects; model judges cannot override deterministic facts or safety events.
+- Extend the Lab and annotation workflow with context-rich review queues, inline trajectory failure
+  tags, adjudication status, and optional user or developer feedback ingestion.
+- Add a governed promotion pipeline that converts adjudicated, deduplicated, privacy-reviewed
+  failures into versioned regression cases while keeping public tasks, private holdouts, and product
+  regressions separate.
 - Invite an external contributor to build a deliberately degenerate high-scoring agent and publish
   the attack, result, and remediation.
-- Complete leakage, ambiguous-task, tool-boundary, and oracle-information audits.
-- Freeze a release-candidate dataset, scorer, analysis schema, and correction policy.
+- Complete leakage, ambiguous-task, tool-boundary, oracle-information, privacy, and security audits.
+- Freeze release-candidate datasets, worlds, scorers, analysis schemas, budgets, and correction
+  policy.
 
 ### Exit gate
 
 - No unresolved high-severity grader exploit remains.
-- Prespecified human-agreement thresholds pass for hard safety and typed correctness, and all
-  material disagreement strata are documented.
-- The red-team agent cannot reach leaderboard eligibility through keyword stuffing, unsupported
-  citations, fixed answers, or unsafe narrated intent.
+- Prespecified human-agreement thresholds pass for safety and typed correctness; material
+  disagreement strata are documented.
+- Model-judge agreement, consistency, bias probes, and failure strata are public; no subjective
+  judge is admitted as an authoritative label without human calibration.
+- Every promoted regression case has provenance, adjudication, privacy status, version, and a
+  leakage-safe dataset assignment.
+- The red-team agent cannot gain eligibility through unsupported citations, fixed answers, keyword
+  stuffing, hidden-state access, unsafe narrated intent, or budget abuse.
 - One independent reviewer reproduces the validity suite from a clean checkout.
 
-## v0.9.0 - Empirical benchmark beta
+## v0.11.0 - Publication-eligible empirical benchmark beta
 
-**Status:** blocked on v0.4.0-v0.8.0.
+**Status:** blocked on v0.6.0-v0.10.0.
 
-Run the first evidence-bearing comparative study. The exact grid is determined by the v0.5 power
-analysis rather than by preserving an arbitrary number of architectures.
+Run the first evidence-bearing comparative study. The exact grid is determined by the power analysis
+and frozen before execution.
 
 ### Deliverables
 
-- At least three current publishable model families under matched tool, token, time, and cost
-  budgets, with repeated trials sufficient for the prespecified precision target.
-- Complete eligible clean/perturbed coverage, frozen manifests, sanitized logs, paired effects,
-  family-cluster uncertainty, calibration, safety events, cost, latency, and metric-dependence
-  analysis.
-- Every result table reports independent family count, instances, samples, repetitions, MDE, and
-  applicable-metric denominators.
-- A provisional leaderboard that ranks only complete verified runs and keeps hard safety events
-  visible alongside any composite.
-- An empirical technical report and updated articles containing only results regenerated from the
-  verified analysis bundle.
+- Evaluate at least three current publishable model families under matched tool, token, time, and
+  cost budgets with repeated paired seeds.
+- Analyze all eligible prespecified runs; do not select each model’s best successful rollout as its
+  headline result.
+- Publish complete clean/perturbed coverage, immutable manifests, sanitized logs, paired effects,
+  family-cluster uncertainty, calibration, safety events, cost, latency, missingness, and metric
+  dependence.
+- State independent family count, instances, samples, repetitions, MDE, uncertainty, and applicable
+  denominators in every result table.
+- Publish a provisional leaderboard that admits only complete verified runs and keeps hard safety
+  events visible beside any composite.
 
 ### Exit gate
 
-- Construct-validity, power, world-discrimination, workflow, human-validation, red-team, leakage,
-  cost, and release audits all pass.
-- Confirmatory and exploratory results are labeled separately; effect sizes and uncertainty are
-  published even when no architecture separates from another.
-- The complete study is reproducible from its immutable manifest and content-addressed artifacts.
+- All construct-validity, power, world, discrimination, workflow, horizon, human-validation,
+  red-team, leakage, cost, and release audits pass.
+- Confirmatory and exploratory findings are separated; effect sizes and uncertainty are published
+  even when systems do not meaningfully differ.
+- The study regenerates from its immutable manifest and content-addressed artifacts.
 
 ## v1.0.0 - Stable public research release
 
-**Status:** blocked on v0.9.0 review.
+**Status:** blocked on v0.11.0 review.
 
 ### Deliverables and exit gate
 
-- Publish the benchmark, versioned datasets, validated scorer, reproducible container, empirical
-  report or preprint, presentation, and contributor materials.
-- Publish construct-validity evidence: adversarial grader fixtures, paraphrase/structured-claim
-  invariance, evidence-support checks, human agreement, red-team results, metric dependence, and
-  correction history.
-- Obtain an archival DOI, independent reproduction, security review, and upstream Inspect Evals
-  registration when eligibility is established.
-- Freeze semantic contracts for the v1 line. v1.x permits compatible maintenance and transparent
-  corrections; result-affecting redesigns require a new task version and may require v2.
+- Publish the benchmark, versioned datasets and worlds, validated scorer, reproducible container,
+  empirical report or preprint, presentation, and contributor materials.
+- Publish construct-validity evidence, adversarial fixtures, evidence-support tests, human agreement,
+  red-team results, calibration, metric dependence, and correction history.
+- Obtain an archival DOI, independent end-to-end reproduction, security review, and upstream Inspect
+  Evals registration when eligibility is established.
+- Freeze semantic contracts for the v1 line. Compatible maintenance and transparent corrections use
+  v1.x; result-affecting redesigns require a new task version and may require v2.
 
 ## After v1.0.0
 
-- **v1.x:** compatible maintenance, new externally contributed instances under frozen semantics,
+- **v1.x:** compatible maintenance, externally contributed instances under frozen semantics,
   updated model runs, and visible corrections.
-- **v2.0.0:** a second application domain and any cross-domain contract changes justified by the v1
-  evidence. Cross-domain scores will not be pooled unless metric comparability is demonstrated.
+- **v2.0.0:** additional stores, competition, labor, promotions, multi-agent operations, or a second
+  application domain. Cross-domain scores are not pooled unless comparability is demonstrated.
 
 ## Commit and review policy
 

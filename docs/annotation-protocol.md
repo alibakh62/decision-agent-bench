@@ -6,7 +6,7 @@ three sources: blinded human raters, an optional blinded LLM judge, and the benc
 deterministic labels.
 
 The study is also a validation of the deterministic grader, not an assumption that its labels are
-ground truth. It will run only against the post-v0.4 construct-valid contract. Historical labels
+ground truth. It will run only against the v0.6 or later construct-valid contract. Historical labels
 may be included as an explicitly separate diagnostic arm.
 
 ## Study sample
@@ -62,6 +62,16 @@ An LLM judge, if used, receives the exact same packet and rubric in a fresh cont
 provider, exact model ID, prompt hash, generation settings, date, and cost. Never let its labels
 replace human adjudication silently.
 
+For subjective comparisons between two agents or versions, prefer a blinded pairwise packet over an
+unanchored absolute score. Randomize anonymous labels, evaluate both A/B and B/A orderings, and
+record ties. A trace-focused agent judge may additionally inspect public plans, tool calls,
+arguments, results, errors, evidence, recovery, and handoffs. It must not infer or demand hidden
+chain of thought.
+
+Before admitting any model-judge result, test position, identity, self-preference, verbosity,
+reference leakage, and repeated-run consistency. Model judges remain diagnostic unless their
+prespecified agreement with blinded human adjudication passes the v0.10 gate.
+
 ## Analysis
 
 ```bash
@@ -74,9 +84,10 @@ decision-agent-bench agreement-report \
 The report computes Fleiss' kappa for dimensions with at least two human ratings per item. Fleiss'
 kappa requires the same rater count for every included item; the command rejects unequal eligible
 groups rather than silently changing estimands. It also reports majority-label agreement and
-confusion counts for deterministic versus human, LLM judge versus human, and LLM judge versus
-deterministic labels. Tied or missing majorities are excluded and counted implicitly through the
-reported `n`.
+confusion counts for deterministic versus human, model judge versus human, and model judge versus
+deterministic labels. Pairwise analysis additionally reports A/B/B/A consistency, win/loss/tie
+rates, and each prespecified bias probe. Tied or missing human majorities are excluded and counted
+explicitly through the reported denominator.
 
 Publish the sampling plan, packet hash, rater counts, agreement by dimension, adjudication policy,
 and all exclusions. Keep free-text notes and the private key private unless every rater consented to
