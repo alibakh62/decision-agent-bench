@@ -471,6 +471,17 @@ def _trace_from_sample(
                 result=values,
                 supports=tuple(SCORE_WEIGHTS),
             )
+    decision_indices = [
+        index for index, event in enumerate(trace) if event.get("event") == "Final decision"
+    ]
+    for index in decision_indices[:-1]:
+        trace[index].update(
+            {
+                "event": "Intermediate decision",
+                "outcome": "Reviewed",
+                "supports": [],
+            }
+        )
     return trace, tool_calls
 
 

@@ -290,6 +290,42 @@ def test_lab_trace_recognizes_direct_json_as_the_final_decision() -> None:
     assert trace[-1]["result"] == final_answer
 
 
+def test_lab_marks_superseded_structured_outputs_as_intermediate_decisions() -> None:
+    def model_event(conclusion: str, timestamp: str):
+        event_type = type("ModelEvent", (), {})
+        event = event_type()
+        event.timestamp = timestamp
+        event.model = "openai/gpt-5.6-luna"
+        answer = {
+            "conclusion": conclusion,
+            "confidence": 0.8,
+            "evidence_ids": [],
+            "selected_ids": [],
+            "numeric_values": {},
+            "escalate": False,
+            "data_quality_issues": [],
+        }
+        event.output = ModelOutput.from_content(event.model, json.dumps(answer))
+        return event
+
+    sample = SimpleNamespace(
+        id="DAB-WRK-001-i2-perturbed",
+        started_at="2026-08-10T22:00:00+00:00",
+        events=[
+            model_event("Analyst proposal.", "2026-08-10T22:00:01+00:00"),
+            model_event("Synthesized final decision.", "2026-08-10T22:00:02+00:00"),
+        ],
+    )
+
+    trace, _ = _trace_from_sample(sample, "openai/gpt-5.6-luna")
+
+    assert trace[-2]["event"] == "Intermediate decision"
+    assert trace[-2]["outcome"] == "Reviewed"
+    assert trace[-2]["supports"] == []
+    assert trace[-1]["event"] == "Final decision"
+    assert trace[-1]["outcome"] == "Submitted"
+
+
 def test_lab_does_not_present_a_missing_submission_as_a_zero_score() -> None:
     score = SimpleNamespace(
         value={
@@ -481,6 +517,44 @@ def test_lab_css_defines_readable_light_and_dark_theme_contracts() -> None:
     assert ":host-context(body.dark)" in _DEMO_CSS
     assert "--lab-text: #e8eef7" in _DEMO_CSS
     assert "--lab-muted: #94a3b8" in _DEMO_CSS
+    assert "--lab-selected-bg: #dbe7ff" in _DEMO_CSS
+    assert "--lab-selected-text: #0b1f4a" in _DEMO_CSS
+    assert "--lab-selected-bg: #183071" in _DEMO_CSS
+    assert "--lab-selected-text: #ffffff" in _DEMO_CSS
+    assert ".event-summary { color: var(--lab-muted)" in _DEMO_CSS
+    assert "color: var(--lab-active-text)" in _DEMO_CSS
+    assert "background: var(--lab-warning-bg)" in _DEMO_CSS
+    assert "color: var(--lab-score)" in _DEMO_CSS
+
+
+def test_lab_light_mode_text_pairs_meet_wcag_aa_contrast() -> None:
+    def relative_luminance(color: str) -> float:
+        channels = [int(color[index : index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [
+            channel / 12.92
+            if channel <= 0.04045
+            else ((channel + 0.055) / 1.055) ** 2.4
+            for channel in channels
+        ]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    def contrast(foreground: str, background: str) -> float:
+        lighter, darker = sorted(
+            (relative_luminance(foreground), relative_luminance(background)), reverse=True
+        )
+        return (lighter + 0.05) / (darker + 0.05)
+
+    text_pairs = {
+        "selected primary": ("#0b1f4a", "#dbe7ff"),
+        "selected secondary": ("#274575", "#dbe7ff"),
+        "active controls": ("#3730a3", "#f7f9fc"),
+        "muted copy": ("#526177", "#f7f9fc"),
+        "warning copy": ("#66450b", "#fff8e8"),
+        "composite score": ("#087f8c", "#ffffff"),
+    }
+
+    for role, (foreground, background) in text_pairs.items():
+        assert contrast(foreground, background) >= 4.5, role
 
 
 def test_lab_replays_agent_trace_and_real_historical_scorer() -> None:
@@ -525,7 +599,7 @@ def test_lab_score_explainer_matches_repository_composite_contract() -> None:
     assert "0.30" in score_html and "Task effectiveness" in score_html
     assert "Robustness:" in score_html
     assert "not separately weighted" in score_html
-    assert "construct-validity implementation gate" in score_html
+    assert "newer v0.6 construct-valid contract" in score_html
 
 
 def test_lab_dimension_cards_open_into_exact_scorer_breakdowns() -> None:

@@ -755,6 +755,16 @@ def _event_score_impact_html(
         )
         supports = list(dict.fromkeys([*supports, "recovery", "efficiency"]))
         verdict = "No evidence credit"
+    elif event_name == "Intermediate decision":
+        facts.append(_impact_fact("Scoring role", "Superseded submission"))
+        reasons.append(
+            (
+                "Multi-agent handoff",
+                "A later structured decision replaced this intermediate proposal. It remains in "
+                "the trace for auditability, but only the final submitted decision enters scoring.",
+            )
+        )
+        verdict = "Preserved, not scored"
     elif event_name == "Final decision":
         confidence = submission.get("confidence", "—") if isinstance(submission, dict) else "—"
         selected = submission.get("selected_ids", []) if isinstance(submission, dict) else []
@@ -943,9 +953,28 @@ def trace_workbench_html(run_payload: dict[str, Any] | None) -> str:
             </article>
             """
         )
-        selection_rules.append(
+        selected_row = (
             f"#{selector_id}:checked ~ .trace-layout .trace-event-row[data-event='{index}']"
-            "{background:#183071;border-color:#456cff;}"
+        )
+        selection_rules.append(
+            selected_row
+            + "{background:var(--lab-selected-bg)!important;"
+            "border-color:var(--lab-selected-border)!important;"
+            "color:var(--lab-selected-text)!important;}"
+            + selected_row
+            + " .timeline-cell,"
+            + selected_row
+            + " .actor-cell,"
+            + selected_row
+            + " .event-cell strong,"
+            + selected_row
+            + " .outcome-cell,"
+            + selected_row
+            + " .outcome-cell b{color:var(--lab-selected-text)!important;}"
+            + selected_row
+            + " .event-cell small,"
+            + selected_row
+            + " .evidence-cell{color:var(--lab-selected-muted)!important;}"
             f"#{selector_id}:checked ~ .trace-layout .trace-inspector-card[data-event='{index}']"
             "{display:flex;}"
         )
@@ -1372,10 +1401,10 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
         <h2>How DecisionAgentBench calculated this score</h2>
         <p>Every weight, substitution, gate, and evidence link is shown below.</p></div>
         <div class="overall-score"><span>Composite score</span><strong>{composite:.4f}</strong></div></div>
-      <div class="validity-warning"><strong>Historical scorer</strong><span>This is the real v0.2.1
-      lexical/evidence-gated contract. The repository's construct-validity implementation gate is
-      still open. This is a real run result, but it is not publication-valid evidence of general
-      model quality.</span></div>
+      <div class="validity-warning"><strong>Historical scorer</strong><span>This Lab run uses the
+      frozen v0.2.1 lexical/evidence-gated contract for reproducibility. The repository also ships
+      the newer v0.6 construct-valid contract, but this historical result is not publication-valid
+      evidence of general model quality.</span></div>
       <details class="score-section" open><summary>1 · Weighted composite equation</summary>
         <div class="equation"><code>raw = {formula}</code><code>= {substitutions}</code>
         <code>= {contribution_sum} = {raw_weighted:.4f}</code>
