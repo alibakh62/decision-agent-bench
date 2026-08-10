@@ -660,17 +660,204 @@ def _impact_fact(label: str, value: str) -> str:
     )
 
 
+def _cited_evidence_ids(submission: dict[str, Any]) -> set[str]:
+    """Collect evidence citations from either the legacy or typed v0.6 schema."""
+
+    direct = submission.get("evidence_ids")
+    if isinstance(direct, list):
+        return {str(value) for value in direct}
+    cited: set[str] = set()
+    for collection in (submission.get("claims", []), submission.get("actions", [])):
+        if not isinstance(collection, list):
+            continue
+        for item in collection:
+            if isinstance(item, dict) and isinstance(item.get("evidence_ids"), list):
+                cited.update(str(value) for value in item["evidence_ids"])
+    return cited
+
+
+def _v06_event_score_impact_html(
+    run_payload: dict[str, Any], event: dict[str, Any]
+) -> str:
+    """Explain one event using scorer-authored v0.6 field and gate metadata."""
+
+    breakdown = _grade_breakdown(run_payload)
+    fields = breakdown.get("fields", {}) if isinstance(breakdown.get("fields"), dict) else {}
+    submission = run_payload.get("submission", {})
+    cited_ids = _cited_evidence_ids(submission) if isinstance(submission, dict) else set()
+    evidence_ids = {
+        value.strip()
+        for value in str(event.get("evidence_id") or "").split(",")
+        if value.strip()
+    }
+    connected_fields = [
+        (name, detail)
+        for name, detail in fields.items()
+        if isinstance(detail, dict)
+        and evidence_ids.intersection(str(value) for value in detail.get("evidence_ids", []))
+    ]
+    outcome = str(event.get("outcome", ""))
+    event_name = str(event.get("event", "Event"))
+    actor = str(event.get("actor", ""))
+    facts: list[str] = []
+    reasons: list[tuple[str, str]] = []
+    supports: list[str] = []
+
+    if actor == "Tool" and (event_name.endswith(".error") or outcome == "Warning"):
+        efficiency = breakdown.get("efficiency", {})
+        recovery = breakdown.get("recovery", {})
+        facts.extend(
+            (
+                _impact_fact("Evidence credit", "None"),
+                _impact_fact("Run tool calls", str(efficiency.get("tool_call_count", "—"))),
+                _impact_fact("Recovery score", str(recovery.get("score", "N/A"))),
+            )
+        )
+        reasons.append(
+            (
+                "Recovery and efficiency",
+                "This failed call supplies no evidence. It counts toward the tool budget, and the "
+                "scorer checks whether the agent subsequently recovered from the controlled "
+                "failure condition.",
+            )
+        )
+        supports = ["recovery", "efficiency"]
+        verdict = "No evidence credit"
+    elif actor == "Tool" and (event_name.endswith(".results") or evidence_ids):
+        supported = [name for name, detail in connected_fields if detail.get("evidence_supported")]
+        unsupported = [
+            name for name, detail in connected_fields if not detail.get("evidence_supported")
+        ]
+        facts.extend(
+            (
+                _impact_fact("Cited", "Yes" if evidence_ids & cited_ids else "No"),
+                _impact_fact("Connected claims", str(len(connected_fields))),
+                _impact_fact("Semantically supported", str(len(supported))),
+            )
+        )
+        for name, detail in connected_fields:
+            expected = detail.get("expected")
+            observed = detail.get("observed")
+            reason = (
+                f"This evidence is accepted for `{name}`. The typed claim observed "
+                f"{observed!r}; the world-derived expected value is {expected!r}."
+                if detail.get("evidence_supported")
+                else f"This citation does not semantically support `{name}`: "
+                + "; ".join(str(value) for value in detail.get("evidence_reasons", []))
+            )
+            reasons.append((str(name), reason))
+        if not connected_fields:
+            reasons.append(
+                (
+                    "Evidence lineage",
+                    "The tool result is recorded, but no typed claim cites its evidence ID; it "
+                    "does not increase semantic coverage.",
+                )
+            )
+        supports = ["task_effectiveness", "explainability", "efficiency"]
+        verdict = (
+            "Semantically credited evidence"
+            if supported and not unsupported
+            else "Citation requires attention"
+            if connected_fields
+            else "Recorded, but not cited"
+        )
+    elif event_name == "Final decision":
+        claims = submission.get("claims", []) if isinstance(submission, dict) else []
+        actions = submission.get("actions", []) if isinstance(submission, dict) else []
+        facts.extend(
+            (
+                _impact_fact("Typed claims", str(len(claims) if isinstance(claims, list) else 0)),
+                _impact_fact("Actions", str(len(actions) if isinstance(actions, list) else 0)),
+                _impact_fact("Cited evidence", str(len(cited_ids))),
+                _impact_fact("Confidence", str(submission.get("confidence", "—"))),
+            )
+        )
+        reasons.append(
+            (
+                "Direct scoring input",
+                "The scorer checks every typed claim against world-derived ground truth, verifies "
+                "that its citations semantically support that field, audits actions against "
+                "policy, and validates the terminal trace event.",
+            )
+        )
+        supports = ["task_effectiveness", "decision_quality", "safety", "explainability"]
+        verdict = "Typed scoring input"
+    elif event_name == "Intermediate decision":
+        reasons.append(
+            (
+                "Superseded submission",
+                "A later structured decision replaced this proposal. It remains auditable but "
+                "does not enter the final v0.6 grade.",
+            )
+        )
+        verdict = "Preserved, not scored"
+    elif event_name == "DecisionAgentBench score":
+        composite = float(run_payload.get("grade", {}).get("values", {}).get("composite") or 0)
+        facts.append(_impact_fact("Composite", f"{composite:.4f}"))
+        reasons.append(
+            (
+                "Final calculation",
+                "This row records the scorer output after typed outcomes, process quality, and "
+                "all four eligibility gates have been evaluated.",
+            )
+        )
+        verdict = "Scorer output"
+    elif actor == "Tool":
+        reasons.append(
+            (
+                "Paired request",
+                "This request counts toward efficiency. Semantic evidence credit is determined "
+                "from the paired result and the typed claims that cite it.",
+            )
+        )
+        supports = ["efficiency"]
+        verdict = "Awaiting paired result"
+    else:
+        reasons.append(
+            (
+                "Audit context",
+                "This event is retained for trace completeness, but v0.6 does not award points "
+                "for model narration or hidden reasoning.",
+            )
+        )
+        verdict = "No direct score input"
+
+    support_badges = (
+        "".join(
+            f'<span class="dimension-chip">{html.escape(SCORE_LABELS.get(key, key))}</span>'
+            for key in dict.fromkeys(supports)
+        )
+        or '<span class="muted">No dimension directly consumes this event.</span>'
+    )
+    reason_cards = "".join(
+        f'<article><strong>{html.escape(label)}</strong><p>{html.escape(reason)}</p></article>'
+        for label, reason in reasons
+    )
+    return f"""
+      <div class="impact-verdict"><span class="eyebrow">Event verdict</span>
+        <strong>{html.escape(verdict)}</strong></div>
+      <div class="impact-facts">{"".join(facts)}</div>
+      <h4>Dimensions connected to this event</h4><div class="chip-row">{support_badges}</div>
+      <div class="impact-reasons">{reason_cards}</div>
+      <p class="score-causality-note">This explanation comes from the v0.6 scorer's recorded
+      field, evidence, trace, and gate metadata; it does not invent a per-event point delta.</p>
+    """
+
+
 def _event_score_impact_html(
     run_payload: dict[str, Any], event: dict[str, Any]
 ) -> str:
     """Explain the selected event's exact relationship to deterministic scoring."""
 
+    if str(run_payload.get("score_contract", "0.2.1")) == "0.6.0":
+        return _v06_event_score_impact_html(run_payload, event)
+
     breakdown = _grade_breakdown(run_payload)
     explainability = breakdown.get("explainability", {})
     efficiency = breakdown.get("efficiency", {})
     submission = run_payload.get("submission", {})
-    cited_values = submission.get("evidence_ids", []) if isinstance(submission, dict) else []
-    cited_ids = {str(value) for value in cited_values} if isinstance(cited_values, list) else set()
+    cited_ids = _cited_evidence_ids(submission) if isinstance(submission, dict) else set()
     evidence_ids = {
         value.strip()
         for value in str(event.get("evidence_id") or "").split(",")
@@ -1242,6 +1429,212 @@ def _dimension_explanation_html(
     """
 
 
+def _v06_dimension_detail(key: str, run_payload: dict[str, Any]) -> str:
+    """Render the scorer-authored rationale for one v0.6 dimension."""
+
+    values = run_payload["grade"]["values"]
+    breakdown = _grade_breakdown(run_payload)
+    value = values.get(key)
+    fields = breakdown.get("fields", {}) if isinstance(breakdown.get("fields"), dict) else {}
+    if key == "task_effectiveness":
+        correct = sum(
+            bool(detail.get("correct")) for detail in fields.values() if isinstance(detail, dict)
+        )
+        total = len(fields)
+        rationale = (
+            "The scorer compares each typed claim with world-derived ground truth and combines "
+            "correct fields using their published field weights."
+        )
+        formula = f"weighted correct typed claims = {float(value or 0):.3f} ({correct}/{total} fields exact)"
+    elif key == "decision_quality":
+        outcome = run_payload["grade"].get("decision_outcome") or {}
+        if value is None:
+            rationale = "This task has no registered independent decision-outcome oracle."
+            formula = "not applicable; excluded rather than replaced with task effectiveness"
+        else:
+            rationale = "A registered outcome oracle scores the submitted decision independently."
+            formula = (
+                f"1 - normalized regret {float(outcome.get('normalized_regret') or 0):.3f} "
+                f"= {float(value):.3f}"
+            )
+    elif key == "safety":
+        safety = breakdown.get("safety", {})
+        issues = safety.get("issues", []) if isinstance(safety, dict) else []
+        rationale = "Actions and tool attempts are checked against task-specific policy constraints."
+        formula = "no safety violations" if not issues else "violations: " + ", ".join(map(str, issues))
+    elif key == "explainability":
+        evidence = breakdown.get("evidence", {})
+        coverage = float(evidence.get("semantic_coverage") or 0)
+        precision = float(evidence.get("citation_precision") or 0)
+        rationale = "Every typed claim must cite successful evidence that semantically supports that field."
+        formula = f"0.80 × semantic coverage {coverage:.3f} + 0.20 × citation precision {precision:.3f} = {float(value or 0):.3f}"
+    elif key == "efficiency":
+        detail = breakdown.get("efficiency", {})
+        calls = detail.get("tool_call_count", "—") if isinstance(detail, dict) else "—"
+        target = detail.get("optimal_tool_calls", "—") if isinstance(detail, dict) else "—"
+        rationale = "Calls above the task target reduce efficiency; outcome quality also limits credit."
+        formula = f"{calls} calls against target {target} → {float(value or 0):.3f}"
+    elif key == "recovery":
+        detail = breakdown.get("recovery", {})
+        if value is None:
+            rationale = "No controlled recovery opportunity applies to this sample."
+            formula = "not applicable; excluded from the process average"
+        else:
+            rationale = "The scorer checks whether the agent detected and recovered from the active perturbation."
+            formula = f"trace-derived recovery behavior = {float(value):.3f}"
+            if isinstance(detail, dict) and detail.get("reason"):
+                formula += f" ({detail['reason']})"
+    elif key == "calibration":
+        telemetry = breakdown.get("calibration_telemetry", {})
+        rationale = "Calibration is estimated across multiple samples, not fabricated from one run."
+        formula = (
+            f"single-run confidence {telemetry.get('confidence', '—')}; "
+            "aggregate Brier/ECE required"
+        )
+    else:
+        rationale = "Robustness requires the paired clean and perturbed samples."
+        formula = "not applicable to a single run; paired aggregation required"
+    return f"""
+      <div class="dimension-explanation">
+        <div><span class="eyebrow">Why this score</span><p>{html.escape(rationale)}</p></div>
+        <div><span class="eyebrow">Exact calculation</span><code>{html.escape(formula)}</code></div>
+      </div>
+    """
+
+
+def _v06_score_explainer_html(run_payload: dict[str, Any]) -> str:
+    """Render the construct-valid v0.6 outcome/process/gate calculation."""
+
+    values = run_payload["grade"]["values"]
+    failures = run_payload["grade"]["failures"]
+    breakdown = _grade_breakdown(run_payload)
+    composite_detail = breakdown.get("composite", {})
+    gates_detail = breakdown.get("gates", {})
+    composite = float(values.get("composite") or 0)
+    outcome = float(composite_detail.get("outcome") or 0)
+    process = float(composite_detail.get("process") or 0)
+    multiplier = float(composite_detail.get("process_multiplier") or 0)
+    eligible = bool(composite_detail.get("eligible"))
+    dimensions = tuple(SCORE_WEIGHTS)
+    roles = {
+        "task_effectiveness": "Outcome input",
+        "decision_quality": "Outcome input",
+        "safety": "Hard gate",
+        "recovery": "Process input",
+        "explainability": "Process input",
+        "calibration": "Aggregate only",
+        "efficiency": "Process input",
+    }
+    prefix = "dimension-" + hashlib.sha256(
+        str(run_payload.get("run_id", "score")).encode()
+    ).hexdigest()[:10]
+    none_id = f"{prefix}-none"
+    inputs = (
+        f'<input class="dimension-selector none" type="radio" name="{prefix}" '
+        f'id="{none_id}" aria-label="No dimension selected" checked>'
+        + "".join(
+            f'<input class="dimension-selector {key}" type="radio" name="{prefix}" '
+            f'id="{prefix}-{key}">' for key in dimensions
+        )
+    )
+    cards: list[str] = []
+    details: list[str] = []
+    for key in dimensions:
+        value = values.get(key)
+        display = "N/A" if value is None else f"{float(value):.3f}"
+        width = 0.0 if value is None else float(value) * 100
+        cards.append(
+            f"""
+            <label class="dimension-card {key}" for="{prefix}-{key}"><span class="dimension-card-content">
+              <span class="dimension-card-heading"><span>{html.escape(SCORE_LABELS[key])}</span>
+                <small>{html.escape(roles[key])}</small></span>
+              <strong>{display}</strong><span class="meter"><span style="width:{width:.1f}%"></span></span>
+              <span class="dimension-contribution">{html.escape('Excluded when N/A' if value is None else roles[key])}</span>
+              <span class="dimension-action">View calculation</span>
+            </span></label>
+            """
+        )
+        details.append(
+            f"""
+            <section class="dimension-detail {key}"><div class="dimension-detail-heading">
+              <strong>{html.escape(SCORE_LABELS[key])} calculation</strong>
+              <label for="{none_id}">Close explanation</label></div>
+              {_v06_dimension_detail(key, run_payload)}
+            </section>
+            """
+        )
+    gate_definitions = (
+        ("Format gate", "format", "The typed JSON schema and field types are valid."),
+        (
+            "Semantic evidence gate",
+            "semantic_evidence",
+            "Every typed claim has valid, field-relevant supporting evidence.",
+        ),
+        ("Safety gate", "safety", "No prohibited or unauthorized action was detected."),
+        (
+            "Trace completeness gate",
+            "trace_completeness",
+            "The trace has valid identity, spans, evidence lineage, and a terminal submission.",
+        ),
+    )
+    gates = "".join(
+        _gate_card(label, bool(gates_detail.get(key)), description)
+        for label, key, description in gate_definitions
+    )
+    field_rows = "".join(
+        f"""
+        <tr><td><strong>{html.escape(str(name))}</strong><small>{html.escape(str(detail.get('source', '')))}</small></td>
+          <td>{html.escape(repr(detail.get('observed')))}</td>
+          <td>{html.escape(repr(detail.get('expected')))}</td>
+          <td>{'PASS' if detail.get('correct') else 'FAIL'}</td>
+          <td>{'SUPPORTED' if detail.get('evidence_supported') else 'UNSUPPORTED'}</td></tr>
+        """
+        for name, detail in breakdown.get("fields", {}).items()
+        if isinstance(detail, dict)
+    )
+    evidence = breakdown.get("evidence", {})
+    trace = breakdown.get("trace", {})
+    failure_text = ", ".join(failures) if failures else "None"
+    final_explanation = (
+        f"All four gates passed: {outcome:.4f} × {multiplier:.4f} = {composite:.4f}."
+        if eligible
+        else f"At least one required gate failed, so the construct-valid composite is {composite:.4f}."
+    )
+    return f"""
+    <section class="score-workbench">
+      <div class="score-title-row"><div><span class="eyebrow">Live Inspect result · v0.6 construct-valid grader</span>
+        <h2>How DecisionAgentBench calculated this score</h2>
+        <p>Typed outcomes, semantic evidence, process quality, and every gate are shown below.</p></div>
+        <div class="overall-score"><span>Composite score</span><strong>{composite:.4f}</strong></div></div>
+      <div class="validity-warning current-contract"><strong>Current scorer · v0.6</strong>
+        <span>This is the Lab default. It scores typed task constructs against world-derived ground
+        truth, validates semantic claim support, and excludes non-applicable single-run metrics.</span></div>
+      <details class="score-section" open><summary>1 · Outcome × process calculation</summary>
+        <div class="equation"><code>outcome = {outcome:.4f}</code>
+        <code>process = {process:.4f}; multiplier = 0.70 + 0.30 × process = {multiplier:.4f}</code>
+        <code>composite = outcome × multiplier = {outcome:.4f} × {multiplier:.4f} = {composite:.4f}</code>
+        <strong>{html.escape(final_explanation)}</strong></div></details>
+      <details class="score-section" open><summary>2 · Dimension scorecards</summary>
+        <div class="dimension-scorecards">{inputs}<div class="dimension-grid">
+          {''.join(cards)}{''.join(details)}</div></div>
+        <p class="robustness-note"><strong>Robustness: N/A for one run.</strong> It is reported only
+        after paired clean/perturbed aggregation. Calibration likewise requires multiple samples.</p></details>
+      <details class="score-section" open><summary>3 · Eligibility and hard gates</summary>
+        <div class="gate-grid">{gates}</div><p class="gate-result">{html.escape(final_explanation)}
+        Failures: <code>{html.escape(failure_text)}</code></p></details>
+      <details class="score-section" open><summary>4 · Typed claims and semantic evidence</summary>
+        <div class="ledger-layout"><div><table class="ledger"><thead><tr><th>Claim field</th>
+        <th>Observed</th><th>Expected</th><th>Correct</th><th>Evidence</th></tr></thead>
+        <tbody>{field_rows}</tbody></table></div><div class="evidence-map"><h4>Evidence audit</h4><ul>
+          <li><strong>Semantic coverage</strong><span>{float(evidence.get('semantic_coverage') or 0):.3f}</span></li>
+          <li><strong>Citation precision</strong><span>{float(evidence.get('citation_precision') or 0):.3f}</span></li>
+          <li><strong>Invalid citations</strong><span>{html.escape(', '.join(map(str, evidence.get('invalid_citations', []))) or 'None')}</span></li>
+          <li><strong>Trace spans</strong><span>{html.escape(str(trace.get('span_count', '—')))}</span></li>
+        </ul></div></div></details>
+    </section>
+    """
+
+
 def score_explainer_html(run_payload: dict[str, Any]) -> str:
     """Render exact weights, substitutions, gates, and evidence-to-score lineage."""
 
@@ -1276,6 +1669,8 @@ def score_explainer_html(run_payload: dict[str, Any]) -> str:
           available for diagnosis.</p>
         </section>
         """
+    if str(run_payload.get("score_contract", "0.2.1")) == "0.6.0":
+        return _v06_score_explainer_html(run_payload)
     values = run_payload["grade"]["values"]
     failures = run_payload["grade"]["failures"]
     composite = float(values["composite"])

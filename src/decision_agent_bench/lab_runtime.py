@@ -16,7 +16,10 @@ from typing import Any
 from inspect_ai import eval as inspect_eval
 from inspect_ai.solver import SolverSpec
 
-from decision_agent_bench.evals.task import decision_agent_bench_v0_2
+from decision_agent_bench.evals.task import (
+    decision_agent_bench_v0_2,
+    decision_agent_bench_v0_6,
+)
 from decision_agent_bench.lab import REPLAY_AGENTS_BY_KEY, SCORE_WEIGHTS
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -36,6 +39,8 @@ _SUBMISSION_FIELDS = {
     "escalate",
     "data_quality_issues",
 }
+_V06_SUBMISSION_FIELDS = {"summary", "confidence", "claims", "actions", "data_quality_issues"}
+SUPPORTED_LAB_CONTRACTS = {"0.6.0", "0.2.1"}
 
 
 @dataclass(frozen=True)
@@ -251,6 +256,41 @@ def _evidence_id(result: Any) -> str | None:
     return None
 
 
+def _is_submission(payload: Any) -> bool:
+    """Return whether a model payload matches either supported Lab contract."""
+
+    return isinstance(payload, dict) and (
+        _SUBMISSION_FIELDS <= payload.keys() or _V06_SUBMISSION_FIELDS <= payload.keys()
+    )
+
+
+def _submission_evidence_ids(submission: dict[str, Any]) -> list[str]:
+    """Collect cited evidence IDs from legacy or v0.6 structured submissions."""
+
+    direct = submission.get("evidence_ids")
+    if isinstance(direct, list):
+        return list(dict.fromkeys(str(value) for value in direct))
+    cited: list[str] = []
+    for collection in (submission.get("claims", []), submission.get("actions", [])):
+        if not isinstance(collection, list):
+            continue
+        for item in collection:
+            if not isinstance(item, dict) or not isinstance(item.get("evidence_ids"), list):
+                continue
+            cited.extend(str(value) for value in item["evidence_ids"])
+    return list(dict.fromkeys(cited))
+
+
+def _submission_summary(submission: dict[str, Any]) -> str:
+    """Return the human-readable decision summary for either contract."""
+
+    return str(
+        submission.get("summary")
+        or submission.get("conclusion")
+        or "Submitted structured decision."
+    )
+
+
 def _content_summary(content: Any) -> str:
     parts: list[str] = []
     values = content if isinstance(content, list) else [content]
@@ -327,16 +367,14 @@ def _trace_from_sample(
                 (getattr(message, "tool_calls", None) or []) if message is not None else []
             )
             submission = _parse_json(getattr(output, "completion", ""))
-            if isinstance(submission, dict) and _SUBMISSION_FIELDS <= submission.keys():
-                evidence_ids = submission.get("evidence_ids", [])
+            if _is_submission(submission):
+                evidence_ids = _submission_evidence_ids(submission)
                 _event(
                     trace,
                     timestamp=timestamp,
                     actor="Model",
                     event="Final decision",
-                    summary=str(submission.get("conclusion", "Submitted structured decision."))[
-                        :420
-                    ],
+                    summary=_submission_summary(submission)[:420],
                     evidence_id=(
                         ",".join(str(value) for value in evidence_ids)
                         if isinstance(evidence_ids, list)
@@ -380,7 +418,7 @@ def _trace_from_sample(
                 answer = arguments.get("answer") if isinstance(arguments, dict) else None
                 submission = _parse_json(answer)
                 evidence_ids = (
-                    submission.get("evidence_ids", []) if isinstance(submission, dict) else []
+                    _submission_evidence_ids(submission) if _is_submission(submission) else []
                 )
                 _event(
                     trace,
@@ -388,8 +426,8 @@ def _trace_from_sample(
                     actor="Model",
                     event="Final decision",
                     summary=(
-                        str(submission.get("conclusion", "Submitted structured decision."))[:420]
-                        if isinstance(submission, dict)
+                        _submission_summary(submission)[:420]
+                        if _is_submission(submission)
                         else "Submitted structured decision."
                     ),
                     evidence_id=",".join(str(value) for value in evidence_ids) or None,
@@ -519,6 +557,7 @@ def payload_from_eval_log(
     system_name: str,
     instance: dict[str, Any],
     variant: str,
+    contract_version: str | None = None,
 ) -> dict[str, Any]:
     """Convert one completed Inspect log into the Lab's transparent presentation schema."""
 
@@ -554,9 +593,21 @@ def payload_from_eval_log(
             "robustness": 0.0,
             "composite": 0.0,
         }
-    raw_weighted = round(
-        sum(float(weight) * float(values.get(key, 0)) for key, weight in SCORE_WEIGHTS.items()),
-        6,
+    detected_contract = str(
+        contract_version
+        or (score_breakdown.get("contract_version") if isinstance(score_breakdown, dict) else "")
+        or getattr(log.eval, "task_version", "0.2.1")
+    )
+    raw_weighted = (
+        round(
+            sum(
+                float(weight) * float(values.get(key) or 0)
+                for key, weight in SCORE_WEIGHTS.items()
+            ),
+            6,
+        )
+        if detected_contract == "0.2.1"
+        else float(values.get("composite") or 0)
     )
     status = str(getattr(log, "status", "error"))
     error = getattr(sample, "error", None) or getattr(log, "error", None)
@@ -607,6 +658,7 @@ def payload_from_eval_log(
         "scenario_seed": int(instance["scenario_seed"]),
         "perturbation": str(instance["perturbation"]) if variant == "perturbed" else None,
         "task_version": str(getattr(log.eval, "task_version", instance["benchmark_version"])),
+        "score_contract": detected_contract,
         "started_at": str(getattr(sample, "started_at", "")),
         "completed_at": str(getattr(sample, "completed_at", "")),
         "duration_seconds": float(getattr(sample, "total_time", 0) or 0),
@@ -629,8 +681,16 @@ def payload_from_eval_log(
                 else None
             ),
         },
-        "evidence_eligible": bool(submission) and "F-EVID" not in failures and grade_available,
-        "format_eligible": "F-FORMAT" not in failures and grade_available,
+        "evidence_eligible": (
+            bool(score_breakdown.get("gates", {}).get("semantic_evidence"))
+            if detected_contract == "0.6.0" and isinstance(score_breakdown, dict)
+            else bool(submission) and "F-EVID" not in failures and grade_available
+        ),
+        "format_eligible": (
+            bool(score_breakdown.get("gates", {}).get("format"))
+            if detected_contract == "0.6.0" and isinstance(score_breakdown, dict)
+            else "F-FORMAT" not in failures and grade_available
+        ),
         "raw_weighted_score": raw_weighted,
         "runtime_notice": (
             "Live Inspect evaluation. The selected model and solver produced this trace."
@@ -649,10 +709,13 @@ def run_live_evaluation(
     model_name: str,
     instance: dict[str, Any],
     variant: str,
+    contract_version: str = "0.6.0",
 ) -> dict[str, Any]:
     """Execute one real Inspect sample and return its trace and deterministic score payload."""
 
     model = safe_model_name(model_name)
+    if contract_version not in SUPPORTED_LAB_CONTRACTS:
+        raise ValueError("Lab contract must be '0.6.0' or '0.2.1'")
     if agent_source not in {"Built-in baseline", "Custom Inspect solver"}:
         raise ValueError("unknown agent source")
     if baseline not in REPLAY_AGENTS_BY_KEY:
@@ -665,7 +728,10 @@ def run_live_evaluation(
     if re.search(r"-i[1-4]$", instance_id) is None:
         raise ValueError("selected instance does not have a supported seed index")
     sample_id = str(instance[f"{variant}_sample_id"])
-    task = decision_agent_bench_v0_2(
+    task_builder = (
+        decision_agent_bench_v0_6 if contract_version == "0.6.0" else decision_agent_bench_v0_2
+    )
+    task = task_builder(
         category=str(instance["category"]),
         variant=variant,
         baseline=baseline,
@@ -693,4 +759,5 @@ def run_live_evaluation(
         system_name=system,
         instance=instance,
         variant=variant,
+        contract_version=contract_version,
     )

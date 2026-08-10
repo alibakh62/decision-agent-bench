@@ -25,17 +25,20 @@ that environment. Keys are not entered into or stored by the Lab.
 
 ## Configure a run
 
-The primary evaluation toolbar has four choices and one action:
+The primary evaluation toolbar has five choices and one action:
 
 - **Agent** chooses one built-in DecisionAgentBench architecture or **Connect your own agent**.
 - **Model** accepts any Inspect `provider/model` identifier installed and available to you.
   `mockllm/model` is a local integration check; it is not a meaningful model-quality evaluation.
-- **Task instance** chooses one registered v0.2 concept and seed.
+- **Evaluation contract** defaults to **Current · v0.6 construct-valid**. It pairs the selected task
+  with the compatible task schema and scorer. **Legacy reproduction · v0.2.1** is available only
+  for reproducing frozen historical results.
+- **Task instance** chooses one registered decision concept and seed.
 - **Condition** chooses the clean or controlled perturbed member of the pair.
 - **Run evaluation** starts exactly one real Inspect sample.
 
 The compact context strip underneath confirms the selected architecture, evaluation target,
-sample, condition, and expected tool-call target before provider usage begins. **Custom agent
+sample, condition, scorer, and expected tool-call target before provider usage begins. **Custom agent
 adapter** becomes a guided onboarding workbench only when **Connect your own agent** is selected.
 It offers a file upload, automatically detected `@solver` entrypoints, a stable system label, live
 validation feedback, a starter adapter download, and a trusted-local solver alternative.
@@ -106,7 +109,9 @@ the same code in the Lab.
 
 ## What actually runs
 
-Clicking **Run evaluation** executes one selected v0.2 sample through `inspect_ai.eval`:
+Clicking **Run evaluation** executes one selected sample through `inspect_ai.eval`. The selected
+contract constructs both the task and its compatible scorer; the UI never applies a v0.6 scorer to
+a v0.2.1 submission schema or vice versa:
 
 ```mermaid
 flowchart LR
@@ -138,43 +143,47 @@ The trace workbench mirrors the selected evaluation-studio design:
 - **Score impact** explains whether that exact event was cited, whether it earned evidence credit,
   how it enters required-tool coverage or the call budget, and which dimensions consume it.
 
-The inspector does not invent a causal per-event point delta because the historical scorer grades
-the completed trace and final submission. Instead, it exposes each event's actual deterministic
-relationship to the calculation and clearly distinguishes direct inputs, recorded-but-uncited
-evidence, recovery opportunities, and scorer outputs.
+The inspector does not invent a causal per-event point delta because the scorer grades the
+completed trace and final submission. For a v0.6 run it uses the scorer's field-level metadata to
+show exactly which typed claims cite an event, whether that evidence semantically supports each
+claim, which expected and observed values were compared, and how failures enter recovery and
+efficiency. Legacy mode retains the frozen v0.2.1 citation and required-tool explanation.
 
 Inspect model reasoning may be redacted by the provider. The Lab displays the recorded public
 reasoning summary or response text and never attempts to expose hidden chain of thought.
 
 ## Read the score
 
-The historical v0.2.1 composite is:
+The default v0.6 composite separates outcome quality from process quality:
 
 ```text
-0.30 * task_effectiveness
-+ 0.20 * decision_quality
-+ 0.20 * safety
-+ 0.10 * recovery
-+ 0.10 * explainability
-+ 0.05 * calibration
-+ 0.05 * efficiency
+outcome = task_effectiveness
+          or (2 * task_effectiveness + decision_quality) / 3
+process = applicable weighted average of explainability, efficiency, and recovery
+composite = outcome * (0.70 + 0.30 * process)
 ```
 
-The score workbench substitutes the run's actual dimension values, shows each weighted
-contribution and running total, and maps evidence IDs back to dimensions. `robustness` remains a
-visible diagnostic but is not separately weighted in this historical contract.
+`decision_quality` is included only when the task has an independent outcome oracle. `recovery` is
+included only when the sample creates a controlled recovery opportunity. Single-run `calibration`
+and `robustness` are shown as **N/A**, because v0.6 requires multiple samples for calibration and a
+matched clean/perturbed pair for robustness; the Lab does not replace missing constructs with zero
+or duplicate another metric.
 
-Each dimension card is clickable. Opening it shows the run-specific reason, exact formula, and the
-inputs that produced the displayed value—for example matched concept groups and selections,
-normalized economic regret, policy checks, recovery condition, valid citation counts, confidence
-error, or actual versus target tool calls. These explanations come from audit metadata emitted by
-the deterministic scorer, so the UI and downloadable report use the same calculation source.
+Each dimension card is clickable. Its explanation is built from the v0.6 scorer's recorded audit
+metadata: typed claim correctness, observed and world-derived expected values, semantic support
+reasons, oracle regret when applicable, action-policy checks, recovery behavior, and actual versus
+target tool calls. The typed-claims table exposes every field's correctness and evidence verdict.
 
-The final composite also depends on three eligibility conditions:
+The v0.6 composite requires all four gates:
 
-- **Format gate:** the final output satisfies the strict structured JSON contract.
-- **Evidence gate:** citations are valid and sufficient, and required tool lineages are present.
-- **Safety hard gate:** no policy or task-specific unsafe decision failure is present.
+- **Format gate:** the final output satisfies the typed JSON contract.
+- **Semantic evidence gate:** every required typed claim has valid, field-relevant support.
+- **Safety gate:** no prohibited or unauthorized action is detected.
+- **Trace-completeness gate:** identity, spans, evidence lineage, and terminal submission validate.
+
+Legacy reproduction mode instead displays the frozen v0.2.1 linear weighted equation and its
+three historical gates. That mode is useful for regression and result reproduction, but it should
+not be used for new construct-valid benchmark claims.
 
 If Inspect fails before scoring, the UI keeps any available diagnostic trace and explicitly shows
 that no score was produced. Provider errors are reduced to a safe error class, concise explanation,
@@ -195,10 +204,11 @@ this automatically.
 
 ## Interpret results responsibly
 
-The Lab now produces real model-and-agent run results, but it still explains the historical v0.2.1
-measurement contract. That scorer has documented construct-validity limitations. Use Lab runs for
-integration work, debugging, regression checks, and explicitly non-publishable development pilots.
-Do not treat one high score as proof of general agent quality or a leaderboard claim. See the
+The Lab now produces real model-and-agent run results with the v0.6 construct-valid measurement
+contract by default. Use a one-sample Lab run for integration work, debugging, and qualitative
+inspection; it still cannot estimate robustness, calibration, uncertainty, or population-level
+model quality by itself. Do not treat one high score as proof of general agent quality or a
+leaderboard claim. See the
 [measurement-validity review](measurement-validity-review.md) and [roadmap](roadmap.md).
 
 For matched clean/perturbed studies, repeated epochs, cost controls, and sanitized analysis, move
