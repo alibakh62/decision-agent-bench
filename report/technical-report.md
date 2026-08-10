@@ -1,7 +1,7 @@
 # DecisionAgentBench: Process-Aware Evaluation of Evidence-Grounded Business Decision Agents
 
-**Status:** v0.7.0 closed-loop retail-world release candidate, 5 August 2026
-**Benchmark software:** `0.7.0` (v0.7 world, v0.6 scoring, frozen v0.1-v0.3 contracts)
+**Status:** v0.7.1 closed-loop retail-world release candidate, 10 August 2026
+**Benchmark software:** `0.7.1` (v0.7 world, v0.6 scoring, frozen v0.1-v0.3 contracts)
 **Task protocols:** `0.1`/`0.2` historical suites; `0.3` stateful preview; `0.6` typed development suite
 
 > **Measurement hold:** an independent audit reproduced lexical grader gaming, paraphrase

@@ -4,6 +4,22 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-10
+
+### Fixed
+
+- Raise light-mode contrast across selected trace rows, inspector summaries and tabs, status
+  labels, scoring equations, dimension links, warning banners, and composite-score text.
+- Preserve readable selected-row foreground colors in both themes, including secondary trace text
+  and outcome labels.
+
+### Changed
+
+- Label superseded structured outputs from multi-agent handoffs as intermediate decisions so the
+  trace distinguishes proposals from the final decision that enters scoring.
+- Clarify that the Lab replays the frozen v0.2.1 scorer while the repository also ships the v0.6
+  construct-valid contract.
+
 ## [0.7.0] - 2026-08-05
 
 ### Added

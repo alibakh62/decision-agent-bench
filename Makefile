@@ -1,4 +1,4 @@
-IMAGE ?= decision-agent-bench:0.7.0
+IMAGE ?= decision-agent-bench:0.7.1
 
 .PHONY: check test validate verify-reference audit audit-inspect demo docker-build docker-verify docker-audit
 
