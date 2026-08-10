@@ -147,11 +147,53 @@ def test_live_lab_runs_one_real_inspect_sample(tmp_path, monkeypatch) -> None:
     assert payload["status"] == "incomplete"
     assert payload["model"] == "mockllm/model"
     assert payload["sample_id"] == "DAB-ASS-001-i1-clean"
+    assert payload["task_version"] == "0.6.0"
+    assert payload["score_contract"] == "0.6.0"
     assert payload["grade"]["available"] is False
     assert payload["grade"]["availability_reason"]
     assert payload["trace"][-1]["event"] == "Submission incomplete"
     assert payload["trace"][0]["event"] == "Run started"
     assert payload["log_path"].endswith(".eval")
+
+
+def test_live_lab_legacy_mode_selects_only_the_frozen_v021_task(monkeypatch) -> None:
+    from decision_agent_bench.demo import _CATALOG
+
+    selected: list[str] = []
+    sentinel = object()
+
+    def legacy_task(**_kwargs: object) -> object:
+        selected.append("0.2.1")
+        return sentinel
+
+    def current_task(**_kwargs: object) -> object:
+        selected.append("0.6.0")
+        return object()
+
+    monkeypatch.setattr("decision_agent_bench.lab_runtime.decision_agent_bench_v0_2", legacy_task)
+    monkeypatch.setattr("decision_agent_bench.lab_runtime.decision_agent_bench_v0_6", current_task)
+    monkeypatch.setattr(
+        "decision_agent_bench.lab_runtime.inspect_eval",
+        lambda task, **_kwargs: [SimpleNamespace(task=task)],
+    )
+    monkeypatch.setattr(
+        "decision_agent_bench.lab_runtime.payload_from_eval_log",
+        lambda _log, **kwargs: {"score_contract": kwargs["contract_version"]},
+    )
+
+    payload = run_live_evaluation(
+        agent_source="Built-in baseline",
+        baseline="single_agent",
+        solver_reference="examples/custom_solver.py@custom_agent",
+        system_name="legacy-test",
+        model_name="mockllm/model",
+        instance=_CATALOG["DAB-ASS-001-i1"],
+        variant="clean",
+        contract_version="0.2.1",
+    )
+
+    assert selected == ["0.2.1"]
+    assert payload["score_contract"] == "0.2.1"
 
 
 def test_builtin_agents_do_not_force_provider_specific_sampling_parameters() -> None:
@@ -614,6 +656,61 @@ def test_lab_dimension_cards_open_into_exact_scorer_breakdowns() -> None:
     assert "precision" in score_html and "tool coverage" in score_html
     assert "call efficiency" in score_html
     assert run["grade"]["breakdown"]["efficiency"]["tool_call_count"] == len(run["tool_calls"])
+
+
+def test_lab_renders_construct_valid_v06_formula_and_applicability() -> None:
+    payload = {
+        "run_id": "RUN-V06",
+        "score_contract": "0.6.0",
+        "format_eligible": True,
+        "evidence_eligible": True,
+        "trace": [],
+        "submission": {"summary": "Typed result", "confidence": 0.9, "claims": [], "actions": []},
+        "grade": {
+            "available": True,
+            "failures": [],
+            "values": {
+                "task_effectiveness": 1.0,
+                "decision_quality": None,
+                "safety": 1.0,
+                "robustness": None,
+                "calibration": None,
+                "efficiency": 0.8,
+                "recovery": None,
+                "explainability": 1.0,
+                "composite": 0.97,
+            },
+            "decision_outcome": {"applicable": False},
+            "breakdown": {
+                "contract_version": "0.6.0",
+                "fields": {},
+                "evidence": {"semantic_coverage": 1.0, "citation_precision": 1.0},
+                "efficiency": {"tool_call_count": 4, "optimal_tool_calls": 4},
+                "trace": {"span_count": 5},
+                "gates": {
+                    "format": True,
+                    "semantic_evidence": True,
+                    "safety": True,
+                    "trace_completeness": True,
+                },
+                "composite": {
+                    "outcome": 1.0,
+                    "process": 0.9,
+                    "process_multiplier": 0.97,
+                    "eligible": True,
+                },
+                "calibration_telemetry": {"confidence": 0.9},
+            },
+        },
+    }
+
+    rendered = score_explainer_html(payload)
+
+    assert "Current scorer · v0.6" in rendered
+    assert "Outcome \N{MULTIPLICATION SIGN} process calculation" in rendered
+    assert "Trace completeness gate" in rendered
+    assert "N/A" in rendered
+    assert "Historical scorer" not in rendered
 
 
 def test_lab_evaluation_target_wraps_the_full_prompt() -> None:

@@ -4,6 +4,26 @@ All notable result-affecting changes to DecisionAgentBench will be documented he
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-08-10
+
+### Changed
+
+- Make the v0.6 construct-valid task/scorer bundle the Lab default while retaining frozen v0.2.1
+  only as an explicitly labeled legacy reproduction mode.
+- Replace the historical weighted-score reconstruction for current runs with the v0.6
+  outcome-times-process formula, nullable applicability, semantic evidence audit, and four gates.
+
+### Added
+
+- Add an evaluation-contract control that always pairs a compatible versioned task and scorer.
+- Explain v0.6 trace events using their actual typed-claim citations, semantic-support findings,
+  action and trace metadata, rather than legacy citation-count assumptions.
+
+### Fixed
+
+- Recognize and present v0.6 typed submissions in the Lab trace, including claim- and action-level
+  evidence IDs and the structured decision summary.
+
 ## [0.7.1] - 2026-08-10
 
 ### Fixed

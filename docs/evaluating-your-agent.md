@@ -92,9 +92,15 @@ In the Lab:
    registered solver already under `agents/` or `examples/`;
 3. confirm the detected `@solver` entrypoint and give the system a stable **System name**;
 4. select or type the Inspect **Model** identifier;
-5. choose a task instance and condition, then run the evaluation; and
-6. inspect the populated trace, evidence payloads, final decision, score equation, gates, report,
+5. keep **Evaluation contract** on **Current · v0.6 construct-valid** for normal development
+   evaluation; select **Legacy reproduction · v0.2.1** only when reproducing an older result;
+6. choose a task instance and condition, then run the evaluation; and
+7. inspect the populated trace, evidence payloads, final decision, score equation, gates, report,
    and original Inspect log.
+
+The Lab always pairs the selected contract with its matching task and scorer. It does not feed a
+v0.6 submission to the historical scorer—or vice versa—so changing the contract is an explicit
+reproduction choice rather than a cosmetic display option.
 
 The guided upload accepts one UTF-8 `.py` file up to 256 KB. Before a run, the Lab copies it into a
 process-local temporary directory, parses its syntax, and detects top-level `@solver` functions

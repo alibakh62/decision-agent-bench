@@ -12,7 +12,7 @@ tool failures, calibrated, efficient, and grounded in an auditable evidence trac
 
 The first domain is a fully synthetic convenience-retail company. No proprietary company data, policies, or systems are used.
 
-> **Project status:** v0.7.1 closed-loop retail-world release candidate. The executable v0.1 benchmark, v0.2
+> **Project status:** v0.7.2 closed-loop retail-world release candidate. The executable v0.1 benchmark, v0.2
 > research expansion, v0.3 dependency-enforced workflow preview, six architectures, two ablations,
 > reproducible experiment and analysis
 > pipeline, blinded agreement tooling, interactive lab, report draft, and public governance are
@@ -243,10 +243,11 @@ Launch the local evaluation lab:
 decision-agent-bench demo --host 127.0.0.1 --port 7860
 ```
 
-Choose a model, a built-in architecture or connect your own Inspect solver, any registered v0.2 task
-instance, and its clean or perturbed condition. The Lab runs one real Inspect evaluation, visibly
-populates the recorded model/tool trace, and reconstructs the historical score through its exact
-weights, dimension contributions, eligibility gates, and evidence mapping. Downloadable Lab and
+Choose a model, a built-in architecture or connect your own Inspect solver, any registered task
+instance, and its clean or perturbed condition. The Lab pairs the task with the current v0.6
+construct-valid scorer by default, runs one real Inspect evaluation, visibly populates the recorded
+model/tool trace, and explains typed outcomes, semantic evidence, process quality, applicability,
+and all four gates. Frozen v0.2.1 scoring remains an explicit legacy reproduction option. Downloadable Lab and
 Inspect logs preserve the run. Provider credentials are inherited from the launching shell; the
 server stays loopback-only and sharing is disabled. The custom-agent workbench accepts a reviewed
 single-file Python adapter, detects its registered solver entrypoints without importing it, and
@@ -257,8 +258,8 @@ downloads for the complete in-process and remote LangGraph examples.
 For a dependency-locked reproduction check:
 
 ```bash
-docker build --tag decision-agent-bench:0.7.1 .
-docker run --rm decision-agent-bench:0.7.1
+docker build --tag decision-agent-bench:0.7.2 .
+docker run --rm decision-agent-bench:0.7.2
 ```
 
 Plan a matched-budget experiment without contacting a model provider:

@@ -604,7 +604,7 @@ html, body, gradio-app, .gradio-container {
 .run-context-bar > div:first-child small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .run-context-task small { color: #b5c3d5; line-height: 1.55; margin-top: 5px; overflow: visible; white-space: normal; }
 .run-context-task { border-left: 1px solid #263950; padding-left: 20px; }
-.run-context-bar dl { display: grid; grid-template-columns: .8fr 1.25fr .75fr; margin: 0; }
+.run-context-bar dl { display: grid; grid-template-columns: .75fr 1.15fr 1.15fr .75fr; margin: 0; }
 .run-context-bar dl div { border-left: 1px solid #263950; min-width: 0; padding-left: 13px; }
 .run-context-bar dt { color: #8193aa; font-size: 10px; text-transform: uppercase; }
 .run-context-bar dd { color: #dbe5f2; font-size: 12px; font-weight: 650; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -976,6 +976,14 @@ def _safe_variant(variant: str) -> str:
     raise ValueError(f"unknown evaluation condition: {variant!r}")
 
 
+def _safe_contract(contract_version: str) -> str:
+    """Validate the task/scorer bundle selected in the Lab."""
+
+    if contract_version in {"0.6.0", "0.2.1"}:
+        return contract_version
+    raise ValueError(f"unknown evaluation contract: {contract_version!r}")
+
+
 def _safe_agent_key(agent_key: str) -> str:
     """Convert an untrusted UI value to an allow-listed replay profile key."""
 
@@ -1008,11 +1016,14 @@ def _run_world_path(instance_id: str, variant: str) -> Path:
     return database_path
 
 
-def task_context_html(instance_id: str, variant: str) -> str:
+def task_context_html(
+    instance_id: str, variant: str, contract_version: str = "0.6.0"
+) -> str:
     """Render public task context without exposing hidden grading targets or oracle fields."""
 
     item = _catalog_item(instance_id)
     selected_variant = _safe_variant(variant)
+    selected_contract = _safe_contract(contract_version)
     sample_id = item[f"{selected_variant}_sample_id"]
     perturbation = (
         "Clean paired sample; no controlled perturbation is applied."
@@ -1031,8 +1042,8 @@ def task_context_html(instance_id: str, variant: str) -> str:
         <span>Optimal tool calls {item["optimal_tool_calls"]}</span>
         <span>Evidence dependency depth {item["enforced_dependency_depth"]}</span>
       </div>
-      <p class="historical-note">{escape(perturbation)} The v0.2 catalog is a historical
-      evidence-gated contract; it does not establish long-horizon capability.</p>
+      <p class="historical-note">{escape(perturbation)}
+      {"The current v0.6 construct-valid task and scorer are paired automatically. Typed claims, semantic evidence, safety, and trace completeness are evaluated." if selected_contract == "0.6.0" else "Legacy reproduction mode uses the frozen v0.2.1 lexical/evidence-gated task and scorer. It is retained for historical reproducibility, not current benchmark claims."}</p>
     </section>
     """
 
@@ -1278,11 +1289,13 @@ def build_demo() -> Any:
         entrypoint: str,
         local_solver_reference: str,
         system_name: str,
+        contract_version: str,
         instance_id: str,
         variant: str,
     ) -> str:
         item = _catalog_item(instance_id)
         selected_variant = _safe_variant(variant)
+        selected_contract = _safe_contract(contract_version)
         if agent_key == "custom":
             agent_label = system_name or "Unnamed custom system"
             if custom_method == "upload":
@@ -1311,6 +1324,7 @@ def build_demo() -> Any:
           <small class="target-prompt">{escape(str(item["prompt"]))}</small></div>
           <dl><div><dt>Sample</dt><dd>{escape(str(sample_id))}</dd></div>
           <div><dt>Condition</dt><dd>{escape(condition)}</dd></div>
+          <div><dt>Scorer</dt><dd>{'v0.6 construct-valid' if selected_contract == '0.6.0' else 'v0.2.1 legacy'}</dd></div>
           <div><dt>Tool target</dt><dd>{item["optimal_tool_calls"]} calls</dd></div></dl>
         </section>
         """
@@ -1323,11 +1337,13 @@ def build_demo() -> Any:
         local_solver_reference: str,
         system_name: str,
         model_name: str,
+        contract_version: str,
         instance_id: str,
         variant: str,
     ) -> Any:
         source, baseline = runtime_selection(agent_key)
-        context = task_context_html(instance_id, variant)
+        selected_contract = _safe_contract(contract_version)
+        context = task_context_html(instance_id, variant, selected_contract)
         try:
             solver_reference = (
                 resolve_custom_solver_reference(
@@ -1389,6 +1405,7 @@ def build_demo() -> Any:
                 model_name=model_name,
                 instance=item,
                 variant=selected_variant,
+                contract_version=selected_contract,
             )
         except Exception as error:
             failure_payload = {"grade": {"available": False}, "error": str(error)}
@@ -1471,6 +1488,16 @@ def build_demo() -> Any:
                         allow_custom_value=True,
                         label="Model",
                     )
+                with gr.Column(scale=3, min_width=210):
+                    selected_contract = gr.Dropdown(
+                        choices=[
+                            ("Current · v0.6 construct-valid", "0.6.0"),
+                            ("Legacy reproduction · v0.2.1", "0.2.1"),
+                        ],
+                        value="0.6.0",
+                        label="Evaluation contract",
+                        info="The task and compatible scorer are paired automatically.",
+                    )
                 with gr.Column(scale=4, min_width=280):
                     selected_task = gr.Dropdown(
                         choices=task_choices,
@@ -1497,6 +1524,7 @@ def build_demo() -> Any:
                 "",
                 "examples/custom_solver.py@custom_agent",
                 "decision-agent-bench-lab",
+                "0.6.0",
                 default_instance,
                 "clean",
             )
@@ -1606,7 +1634,9 @@ def build_demo() -> Any:
                         elem_classes="agent-guide-link",
                     )
 
-        selected_task_context = gr.HTML(task_context_html(default_instance, "clean"), visible=False)
+        selected_task_context = gr.HTML(
+            task_context_html(default_instance, "clean", "0.6.0"), visible=False
+        )
 
         status = gr.HTML(idle_status_html())
         trace_surface = gr.HTML(trace_workbench_html(None))
@@ -1640,6 +1670,7 @@ def build_demo() -> Any:
             entrypoint: str,
             local_reference: str,
             selected_system_name: str,
+            contract_version: str,
             instance_id: str,
             variant: str,
         ) -> tuple[Any, Any, Any, str, Any, str]:
@@ -1708,6 +1739,7 @@ def build_demo() -> Any:
                     entrypoint,
                     local_reference,
                     selected_system_name,
+                    contract_version,
                     instance_id,
                     variant,
                 ),
@@ -1719,6 +1751,7 @@ def build_demo() -> Any:
             method: str,
             selected_system_name: str,
             local_reference: str,
+            contract_version: str,
             instance_id: str,
             variant: str,
         ) -> tuple[str, str, Any, str, Any, str]:
@@ -1742,6 +1775,7 @@ def build_demo() -> Any:
                         "",
                         local_reference,
                         selected_system_name,
+                        contract_version,
                         instance_id,
                         variant,
                     ),
@@ -1775,6 +1809,7 @@ def build_demo() -> Any:
                     selected_entrypoint,
                     local_reference,
                     selected_system_name,
+                    contract_version,
                     instance_id,
                     variant,
                 ),
@@ -1788,6 +1823,7 @@ def build_demo() -> Any:
             solver_entrypoint,
             local_solver,
             system_name,
+            selected_contract,
             selected_task,
             selected_variant,
         ]
@@ -1815,6 +1851,7 @@ def build_demo() -> Any:
                 custom_method,
                 system_name,
                 local_solver,
+                selected_contract,
                 selected_task,
                 selected_variant,
             ],
@@ -1830,7 +1867,7 @@ def build_demo() -> Any:
             api_name=False,
         )
         uploaded_agent.clear(
-            lambda agent_key, method, selected_system_name, local_reference, instance_id, variant: (
+            lambda agent_key, method, selected_system_name, local_reference, contract_version, instance_id, variant: (
                 "",
                 "",
                 gr.update(choices=[], value=None, interactive=False),
@@ -1847,6 +1884,7 @@ def build_demo() -> Any:
                     "",
                     local_reference,
                     selected_system_name,
+                    contract_version,
                     instance_id,
                     variant,
                 ),
@@ -1856,6 +1894,7 @@ def build_demo() -> Any:
                 custom_method,
                 system_name,
                 local_solver,
+                selected_contract,
                 selected_task,
                 selected_variant,
             ],
@@ -1871,7 +1910,7 @@ def build_demo() -> Any:
             api_name=False,
         )
 
-        for control in (system_name, selected_task, selected_variant):
+        for control in (system_name, selected_contract, selected_task, selected_variant):
             control.change(
                 run_context_html,
                 inputs=[
@@ -1881,6 +1920,7 @@ def build_demo() -> Any:
                     solver_entrypoint,
                     local_solver,
                     system_name,
+                    selected_contract,
                     selected_task,
                     selected_variant,
                 ],
@@ -1890,14 +1930,21 @@ def build_demo() -> Any:
             )
         selected_task.change(
             task_context_html,
-            inputs=[selected_task, selected_variant],
+            inputs=[selected_task, selected_variant, selected_contract],
             outputs=selected_task_context,
             show_progress="hidden",
             api_name=False,
         )
         selected_variant.change(
             task_context_html,
-            inputs=[selected_task, selected_variant],
+            inputs=[selected_task, selected_variant, selected_contract],
+            outputs=selected_task_context,
+            show_progress="hidden",
+            api_name=False,
+        )
+        selected_contract.change(
+            task_context_html,
+            inputs=[selected_task, selected_variant, selected_contract],
             outputs=selected_task_context,
             show_progress="hidden",
             api_name=False,
@@ -1912,6 +1959,7 @@ def build_demo() -> Any:
                 local_solver,
                 system_name,
                 selected_model,
+                selected_contract,
                 selected_task,
                 selected_variant,
             ],
